@@ -11,6 +11,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Pull-request CI for code generation, Python quality checks, tests,
   documentation, Helm charts, package artifacts, and production images.
 - Nightly and manually triggered focused Kind E2E validation.
+- Main-branch GitHub Pages publication for the MkDocs site.
 - Trusted-publishing release automation for PyPI, GHCR images, OCI Helm charts,
   and GitHub release artifacts.
 - Contribution, governance, security, conduct, issue, and pull-request guidance.
