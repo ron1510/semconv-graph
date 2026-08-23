@@ -4,7 +4,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from tests.e2e.environment import E2EEnvironment
+from tools.local_demo.environment import DemoEnvironment
 
 
 @pytest.fixture(scope="session")
@@ -12,12 +12,12 @@ def e2e_environment(
     pytestconfig: pytest.Config,
     tmp_path_factory: pytest.TempPathFactory,
     request: pytest.FixtureRequest,
-) -> Iterator[E2EEnvironment]:
+) -> Iterator[DemoEnvironment]:
     if not pytestconfig.getoption("--run-e2e"):
         pytest.skip("pass --run-e2e to provision the disposable Kind environment")
 
     root = pytestconfig.rootpath
-    environment = E2EEnvironment(root=root, work_dir=tmp_path_factory.mktemp("servicegraph-e2e"))
+    environment = DemoEnvironment(root=root, work_dir=tmp_path_factory.mktemp("servicegraph-e2e"))
     keep = bool(pytestconfig.getoption("--keep-e2e-cluster"))
     try:
         try:

@@ -10,11 +10,11 @@ from gremlin_python.driver.protocol import GremlinServerError
 from extended_otel_semconv import Service, ServiceCallsServiceEdge
 from extended_otel_semconv.edges import edge_id as semantic_edge_id
 from extended_otel_semconv.gremlin import UnsupportedSemanticTraversalError
-from tests.e2e.environment import E2EEnvironment, wait_for
+from tools.local_demo.environment import DemoEnvironment, wait_for
 
 
 @pytest.mark.e2e
-def test_schema2_events_are_projected_and_traversable(e2e_environment: E2EEnvironment) -> None:
+def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvironment) -> None:
     observed_at = time.time_ns()
     storefront_id = "service:storefront"
     checkout_id = "service:checkout-api"
@@ -150,21 +150,21 @@ def _delete(element_id: str, observed_at_unix_nano: int, event_id: str) -> dict[
     }
 
 
-def _vertex_count(environment: E2EEnvironment, label: str) -> int:
+def _vertex_count(environment: DemoEnvironment, label: str) -> int:
     with environment.graph() as graph:
         return int(graph.V().has_label(label).count().next())
 
 
-def _edge_count(environment: E2EEnvironment, label: str) -> int:
+def _edge_count(environment: DemoEnvironment, label: str) -> int:
     with environment.graph() as graph:
         return int(graph.E().has_label(label).count().next())
 
 
-def _service_versions(environment: E2EEnvironment, name: str) -> list[str]:
+def _service_versions(environment: DemoEnvironment, name: str) -> list[str]:
     with environment.graph() as graph:
         return [str(value) for value in graph.V().has("service_name", name).values("service_version").to_list()]
 
 
-def _all_counts(environment: E2EEnvironment) -> tuple[int, int]:
+def _all_counts(environment: DemoEnvironment) -> tuple[int, int]:
     with environment.graph() as graph:
         return int(graph.V().count().next()), int(graph.E().count().next())
