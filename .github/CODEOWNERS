@@ -1,0 +1,8 @@
+* @ron1510
+
+/packages/extended-opentelemetry-semconv/ @ron1510
+/tools/semconv_codegen/ @ron1510
+/services/otel-servicegraph-diff/ @ron1510
+/services/servicegraph-indexer/ @ron1510
+/services/servicegraph-gremlin/ @ron1510
+/deploy/helm/ @ron1510
