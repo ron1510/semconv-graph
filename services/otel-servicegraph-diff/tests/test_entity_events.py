@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import cast
 
+import pytest
+
 from otel_servicegraph_diff.engine.elements import GraphContribution, GraphContributionRetraction, GraphEdge
 from otel_servicegraph_diff.ingest.entity_events import (
     EntityDeleteObservation,
@@ -37,11 +39,7 @@ def test_entity_state_becomes_node_and_registry_relationship_contributions() -> 
     assert isinstance(observation, EntityStateObservation)
     assert {item.element.id for item in observation.contributions} == {
         "service:checkout",
-        next(
-            item.element.id
-            for item in observation.contributions
-            if isinstance(item.element, GraphEdge)
-        ),
+        next(item.element.id for item in observation.contributions if isinstance(item.element, GraphEdge)),
     }
     node = next(item for item in observation.contributions if item.element.id == "service:checkout")
     assert node.element.attributes == {
@@ -107,15 +105,111 @@ def test_multiple_observers_get_independent_contributor_ids() -> None:
     assert first.contributor_id != second.contributor_id
 
 
+def test_description_cannot_override_identity() -> None:
+    parsed = tuple(
+        iter_otlp_json_entity_events(
+            _payload(
+                "entity.state",
+                description={"service.name": "payments"},
+                report_interval=10,
+            ),
+            report_interval_grace_seconds=5,
+        )
+    )
+
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], IngestRejection)
+    assert "must not redefine entity.id fields: service.name" in (parsed[0].detail or "")
+
+
+@pytest.mark.parametrize(
+    "identity, expected_detail",
+    [
+        ({}, "missing: service.name; extra: none"),
+        (
+            {"service.name": "checkout", "service.namespace": "production"},
+            "missing: none; extra: service.namespace",
+        ),
+    ],
+)
+def test_identity_must_exactly_match_registered_shape(
+    identity: dict[str, object],
+    expected_detail: str,
+) -> None:
+    parsed = tuple(
+        iter_otlp_json_entity_events(
+            _payload("entity.state", identity=identity, report_interval=10),
+            report_interval_grace_seconds=5,
+        )
+    )
+
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], IngestRejection)
+    assert "must exactly match the registered semantic identity shape" in (parsed[0].detail or "")
+    assert expected_detail in (parsed[0].detail or "")
+
+
+def test_string_identity_is_converted_to_registered_strict_scalar_type() -> None:
+    observation = _state_observation(
+        _payload(
+            "entity.state",
+            entity_type="process",
+            identity={"process.pid": "123", "process.creation.time": "2026-08-23T10:00:00Z"},
+            report_interval=10,
+        )
+    )
+
+    node = observation.contributions[0].element
+    assert node.type == "process"
+    assert node.attributes["process.pid"] == 123
+    assert type(node.attributes["process.pid"]) is int
+
+
+def test_noncanonical_scalar_identity_is_rejected_instead_of_collapsing_ids() -> None:
+    parsed = tuple(
+        iter_otlp_json_entity_events(
+            _payload(
+                "entity.state",
+                entity_type="process",
+                identity={"process.pid": "00123", "process.creation.time": "2026-08-23T10:00:00Z"},
+                report_interval=10,
+            ),
+            report_interval_grace_seconds=5,
+        )
+    )
+
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], IngestRejection)
+    assert "canonical integer string" in (parsed[0].detail or "")
+
+
+@pytest.mark.parametrize("report_interval", [None, 0])
+def test_absent_and_zero_report_intervals_do_not_expire(report_interval: int | None) -> None:
+    observation = _state_observation(_payload("entity.state", report_interval=report_interval))
+
+    assert all(contribution.ttl_seconds == 0 for contribution in observation.contributions)
+
+
+def test_unseen_older_state_recreates_after_delete_without_replaying_duplicates() -> None:
+    delete = _delete_observation(_payload("entity.delete", timestamp=2_000_000_000))
+    deleted = reconcile_entity_event(None, delete)
+    older_state = _state_observation(_payload("entity.state", timestamp=1_000_000_000, report_interval=10))
+
+    restored = reconcile_entity_event(deleted.state, older_state)
+    replayed_state = reconcile_entity_event(restored.state, older_state)
+    replayed_delete = reconcile_entity_event(restored.state, delete)
+
+    assert len(restored.mutations) == 1
+    assert isinstance(restored.mutations[0], GraphContribution)
+    assert replayed_state.mutations == ()
+    assert replayed_delete.mutations == ()
+
+
 def test_invalid_supported_event_is_rejected_but_unrelated_log_is_ignored() -> None:
     invalid = json.loads(_payload("entity.state"))
     invalid["resourceLogs"][0]["scopeLogs"][0]["logRecords"][0]["attributes"] = []
-    rejected = tuple(
-        iter_otlp_json_entity_events(json.dumps(invalid), report_interval_grace_seconds=0)
-    )
-    ignored = tuple(
-        iter_otlp_json_entity_events(_payload("other.event"), report_interval_grace_seconds=0)
-    )
+    rejected = tuple(iter_otlp_json_entity_events(json.dumps(invalid), report_interval_grace_seconds=0))
+    ignored = tuple(iter_otlp_json_entity_events(_payload("other.event"), report_interval_grace_seconds=0))
 
     assert len(rejected) == 1
     assert isinstance(rejected[0], IngestRejection)
@@ -141,6 +235,8 @@ def test_unknown_relationship_is_rejected_as_complete_snapshot() -> None:
 
     assert len(parsed) == 1
     assert isinstance(parsed[0], IngestRejection)
+    assert parsed[0].reason == "unsupported_otel_entity_event_graph_contract"
+    assert "accepts only registered service_graph relationships" in (parsed[0].detail or "")
     assert "does not allow relationship" in (parsed[0].detail or "")
 
 
@@ -162,7 +258,8 @@ def test_known_otel_entity_outside_generated_graph_topology_is_rejected() -> Non
 
     assert len(parsed) == 1
     assert isinstance(parsed[0], IngestRejection)
-    assert "not part of the generated service graph topology" in (parsed[0].detail or "")
+    assert parsed[0].reason == "unsupported_otel_entity_event_graph_contract"
+    assert "accepts only registered service_graph topology entity types" in (parsed[0].detail or "")
 
 
 def _state_observation(payload: str) -> EntityStateObservation:
@@ -182,13 +279,15 @@ def _payload(
     *,
     timestamp: int = 1_000_000_000,
     observer_id: str | None = "collector-a",
+    entity_type: str = "service",
+    identity: dict[str, object] | None = None,
     description: dict[str, object] | None = None,
     relationships: list[dict[str, object]] | None = None,
     report_interval: int | None = None,
 ) -> str:
     attributes = [
-        _attribute("entity.type", "service"),
-        _attribute("entity.id", {"service.name": "checkout"}),
+        _attribute("entity.type", entity_type),
+        _attribute("entity.id", identity if identity is not None else {"service.name": "checkout"}),
     ]
     if observer_id is not None:
         attributes.append(_attribute("otel.entity.observer.id", observer_id))
@@ -242,10 +341,6 @@ def _any_value(value: object) -> dict[str, object]:
             return {"arrayValue": {"values": [_any_value(item) for item in sequence]}}
         case dict():
             mapping = cast(dict[object, object], value)
-            return {
-                "kvlistValue": {
-                    "values": [_attribute(str(name), item) for name, item in mapping.items()]
-                }
-            }
+            return {"kvlistValue": {"values": [_attribute(str(name), item) for name, item in mapping.items()]}}
         case _:
             raise TypeError(f"unsupported test value {value!r}")

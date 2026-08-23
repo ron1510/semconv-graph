@@ -7,6 +7,7 @@ import hashlib
 import json
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from functools import cache
+from math import isfinite
 from typing import Literal, cast
 
 from google.protobuf.json_format import ParseDict, ParseError  # type: ignore[import-untyped]
@@ -18,6 +19,7 @@ from pydantic import ValidationError
 from extended_otel_semconv.edges import edge_id
 from extended_otel_semconv.entities import SemanticEntity, entity_from_attributes
 from extended_otel_semconv.errors import SemanticModelError
+from extended_otel_semconv.generated import ENTITY_MODELS
 from extended_otel_semconv.relationships import RelationshipDefinition, service_graph_relationships
 from otel_servicegraph_diff.engine.elements import (
     FrozenModel,
@@ -63,13 +65,18 @@ type EntityEventObservation = EntityStateObservation | EntityDeleteObservation
 
 
 class EntitySourceState(FrozenModel):
-    ordering_key: tuple[int, int, str]
+    state_ordering_key: tuple[int, str] | None = None
+    delete_ordering_key: tuple[int, str] | None = None
     element_ids: tuple[str, ...]
 
 
 class EntityReconciliationResult(FrozenModel):
     state: EntitySourceState
     mutations: tuple[GraphElementMutation, ...] = ()
+
+
+class UnsupportedEntityEventGraphContractError(ValueError):
+    """The event is valid OTel data outside this product's registered graph contract."""
 
 
 def iter_otlp_json_entity_events(
@@ -107,6 +114,11 @@ def iter_otlp_json_entity_events(
                         report_interval_grace_seconds,
                         service_graph_relationships(),
                     )
+                except UnsupportedEntityEventGraphContractError as exc:
+                    yield IngestRejection(
+                        reason="unsupported_otel_entity_event_graph_contract",
+                        detail=str(exc),
+                    )
                 except (SemanticModelError, TypeError, ValidationError, ValueError) as exc:
                     yield ingest_rejection("invalid_otel_entity_event", exc)
                 else:
@@ -118,13 +130,15 @@ def reconcile_entity_event(
     previous: EntitySourceState | None,
     observation: EntityEventObservation,
 ) -> EntityReconciliationResult:
-    precedence = 1 if isinstance(observation, EntityDeleteObservation) else 0
-    ordering_key = (observation.observed_at_unix_nano, precedence, observation.payload_hash)
-    if previous is not None and ordering_key <= previous.ordering_key:
-        return EntityReconciliationResult(state=previous)
-
     previous_ids = set(previous.element_ids if previous is not None else ())
     if isinstance(observation, EntityStateObservation):
+        ordering_key = (observation.observed_at_unix_nano, observation.payload_hash)
+        if (
+            previous is not None
+            and previous.state_ordering_key is not None
+            and ordering_key <= previous.state_ordering_key
+        ):
+            return EntityReconciliationResult(state=previous)
         current_ids = {item.element.id for item in observation.contributions}
         retractions = _retractions(
             previous_ids - current_ids,
@@ -132,11 +146,26 @@ def reconcile_entity_event(
             observation.observed_at_unix_nano,
         )
         mutations: tuple[GraphElementMutation, ...] = (*retractions, *observation.contributions)
-        state = EntitySourceState(ordering_key=ordering_key, element_ids=tuple(sorted(current_ids)))
+        state = EntitySourceState(
+            state_ordering_key=ordering_key,
+            delete_ordering_key=previous.delete_ordering_key if previous is not None else None,
+            element_ids=tuple(sorted(current_ids)),
+        )
         return EntityReconciliationResult(state=state, mutations=mutations)
 
+    ordering_key = (observation.observed_at_unix_nano, observation.payload_hash)
+    if (
+        previous is not None
+        and previous.delete_ordering_key is not None
+        and ordering_key <= previous.delete_ordering_key
+    ):
+        return EntityReconciliationResult(state=previous)
     retracted_ids = previous_ids or {observation.node_element_id}
-    state = EntitySourceState(ordering_key=ordering_key, element_ids=())
+    state = EntitySourceState(
+        state_ordering_key=previous.state_ordering_key if previous is not None else None,
+        delete_ordering_key=ordering_key,
+        element_ids=(),
+    )
     return EntityReconciliationResult(
         state=state,
         mutations=_retractions(
@@ -165,11 +194,16 @@ def _entity_event(
     _validate_graph_entity_type(entity_type)
     identity = _required_string_map(attributes, "entity.id")
     description = _optional_map(attributes, "entity.description")
-    entity = entity_from_attributes(entity_type, {**identity, **description})
+    overlap = identity.keys() & description.keys()
+    if overlap:
+        names = ", ".join(sorted(overlap))
+        raise ValueError(f"entity.description must not redefine entity.id fields: {names}")
+    normalized_identity = _normalized_identity(entity_type, identity)
+    entity = entity_from_attributes(entity_type, {**normalized_identity, **description})
     node = GraphNode(
         id=entity.entity_id,
         type=entity.entity_type,
-        attributes={**identity, **description},
+        attributes={**normalized_identity, **description},
     )
     observer = attributes.get(ENTITY_OBSERVER_ID)
     if observer is not None and (not isinstance(observer, str) or not observer):
@@ -204,7 +238,9 @@ def _entity_event(
         )
 
     report_interval = _report_interval(attributes)
-    ttl_seconds = report_interval + report_interval_grace_seconds if report_interval > 0 else None
+    ttl_seconds = (
+        report_interval + report_interval_grace_seconds if report_interval is not None and report_interval > 0 else 0
+    )
     elements: list[GraphElement] = [node]
     elements.extend(_relationship_edges(entity, attributes, relationships))
     contributions = tuple(
@@ -240,16 +276,18 @@ def _relationship_edges(
             raise ValueError(f"entity.relationships[{index}] must be a map")
         relationship_type = _required_string(item, "relationship.type")
         target_type = _required_string(item, "entity.type")
+        _validate_graph_entity_type(target_type)
         target_identity = _required_string_map(item, "entity.id")
-        target = entity_from_attributes(target_type, target_identity)
+        target = entity_from_attributes(target_type, _normalized_identity(target_type, target_identity))
         if not relationship_allows(
             relationships,
             source.entity_type,
             target.entity_type,
             relationship_type,
         ):
-            raise ValueError(
-                "semantic registry does not allow relationship "
+            raise UnsupportedEntityEventGraphContractError(
+                "OTel entity-event adapter accepts only registered service_graph relationships; "
+                "the semantic registry does not allow relationship "
                 f"{source.entity_type!r} -[{relationship_type!r}]-> {target.entity_type!r}"
             )
         edges.append(
@@ -267,8 +305,9 @@ def _validate_graph_entity_type(
     entity_type: str,
 ) -> None:
     if entity_type not in _service_graph_entity_types():
-        raise ValueError(
-            f"semantic entity type {entity_type!r} is not part of the generated service graph topology"
+        raise UnsupportedEntityEventGraphContractError(
+            "OTel entity-event adapter accepts only registered service_graph topology entity types; "
+            f"semantic entity type {entity_type!r} is not registered in that topology"
         )
 
 
@@ -298,10 +337,63 @@ def _event_name(raw_event_name: str, attributes: Mapping[str, EventAttribute]) -
             return None
 
 
-def _report_interval(attributes: Mapping[str, EventAttribute]) -> int:
-    value = attributes.get("entity.report.interval", 0)
+def _report_interval(attributes: Mapping[str, EventAttribute]) -> int | None:
+    value = attributes.get("entity.report.interval")
+    if value is None:
+        return None
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ValueError("entity.report.interval must be a nonnegative integer")
+    return value
+
+
+def _normalized_identity(entity_type: str, identity: Mapping[str, str]) -> dict[str, object]:
+    model = ENTITY_MODELS.get(entity_type)
+    if model is None:
+        raise UnsupportedEntityEventGraphContractError(
+            "OTel entity-event adapter accepts only generated semantic entity types; "
+            f"no model is registered for {entity_type!r}"
+        )
+    expected = frozenset(model.identity_fields)
+    actual = frozenset(identity)
+    if actual != expected:
+        missing = ", ".join(sorted(expected - actual)) or "none"
+        extra = ", ".join(sorted(actual - expected)) or "none"
+        raise ValueError(
+            f"entity.id for {entity_type!r} must exactly match the registered semantic identity "
+            f"shape; missing: {missing}; extra: {extra}"
+        )
+    fields_by_alias = {field.alias or field_name: field for field_name, field in model.model_fields.items()}
+    return {
+        name: _normalized_identity_value(name, value, fields_by_alias[name].annotation)
+        for name, value in identity.items()
+    }
+
+
+def _normalized_identity_value(name: str, value: str, annotation: object) -> object:
+    if annotation is int:
+        try:
+            parsed = int(value)
+        except ValueError as exc:
+            raise ValueError(f"entity.id field {name!r} must be a canonical integer string") from exc
+        if str(parsed) != value:
+            raise ValueError(f"entity.id field {name!r} must be a canonical integer string")
+        return parsed
+    if annotation is float:
+        try:
+            parsed_float = float(value)
+        except ValueError as exc:
+            raise ValueError(f"entity.id field {name!r} must be a canonical finite number string") from exc
+        if not isfinite(parsed_float) or str(parsed_float) != value:
+            raise ValueError(f"entity.id field {name!r} must be a canonical finite number string")
+        return parsed_float
+    if annotation is bool:
+        match value:
+            case "true":
+                return True
+            case "false":
+                return False
+            case _:
+                raise ValueError(f"entity.id field {name!r} must be 'true' or 'false'")
     return value
 
 
@@ -314,8 +406,8 @@ def _required_string(attributes: Mapping[str, EventAttribute], key: str) -> str:
 
 def _required_string_map(attributes: Mapping[str, EventAttribute], key: str) -> dict[str, str]:
     value = attributes.get(key)
-    if not isinstance(value, dict) or not value:
-        raise ValueError(f"{key} must be a nonempty map")
+    if not isinstance(value, dict):
+        raise ValueError(f"{key} must be a map")
     result: dict[str, str] = {}
     for name, item in value.items():
         if not isinstance(item, str):
