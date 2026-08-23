@@ -34,8 +34,10 @@ data:
               event_name != "entity.state" and
               event_name != "entity.delete" and
               attributes["otel.entity.event.type"] != "entity_state" and
+              attributes["otel.entity.event.type"] != "entity.state" and
               attributes["otel.entity.event.type"] != "entity_delete" and
-              attributes["otel.entity.event.type"] != "entity_deleted"
+              attributes["otel.entity.event.type"] != "entity_deleted" and
+              attributes["otel.entity.event.type"] != "entity.delete"
       batch/entity_events:
         timeout: 1s
         send_batch_size: 256
