@@ -54,7 +54,7 @@ nav:
   - Product Direction: product.md
   - Getting Started:
       - Overview: getting-started/index.md
-      - Five-Minute Quickstart: getting-started/quickstart.md
+      - Local Demo: getting-started/quickstart.md
       - Your First Custom Entity: getting-started/custom-entity.md
   - Concepts:
       - Semantic Entity Model: concepts/semantic-model.md
@@ -83,4 +83,5 @@ nav:
   - Development:
       - Repository Development: development.md
       - Testing: development/testing.md
+      - Benchmarking: development/benchmarking.md
       - Run PyFlink Locally: development/local-pyflink.md

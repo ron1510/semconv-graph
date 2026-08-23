@@ -108,13 +108,15 @@ Maintainers create repository release tags in the form `vX.Y.Z` from `main`.
 Before tagging, bump every changed Python distribution and Helm chart and move
 relevant changelog entries into a release section. The release workflow:
 
-1. builds and inspects all Python distributions;
-2. publishes new distribution versions to PyPI with trusted publishing;
+1. builds and inspects the SDK and deployable-service distributions;
+2. publishes only the reusable semantic SDK to PyPI with trusted publishing;
 3. publishes service images to GHCR under the repository tag;
 4. publishes new chart versions to the owner's OCI `charts` namespace;
 5. creates a GitHub release containing Python and chart artifacts.
 
-Unchanged Python and chart versions are skipped so independently versioned
-components can share one repository release. Each PyPI project must configure
-this repository, the `Release` workflow, and the `pypi` environment as a trusted
-publisher before the first release.
+Unchanged SDK and chart versions are skipped so independently versioned
+components can share one repository release. The
+`extended-opentelemetry-semconv` PyPI project must configure this repository,
+the `Release` workflow, and the `pypi` environment as a trusted publisher before
+the first release. Service wheels remain attached deployment artifacts; they
+are not published as reusable PyPI libraries.

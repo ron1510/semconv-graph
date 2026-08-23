@@ -26,8 +26,8 @@ query:
 4. Query the current graph through typed Gremlin.
 5. Stop one contributor and show shared elements remain.
 6. Stop the final contributor and show explicit graph-element deletion.
-7. Enable explicit entity events and show that an independent observer can
-   complete the same graph element without replacing inferred provenance.
+7. Enable explicit entity events and show that the explicit source can complete
+   the same graph element without replacing inferred provenance.
 
 Use concrete services, IDs, attributes, and traversals. The repository's
 in-process benchmark is reproducible, but avoid distributed throughput or cost
@@ -92,8 +92,8 @@ discussion because they affect recovery and downstream consumers.
 
 ## Evidence needed before scale claims
 
-Publish a reproducible benchmark before describing the project as cheaper or
-more scalable than alternatives. At minimum record:
+Publish a distributed benchmark before describing the complete system as
+cheaper or more scalable than alternatives. At minimum record:
 
 - source datapoints and resulting contributions per second;
 - end-to-end upsert and delete latency;

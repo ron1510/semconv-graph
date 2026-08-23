@@ -60,13 +60,11 @@ delete when the final contributor expires. Kafka uses `element_id` as its key.
 At-least-once sink delivery is safe because events have deterministic IDs and
 projection operations are idempotent.
 
-For explicit entity events, Flink keys producer snapshots by contributor ID.
-`otel.entity.observer.id` is preferred; without it, a deterministic fingerprint
-of OTLP Resource attributes and instrumentation Scope identifies the observer.
-Each `entity.state` is complete for that observer: outgoing relationships
-omitted from the next state are retracted immediately. Different observers and
-the inferred metrics source remain independent contributors to the same graph
-element.
+For explicit entity events, Flink keys complete source snapshots by semantic
+entity ID. Resource and instrumentation Scope are transport metadata, not
+contributor identity. Outgoing relationships omitted from the next state are
+retracted immediately. The explicit source and inferred metrics source remain
+independent contributors to the same graph element.
 
 ## Projection and access
 

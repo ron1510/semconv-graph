@@ -5,9 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "extended-opentelemetry-semconv"
 version = "0.4.0"
+license = "Apache-2.0"
 description = "Typed OpenTelemetry-compatible semantic entities, relationships, and graph access."
 readme = "README.md"
 requires-python = ">=3.12"
+keywords = ["opentelemetry", "semantic-conventions", "service-graph", "gremlin", "pydantic"]
 dependencies = [
   "pydantic>=2.13,<3",
 ]
@@ -16,6 +18,12 @@ dependencies = [
 gremlin = [
   "gremlinpython==3.8.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ron1510/extended-opentelemetry-semconv"
+Documentation = "https://ron1510.github.io/extended-opentelemetry-semconv/"
+Repository = "https://github.com/ron1510/extended-opentelemetry-semconv.git"
+Issues = "https://github.com/ron1510/extended-opentelemetry-semconv/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

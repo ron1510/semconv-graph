@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "servicegraph-indexer"
 version = "0.1.0"
+license = "Apache-2.0"
 description = "ArangoDB current-state indexer for service graph elements."
 requires-python = ">=3.12,<3.13"
 dependencies = [

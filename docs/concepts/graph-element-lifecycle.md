@@ -43,8 +43,9 @@ contributor deletes the edge; later recreation starts totals from zero.
 Each element stores independent event-time and processing-time expiry for every
 contributor. Event time follows telemetry timestamps; processing time guarantees
 cleanup when input becomes idle. Refreshing a contributor records later expiry
-timestamps, making callbacks from its older timers harmless. The configured
-state TTL must exceed the contributor TTL plus allowed lateness.
+timestamps, making callbacks from its older timers harmless. Non-expiring
+explicit contributions register no timer. Generic Flink state TTL is not used,
+because silent state cleanup cannot publish lifecycle deletes.
 
 The single element-keyed lifecycle stage emits a complete `upsert` when merged
 state changes and a `delete` only when the final contributor disappears.

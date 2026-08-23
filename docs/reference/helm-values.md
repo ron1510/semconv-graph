@@ -45,7 +45,6 @@ also available in the chart.
 | `entityEvents.reportIntervalGraceSeconds` | `30` | Grace added to positive report intervals |
 | `job.interactionTtlSeconds` | `300` | Delete inactivity threshold |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |
-| `job.stateTtlSeconds` | `86400` | Keyed-state cleanup TTL |
 | `job.checkpointIntervalMs` | `30000` | Checkpoint interval |
 | `job.restartAttempts` | `3` | Fixed-delay attempts |
 | `logging.rootLevel` | `INFO` | Flink console log level |

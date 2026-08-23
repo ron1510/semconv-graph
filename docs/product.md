@@ -32,6 +32,13 @@ defines structured `entity.state` and `entity.delete` log events, embedded
 relationships, and reporting intervals. Both documents currently have
 Development status.
 
+OpenTelemetry's
+[Consuming OpenTelemetry Entity Events](https://opentelemetry.io/blog/2026/consuming-opentelemetry-entity-events/)
+article demonstrates the producer-driven consumer path. Semconv Graph is
+complementary: it bootstraps a graph from existing trace telemetry and can
+converge registered explicit events into the same lifecycle state when they are
+available.
+
 Semconv Graph addresses estates that already emit traces and environments with
 standard entity-event producers. It can infer a graph from service-graph
 telemetry, consume explicit entity state, or merge both sources centrally.
@@ -47,7 +54,7 @@ same problem:
 | Producer requirement | A producer must emit entity events | Existing trace instrumentation is reused |
 | Entity descriptions | Can carry complete and complex descriptions | Scalar dimensions from inferred telemetry; complete descriptions from explicit events |
 | Relationships | Explicitly supplied by the producer | Inferred relationships plus registry-validated explicit relationships |
-| Lifecycle | Explicit state/delete plus report-interval expiry | Contributor-aware inactivity expiry and observer-scoped explicit reconciliation |
+| Lifecycle | Explicit state/delete plus report-interval expiry | Contributor-aware inactivity expiry and entity-scoped explicit reconciliation |
 | Current graph | Consumer-dependent | Kafka lifecycle stream plus ArangoDB projection |
 
 The project does not need to displace entity-event consumers. Its useful role is
@@ -81,10 +88,10 @@ internal contribution model:
   and only relationship combinations allowed by that topology, are accepted;
 - explicitly reported facts and inferred facts retain separate provenance.
 
-Observer identity prefers the explicit `otel.entity.observer.id` extension. If
-it is absent, Flink hashes the OTLP Resource attributes and instrumentation
-Scope. A positive `entity.report.interval` sets the contribution TTL to the
-interval plus configured grace; absent or zero uses the global contributor TTL.
+The registered semantic entity ID identifies the explicit source; Resource and
+instrumentation Scope do not split it into observer-specific contributors. A
+positive `entity.report.interval` sets the contribution TTL to the interval plus
+configured grace; absent or zero means no inactivity expiry.
 
 This is not full conformance. Deterministic IDs still use the generated local
 semantic identity, `schema_url` is not a merge boundary, output remains project
@@ -133,9 +140,9 @@ See [Runtime architecture](architecture.md) for the data path and state model.
 - The project stores current graph state, not a bi-temporal entity history.
 - The inferred source only sees scalar dimensions deliberately carried through
   service-graph metrics.
-- Additional OTel identification-context keys are preserved as attributes but
-  do not participate in deterministic IDs.
-- Explicit deletion retracts the observer's node and outgoing relationships;
+- Entity IDs containing keys beyond the exact registered identity shape are
+  rejected instead of being merged unsafely.
+- Explicit deletion retracts the explicit source's node and outgoing relationships;
   implicit deletion of incoming relationships is not implemented.
 - Output uses the project graph-element schema, not standard OTel entity events.
 - Gremlin is a trusted internal interface, not a bounded public API.

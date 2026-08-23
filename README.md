@@ -1,5 +1,9 @@
 # Semconv Graph
 
+[![CI](https://github.com/ron1510/extended-opentelemetry-semconv/actions/workflows/ci.yml/badge.svg)](https://github.com/ron1510/extended-opentelemetry-semconv/actions/workflows/ci.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 **Turn existing OpenTelemetry traces into a live typed entity graph without
 changing app instrumentation.**
 
@@ -72,7 +76,7 @@ python -m tools.local_demo query
 
 Provisioning can take longer than five minutes on a cold Docker cache. The demo
 persists until `python -m tools.local_demo down`. See the
-[five-minute quickstart](docs/getting-started/quickstart.md) for requirements and
+[local demo guide](docs/getting-started/quickstart.md) for requirements and
 the exact follow-up commands.
 
 ## Evidence and limits
@@ -89,8 +93,8 @@ The repository does **not** currently provide:
 - historical or bi-temporal graph queries;
 - standard OTel output events;
 - implicit deletion of incoming relationships when a target entity is deleted;
-- OTel identification-context keys in deterministic IDs beyond the generated
-  local semantic identity;
+- arbitrary OTel identity shapes beyond the exact generated local semantic
+  identity;
 - a safe public query API (Gremlin is a trusted internal interface);
 - production Kafka or ArangoDB operations.
 
@@ -115,7 +119,7 @@ Kafka, topic creation, and production ArangoDB remain platform concerns.
 ## Documentation
 
 - [Product direction](docs/product.md)
-- [Five-minute quickstart](docs/getting-started/quickstart.md)
+- [Local demo](docs/getting-started/quickstart.md)
 - [Runtime architecture](docs/architecture.md)
 - [OTel entity conformance](docs/reference/otel-entity-conformance.md)
 - [Community and launch guide](docs/community.md)
@@ -128,6 +132,10 @@ Serve the documentation locally:
 python -m pip install -e ".[docs]"
 python -m mkdocs serve
 ```
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
 
 ## Validation
 

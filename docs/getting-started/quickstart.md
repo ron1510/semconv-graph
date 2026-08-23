@@ -1,6 +1,6 @@
-# Five-Minute Quickstart
+# Local Demo
 
-The repository's opt-in Kind fixture is the shortest verified local graph path:
+The persistent local demo is the shortest supported path to a queryable graph:
 
 ```text
 seeded schema-2 lifecycle events
@@ -11,13 +11,13 @@ seeded schema-2 lifecycle events
   -> typed Python models
 ```
 
-This path begins at the public Kafka lifecycle contract. It does **not** run the
-Collector or Flink, so it proves projection and graph access rather than trace
-extraction or lifecycle processing.
+This focused path begins at the public Kafka lifecycle contract. It does **not**
+run Collector or Flink, so it demonstrates projection and typed graph access,
+not trace extraction or distributed lifecycle processing.
 
 ## Prerequisites
 
-- Python 3.12;
+- CPython 3.12;
 - a running Docker daemon;
 - Kind;
 - `kubectl`;
@@ -28,63 +28,55 @@ Commands below are PowerShell and run from the repository root.
 ## Install local dependencies
 
 ```powershell
-python -m pip install -e ".[dev]"
-python -m pip install -e "packages/extended-opentelemetry-semconv[gremlin]"
-python -m pip install -e services/servicegraph-indexer
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pip install -e "packages/extended-opentelemetry-semconv[gremlin]"
+.\.venv\Scripts\python.exe -m pip install -e services/servicegraph-indexer
 ```
 
-## Start the focused environment
+## Start and inspect the graph
 
 ```powershell
-python -m pytest -m e2e --run-e2e --keep-e2e-cluster
+.\.venv\Scripts\python.exe -m tools.local_demo up
+.\.venv\Scripts\python.exe -m tools.local_demo status
+.\.venv\Scripts\python.exe -m tools.local_demo query
 ```
 
-The fixture builds the current indexer and Gremlin images, creates an isolated
-Kind cluster, starts dedicated Redpanda and ArangoDB containers, installs the
-production indexer and Gremlin charts, and injects representative node and edge
-events. It verifies projection, typed traversal, replacement, deletion, Kafka
-offset commits, read-only access, and restart persistence.
+`up` builds the current indexer and Gremlin images, creates the dedicated
+`servicegraph-local-demo` Kind cluster, starts isolated Redpanda and ArangoDB
+containers, installs the production charts, and seeds six services with five
+dependency edges. It leaves the environment running so `query` can reconstruct
+the vertices and edges as generated Pydantic models.
 
-A cold Docker cache can make provisioning take longer than five minutes. At the
-end, pytest prints the generated cluster name and kubeconfig path.
+A cold Docker cache can make the first run take several minutes. Managed state
+and the kubeconfig are kept under `.tmp/local-demo`.
 
 ## Inspect Kubernetes
 
-Set the printed kubeconfig, then inspect the namespace:
-
 ```powershell
-$env:KUBECONFIG = '<printed kubeconfig path>'
-kubectl get pods --namespace servicegraph-e2e
+$env:KUBECONFIG = (Resolve-Path .tmp/local-demo/kubeconfig)
+kubectl get pods --namespace servicegraph-local-demo
 ```
 
-Port-forward the internal Gremlin Service:
+The normal `query` command owns its temporary Gremlin port-forward. For custom
+queries, port-forward the internal Service and follow the
+[typed client guide](../concepts/typed-gremlin-client.md):
 
 ```powershell
-kubectl port-forward --namespace servicegraph-e2e `
+kubectl port-forward --namespace servicegraph-local-demo `
   service/servicegraph-gremlin 8182:8182
 ```
 
-Then use the [typed client example](../concepts/typed-gremlin-client.md) against
-`ws://127.0.0.1:8182/gremlin`.
-
-## Clean up
-
-The `--keep-e2e-cluster` option intentionally preserves the generated Kind
-cluster, Redpanda and ArangoDB containers, images, and kubeconfig. Use the exact
-cluster and container names printed by the fixture when deleting them:
+## Stop the environment
 
 ```powershell
-kind delete cluster --name <printed cluster name>
-docker rm --force <printed ArangoDB container> <printed Redpanda container>
+.\.venv\Scripts\python.exe -m tools.local_demo down
 ```
 
-Run without `--keep-e2e-cluster` when automatic cleanup is preferred:
+Cleanup targets only the demo's fixed Kind cluster and exact Docker resource
+names. It leaves unrelated containers and clusters untouched.
 
-```powershell
-python -m pytest -m e2e --run-e2e
-```
-
-For a complete deployment using actual trace input, follow [Kubernetes
-Deployment](../deployment-and-operations.md) and its manual end-to-end
-verification checklist. The current repository does not automate the full
-Collector-to-Flink path.
+For automated lifecycle and restart assertions, run the opt-in
+[focused E2E](../development/testing.md). For a complete deployment using real
+trace input, follow [Kubernetes deployment](../deployment-and-operations.md).
+The repository does not yet automate the complete Collector-to-Flink path.

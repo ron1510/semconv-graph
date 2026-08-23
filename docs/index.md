@@ -70,4 +70,6 @@ The semantic SDK, inferred service-graph source, Flink lifecycle path, Kafka
 contract, ArangoDB projection, Gremlin runtime, and Helm charts are implemented.
 Opt-in standard entity-event ingestion is implemented. Historical queries,
 standard OTel output, incoming-relationship implicit deletion, published scale
-benchmarks, and a full automated Collector-to-Flink E2E are not yet implemented.
+distributed benchmarks and a full automated Collector-to-Flink E2E are not yet
+implemented. A reproducible in-process benchmark covers parsing, extraction,
+and lifecycle functions without making distributed-scale claims.

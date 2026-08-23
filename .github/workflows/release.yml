@@ -53,21 +53,32 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade pip
           python -m pip install build check-wheel-contents twine
+          mkdir -p dist/all dist/pypi
+          python -m build --sdist --wheel --outdir dist/all \
+            packages/extended-opentelemetry-semconv
+          cp dist/all/extended_opentelemetry_semconv-* dist/pypi/
           for package in \
-            packages/extended-opentelemetry-semconv \
             services/otel-servicegraph-diff \
             services/servicegraph-demo \
             services/servicegraph-indexer; do
-            python -m build --sdist --wheel --outdir dist "$package"
+            python -m build --sdist --wheel --outdir dist/all "$package"
           done
-          python -m twine check dist/*
-          check-wheel-contents dist/*.whl
+          python -m twine check dist/all/*
+          check-wheel-contents dist/all/*.whl
 
       - name: Upload Python distributions
         uses: actions/upload-artifact@v7
         with:
           name: release-python-distributions
-          path: dist/
+          path: dist/all/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload public SDK distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-pypi-distribution
+          path: dist/pypi/
           if-no-files-found: error
           retention-days: 7
 
@@ -84,7 +95,7 @@ jobs:
       - name: Download Python distributions
         uses: actions/download-artifact@v8
         with:
-          name: release-python-distributions
+          name: release-pypi-distribution
           path: dist/
 
       - name: Publish with trusted publishing
