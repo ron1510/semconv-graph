@@ -12,7 +12,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "datamodel-code-generator==0.71.0",
-  "hypothesis==6.158.0",
+  "hypothesis==6.165.10",
   "httpx==0.28.1",
   "gremlinpython==3.8.1",
   "kafka-python-ng==2.2.3",
