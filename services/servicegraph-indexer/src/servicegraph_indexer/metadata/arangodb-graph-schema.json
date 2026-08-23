@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "schema_hash": "990fe760323e6432233513ed936ad9b2dd8ca96d47993ecf3f46fa7c046e953a",
+    "schema_hash": "7f8ec0096a5619a8ee9c2372436b589528dd0e5993c097c3f842deacbb0dd2b6",
     "schema_version": "1",
-    "upstream_registry_lock_sha256": "6c69ca7922dd92785be82904b84777dd2f6841fd9a62b22b94d7a95963f5c263"
+    "upstream_registry_lock_sha256": "12a2a5c340ddadf503c228ef75fb22b2988f19aa1ee2f2204cacc5d4a9988be6"
   },
   "edge_collections": [
     {

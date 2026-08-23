@@ -20,6 +20,7 @@ from tools.semconv_codegen.generator import (
     _finalize,
     _generated_relationship,
     _identifying_refs,
+    _json_document_sha256,
     _property_aliases,
     _render_arangodb_schema,
     _render_collector_dimensions,
@@ -90,6 +91,17 @@ def test_generated_names_are_stable() -> None:
     assert python_class_name("cloud-platform.resource_type") == "CloudPlatformResourceType"
     assert python_field_name("http.request-method/value") == "http_request_method_value"
     assert _finalize(["first", "second", "", ""]) == "first\nsecond\n"
+
+
+def test_json_document_hash_is_independent_of_formatting(tmp_path: Path) -> None:
+    compact = tmp_path / "compact.json"
+    formatted = tmp_path / "formatted.json"
+    compact.write_bytes(b'{"source":{"version":"v1.43.0","kind":"archive"}}\n')
+    formatted.write_bytes(
+        b'{\r\n  "source": {\r\n    "kind": "archive",\r\n    "version": "v1.43.0"\r\n  }\r\n}\r\n'
+    )
+
+    assert _json_document_sha256(compact) == _json_document_sha256(formatted)
 
 
 def test_default_paths_cover_every_generated_artifact(tmp_path: Path) -> None:

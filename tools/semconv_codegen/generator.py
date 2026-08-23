@@ -390,7 +390,7 @@ def _render_arangodb_schema(registry: RegistryDocument, upstream_lock: Path) -> 
     schema: dict[str, object] = {
         "_meta": {
             "schema_version": ARANGODB_SCHEMA_VERSION,
-            "upstream_registry_lock_sha256": hashlib.sha256(upstream_lock.read_bytes()).hexdigest(),
+            "upstream_registry_lock_sha256": _json_document_sha256(upstream_lock),
         },
         "graph_name": "servicegraph",
         "vertex_collections": vertices,
@@ -440,6 +440,12 @@ def _property_aliases(values: Sequence[str]) -> dict[str, str]:
 
 def _schema_hash(schema: dict[str, object]) -> str:
     canonical = json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _json_document_sha256(path: Path) -> str:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    canonical = json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(canonical).hexdigest()
 
 
