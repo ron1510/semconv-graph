@@ -1,6 +1,6 @@
 # Semconv Graph
 
-[![CI](https://github.com/ron1510/extended-opentelemetry-semconv/actions/workflows/ci.yml/badge.svg)](https://github.com/ron1510/extended-opentelemetry-semconv/actions/workflows/ci.yml)
+[![CI](https://github.com/ron1510/semconv-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/ron1510/semconv-graph/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 

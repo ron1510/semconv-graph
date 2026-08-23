@@ -24,6 +24,6 @@ snapshots. Compare runs only when the workload and host conditions match.
 
 This is a regression and profiling tool, not a distributed capacity claim. It
 does not run Flink, Kafka, Collector networking, checkpoints, ArangoDB, Gremlin,
-or Kubernetes. See [`benchmarks/README.md`](https://github.com/ron1510/extended-opentelemetry-semconv/blob/main/benchmarks/README.md)
+or Kubernetes. See [`benchmarks/README.md`](https://github.com/ron1510/semconv-graph/blob/main/benchmarks/README.md)
 for the measurement boundaries and the required shape of a future distributed
 benchmark.

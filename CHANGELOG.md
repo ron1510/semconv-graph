@@ -34,4 +34,4 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
-[Unreleased]: https://github.com/ron1510/extended-opentelemetry-semconv/compare/main...HEAD
+[Unreleased]: https://github.com/ron1510/semconv-graph/compare/main...HEAD

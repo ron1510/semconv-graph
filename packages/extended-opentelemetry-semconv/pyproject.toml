@@ -20,10 +20,10 @@ gremlin = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ron1510/extended-opentelemetry-semconv"
-Documentation = "https://ron1510.github.io/extended-opentelemetry-semconv/"
-Repository = "https://github.com/ron1510/extended-opentelemetry-semconv.git"
-Issues = "https://github.com/ron1510/extended-opentelemetry-semconv/issues"
+Homepage = "https://github.com/ron1510/semconv-graph"
+Documentation = "https://ron1510.github.io/semconv-graph/"
+Repository = "https://github.com/ron1510/semconv-graph.git"
+Issues = "https://github.com/ron1510/semconv-graph/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

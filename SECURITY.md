@@ -12,7 +12,7 @@ Do not open a public issue for a suspected vulnerability.
 
 Use GitHub's private vulnerability reporting for this repository:
 
-<https://github.com/ron1510/extended-opentelemetry-semconv/security/advisories/new>
+<https://github.com/ron1510/semconv-graph/security/advisories/new>
 
 Include the affected component and version, deployment assumptions, impact,
 reproduction steps, and any proposed remediation. Remove credentials, customer

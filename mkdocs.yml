@@ -1,8 +1,8 @@
 site_name: Semconv Graph
 site_description: Turn existing OpenTelemetry traces into a live typed entity graph without changing app instrumentation.
-site_url: https://ron1510.github.io/extended-opentelemetry-semconv/
-repo_url: https://github.com/ron1510/extended-opentelemetry-semconv
-repo_name: ron1510/extended-opentelemetry-semconv
+site_url: https://ron1510.github.io/semconv-graph/
+repo_url: https://github.com/ron1510/semconv-graph
+repo_name: ron1510/semconv-graph
 edit_uri: edit/main/docs/
 strict: true
 
