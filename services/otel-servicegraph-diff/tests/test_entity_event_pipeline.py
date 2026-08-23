@@ -241,7 +241,6 @@ def _payload(
     attributes = [
         _attribute("entity.type", "service"),
         _attribute("entity.id", {"service.name": "checkout"}),
-        _attribute("otel.entity.observer.id", "collector-a"),
     ]
     if legacy_event_type is not None:
         attributes.append(_attribute("otel.entity.event.type", legacy_event_type))

@@ -37,7 +37,6 @@ from otel_servicegraph_diff.ingest.metrics import IngestRejection, JsonDocument,
 
 ENTITY_STATE_EVENT = "entity.state"
 ENTITY_DELETE_EVENT = "entity.delete"
-ENTITY_OBSERVER_ID = "otel.entity.observer.id"
 type EntityEventName = Literal["entity.state", "entity.delete"]
 type EventAttribute = JsonValue
 
@@ -98,19 +97,11 @@ def iter_otlp_json_entity_events(
         return
 
     for resource_logs in request.resource_logs:
-        resource_attributes = _key_values(resource_logs.resource.attributes)
         for scope_logs in resource_logs.scope_logs:
-            scope_identity = {
-                "name": scope_logs.scope.name,
-                "version": scope_logs.scope.version,
-                "schema_url": scope_logs.schema_url,
-            }
             for record in scope_logs.log_records:
                 try:
                     observation = _entity_event(
                         record,
-                        resource_attributes,
-                        scope_identity,
                         report_interval_grace_seconds,
                         service_graph_relationships(),
                     )
@@ -162,7 +153,9 @@ def reconcile_entity_event(
         return EntityReconciliationResult(state=previous)
     retracted_ids = previous_ids or {observation.node_element_id}
     state = EntitySourceState(
-        state_ordering_key=previous.state_ordering_key if previous is not None else None,
+        # A state arriving after a delete must be applied even when its event
+        # timestamp is older than state observed before that delete.
+        state_ordering_key=None,
         delete_ordering_key=ordering_key,
         element_ids=(),
     )
@@ -178,8 +171,6 @@ def reconcile_entity_event(
 
 def _entity_event(
     record: LogRecord,
-    resource_attributes: Mapping[str, EventAttribute],
-    scope_identity: Mapping[str, str],
     report_interval_grace_seconds: int,
     relationships: Sequence[RelationshipDefinition],
 ) -> EntityEventObservation | None:
@@ -205,17 +196,9 @@ def _entity_event(
         type=entity.entity_type,
         attributes={**normalized_identity, **description},
     )
-    observer = attributes.get(ENTITY_OBSERVER_ID)
-    if observer is not None and (not isinstance(observer, str) or not observer):
-        raise ValueError(f"{ENTITY_OBSERVER_ID} must be a nonempty string")
-    observer_identity: object = observer or {
-        "resource": resource_attributes,
-        "scope": scope_identity,
-    }
     contributor_id = _digest(
         {
             "source": "otel.entity.event",
-            "observer": observer_identity,
             "entity_type": entity.entity_type,
             "entity_id": entity.entity_id,
         }

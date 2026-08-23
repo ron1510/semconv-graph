@@ -97,12 +97,12 @@ def test_delete_retracts_every_contribution_and_duplicate_is_ignored() -> None:
     assert replayed.mutations == ()
 
 
-def test_multiple_observers_get_independent_contributor_ids() -> None:
-    first = _state_observation(_payload("entity.state", observer_id="collector-a"))
-    second = _state_observation(_payload("entity.state", observer_id="collector-b"))
+def test_transport_resource_and_scope_do_not_change_explicit_source_identity() -> None:
+    first = _state_observation(_payload("entity.state", producer="producer-1", scope="scope-1"))
+    second = _state_observation(_payload("entity.state", producer="producer-2", scope="scope-2"))
 
     assert first.node_element_id == second.node_element_id
-    assert first.contributor_id != second.contributor_id
+    assert first.contributor_id == second.contributor_id
 
 
 def test_description_cannot_override_identity() -> None:
@@ -205,6 +205,23 @@ def test_unseen_older_state_recreates_after_delete_without_replaying_duplicates(
     assert replayed_delete.mutations == ()
 
 
+def test_older_state_recreates_after_delete_even_when_newer_state_was_seen_before_delete() -> None:
+    initial = reconcile_entity_event(
+        None,
+        _state_observation(_payload("entity.state", timestamp=1_500_000_000, report_interval=10)),
+    )
+    deleted = reconcile_entity_event(
+        initial.state,
+        _delete_observation(_payload("entity.delete", timestamp=2_000_000_000)),
+    )
+    late_state = _state_observation(_payload("entity.state", timestamp=1_000_000_000, report_interval=10))
+
+    restored = reconcile_entity_event(deleted.state, late_state)
+
+    assert len(restored.mutations) == 1
+    assert isinstance(restored.mutations[0], GraphContribution)
+
+
 def test_invalid_supported_event_is_rejected_but_unrelated_log_is_ignored() -> None:
     invalid = json.loads(_payload("entity.state"))
     invalid["resourceLogs"][0]["scopeLogs"][0]["logRecords"][0]["attributes"] = []
@@ -278,7 +295,8 @@ def _payload(
     event_name: str,
     *,
     timestamp: int = 1_000_000_000,
-    observer_id: str | None = "collector-a",
+    producer: str = "producer-1",
+    scope: str = "entity-test",
     entity_type: str = "service",
     identity: dict[str, object] | None = None,
     description: dict[str, object] | None = None,
@@ -289,8 +307,6 @@ def _payload(
         _attribute("entity.type", entity_type),
         _attribute("entity.id", identity if identity is not None else {"service.name": "checkout"}),
     ]
-    if observer_id is not None:
-        attributes.append(_attribute("otel.entity.observer.id", observer_id))
     if description is not None:
         attributes.append(_attribute("entity.description", description))
     if relationships is not None:
@@ -302,11 +318,11 @@ def _payload(
             "resourceLogs": [
                 {
                     "resource": {
-                        "attributes": [_attribute("service.instance.id", "producer-1")],
+                        "attributes": [_attribute("service.instance.id", producer)],
                     },
                     "scopeLogs": [
                         {
-                            "scope": {"name": "entity-test", "version": "1"},
+                            "scope": {"name": scope, "version": "1"},
                             "logRecords": [
                                 {
                                     "timeUnixNano": str(timestamp),
