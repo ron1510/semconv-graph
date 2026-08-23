@@ -1,76 +1,73 @@
-# Extended OpenTelemetry Semantic Conventions
+# Semconv Graph
 
-Build a live, organization-specific topology from OpenTelemetry.
+**Turn existing OpenTelemetry traces into a live typed entity graph without
+changing app instrumentation.**
 
-This project extends the OpenTelemetry entity model with entities and
-relationships that matter to your environment, generates the code and
-Collector configuration needed to observe them, and maintains their lifecycle
-as a Kafka event stream.
+Semconv Graph is the working product name. The Python SDK remains
+`extended-opentelemetry-semconv`, and existing package, image, chart, and import
+names remain unchanged.
+
+## The product boundary
+
+Semconv Graph is a lifecycle engine and graph projection for semantic entities
+derived from telemetry. It is not a tracing backend and it does not ask
+applications to emit a proprietary inventory format.
+
+Today it converts Collector service-graph delta metrics into semantic graph
+contributions. Flink merges those contributions, owns staleness, and emits
+complete node and edge lifecycle events. ArangoDB holds the current-state graph,
+and trusted clients traverse it through read-only Gremlin.
 
 ```text
-OTLP traces
-  -> trace-affine OpenTelemetry Collectors
-  -> service-graph metrics
+Existing OTLP traces
+  -> Collector service-graph metrics
   -> Kafka
-  -> stateful Flink graph-element engine
-  -> node and edge upsert/delete events
-  -> any downstream projection
+  -> Flink lifecycle engine
+  -> graph element events
+  -> ArangoDB
+  -> Gremlin
 ```
 
-## Why use it?
+## The adoption argument
 
-Traditional service graphs primarily show that one service calls another. This
-project also describes the topology around service activity:
+Standard entity events are valuable when producers can explicitly describe
+inventory and relationships. Existing estates often do not have those
+producers yet. Inference from traces provides a lower-friction starting point:
+deploy infrastructure around the telemetry pipeline, then obtain a useful graph
+without changing every instrumented application.
 
-- application endpoints exposed by a service;
-- namespaces containing services;
-- Kubernetes pods running service instances;
-- containers, processes, and runtimes;
-- repositories and revisions used to build a service;
-- your own domain-specific entities and relationships.
+Standard OTel entity events are an opt-in second source. Explicit entities and
+inferred entities enter the same contributor lifecycle without replacing the
+existing trace-derived path. Read the [product direction](product.md) and the
+[conformance matrix](reference/otel-entity-conformance.md) for the exact current
+boundary.
 
-The registry is the source of truth. It generates typed Pydantic entities,
-runtime relationship metadata, and the Collector dimensions that carry entity
-attributes into the service-graph stream.
+## Runtime guarantees
 
-## What the runtime guarantees
+- Trace-affine routing keeps both sides of a trace on one service-graph backend.
+- Flink owns contributor-aware merging, expiry, and graph lifecycle state.
+- Complete `upsert` and `delete` events are keyed by deterministic element IDs.
+- Nodes and edges follow the same lifecycle rules.
+- Downstream projections do not invent their own TTL policy.
+- ArangoDB projection is idempotent under Kafka replay.
 
-- All spans from a trace are routed to the same service-graph backend.
-- Flink privately correlates observations and owns graph staleness.
-- New and changed graph elements produce complete `upsert` commands.
-- Elements with no active contributors produce explicit `delete` commands.
-- Kafka records are keyed by deterministic graph element IDs.
-- Downstream consumers do not need their own TTL policy.
+Delivery is at least once. Deterministic event IDs and graph identifiers let
+consumers apply events idempotently.
 
-Delivery is at least once. Event IDs and graph identifiers are deterministic so
-consumers can apply commands idempotently.
+## Start here
 
-## Repository components
+- [Run the focused local environment](getting-started/quickstart.md)
+- [Understand the product and roadmap](product.md)
+- [Read the runtime architecture](architecture.md)
+- [Check OTel entity-event conformance](reference/otel-entity-conformance.md)
+- [Add a custom entity](getting-started/custom-entity.md)
+- [Deploy to Kubernetes](deployment-and-operations.md)
+- [Find a contribution area](community.md)
 
-| Component | Responsibility |
-| --- | --- |
-| `packages/extended-opentelemetry-semconv` | Generated semantic models and optional typed Gremlin client |
-| `tools/semconv_codegen` | Registry validation and deterministic generation |
-| `services/otel-servicegraph-diff` | Collector ingestion, graph lifecycle engine, PyFlink state, and Kafka I/O |
-| `services/servicegraph-indexer` | ArangoDB initializer and lifecycle indexer |
-| `services/servicegraph-gremlin` | Pinned read-only TinkerPop/ArangoDB runtime |
-| `services/servicegraph-demo` | Optional long-running synthetic OTLP traffic |
-| `deploy/helm/servicegraph-collector` | Trace router and stateful service-graph extraction |
-| `deploy/helm/servicegraph-flink` | Standalone Flink Session cluster, submission, and storage |
-| `deploy/helm/servicegraph-arangodb` | Optional local-development ArangoDB |
-| `deploy/helm/servicegraph-indexer` | ArangoDB initializer and Kafka indexer |
-| `deploy/helm/servicegraph-gremlin` | Read-only Gremlin Server |
-| `deploy/helm/servicegraph-demo` | Optional traffic generator |
+## Project status
 
-Kafka and topic creation remain platform responsibilities. Deployment uses
-standard Kubernetes resources, Helm, and no CRDs.
-
-## Choose a path
-
-- [Run the complete system locally](getting-started/quickstart.md)
-- [Run and debug the PyFlink job in PyCharm](development/local-pyflink.md)
-- [Understand the semantic entity model](concepts/semantic-model.md)
-- [Add your first custom entity](getting-started/custom-entity.md)
-- [Deploy to an existing Kubernetes cluster](deployment-and-operations.md)
-- [Project and traverse graph elements through ArangoDB and Gremlin](deployment/arangodb-gremlin.md)
-- [Consume the graph element event stream](reference/event-schema.md)
+The semantic SDK, inferred service-graph source, Flink lifecycle path, Kafka
+contract, ArangoDB projection, Gremlin runtime, and Helm charts are implemented.
+Opt-in standard entity-event ingestion is implemented. Historical queries,
+standard OTel output, incoming-relationship implicit deletion, published scale
+benchmarks, and a full automated Collector-to-Flink E2E are not yet implemented.

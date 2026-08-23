@@ -8,7 +8,7 @@ assumes Kafka is already available.
 - Kubernetes 1.25 or newer;
 - Helm 3;
 - Kafka-compatible brokers reachable from the namespace;
-- two pre-created topics;
+- two pre-created topics, or three when entity events are enabled;
 - ArangoDB 3.12 reachable from the namespace;
 - an internal container registry;
 - shared persistent storage for Flink;
@@ -63,8 +63,14 @@ otel.servicegraph.metrics
 graph.elements.events
 ```
 
-Choose partition counts for expected throughput and Flink parallelism. Both
-topics should use retention and replication appropriate for your recovery
+For opt-in OTel entity-event ingestion, also create:
+
+```text
+otel.entity.events
+```
+
+Choose partition counts for expected throughput and Flink parallelism. All
+created topics should use retention and replication appropriate for your recovery
 objectives. Disable automatic topic creation.
 
 All installed components must use the same broker list, security configuration,
@@ -112,6 +118,10 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
+
+entityEvents:
+  enabled: true
 ```
 
 Create `internal-flink-values.yaml`:
@@ -137,12 +147,23 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
     interactionEvents: graph.elements.events
+
+entityEvents:
+  enabled: true
+  groupId: graph-element-engine-entities
+  reportIntervalGraceSeconds: 30
 
 storage:
   createClaim: false
   existingClaim: servicegraph-flink-state
 ```
+
+The entity-event blocks are optional and default to disabled. Enable both
+charts together and keep `streamContract.topics.entityEvents` identical. The
+Flink entity-event consumer group is independent from `job.groupId` used by
+service-graph metrics.
 
 See [Collector configuration](configuration/collector.md), [Flink
 configuration](configuration/flink.md), and the [Helm values

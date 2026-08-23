@@ -31,6 +31,43 @@ The router Service exposes:
 
 Backends receive OTLP gRPC only through their headless Service.
 
+When entity-event forwarding is enabled, producers send OTLP logs to the same
+router endpoint: gRPC on `4317` or HTTP at
+`http://<release>-router:4318/v1/logs`.
+
+## Optional entity-event forwarding
+
+Entity-event forwarding is disabled by default. Enable it and select the
+externally created Kafka topic with:
+
+```yaml
+streamContract:
+  topics:
+    servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
+
+entityEvents:
+  enabled: true
+```
+
+The router adds a logs pipeline only when `entityEvents.enabled=true`. Its
+filter keeps log records with:
+
+- `event_name` equal to `entity.state` or `entity.delete`; or
+- the compatibility attribute `otel.entity.event.type` equal to
+  `entity_state`, `entity_delete`, or `entity_deleted`.
+
+All other logs are discarded from this dedicated pipeline. Matching records
+are batched and exported as OTLP JSON to
+`streamContract.topics.entityEvents`. They are not sent through the trace
+load-balancing exporter or the stateful service-graph backends.
+
+The entity-event topic uses the same brokers, security protocol, SASL Secret,
+bounded sending queue, retries, compression, and disabled automatic topic
+creation as the metrics topic. Enabling Collector forwarding does not enable
+the Flink consumer automatically; enable the matching Flink setting and use the
+same topic name.
+
 ## Generated dimensions
 
 `deploy/helm/servicegraph-collector/files/dimensions.yaml` is generated from
@@ -78,6 +115,10 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
+
+entityEvents:
+  enabled: false
 ```
 
 `storeTtl` is the span-pairing retention inside the connector. It is separate
@@ -114,6 +155,10 @@ Size these together:
 
 Traffic between routers and backends is plaintext inside the cluster. Apply
 platform network isolation when this crosses a trust boundary.
+
+The optional entity-event logs pipeline also uses an in-memory queue. A
+prolonged Kafka outage can therefore reject matching entity events, and queue
+contents do not survive router replacement.
 
 ## Validate
 

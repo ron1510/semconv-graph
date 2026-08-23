@@ -20,6 +20,8 @@ the executable defaults.
 | `streamContract.kafka.security.protocol` | `SASL_SSL` | `PLAINTEXT`, `SASL_PLAINTEXT`, or `SASL_SSL` |
 | `streamContract.kafka.security.existingSecret` | `servicegraph-kafka-auth` | Existing SASL credentials |
 | `streamContract.topics.servicegraphMetrics` | `otel.servicegraph.metrics` | Metrics topic |
+| `streamContract.topics.entityEvents` | `otel.entity.events` | Optional filtered OTLP entity-event logs topic |
+| `entityEvents.enabled` | `false` | Add the router entity-event logs pipeline |
 
 Resource, scheduling, ServiceAccount, image-pull, and security-context values are
 also available in the chart.
@@ -37,6 +39,10 @@ also available in the chart.
 | `job.fixedJobId` | `000...001` | Stable Flink job ID |
 | `job.allowNonRestoredState` | `false` | Allow reviewed upgrades to discard unmapped savepoint state |
 | `job.groupId` | `graph-element-engine` | Kafka source group |
+| `streamContract.topics.entityEvents` | `otel.entity.events` | Optional entity-event input topic |
+| `entityEvents.enabled` | `false` | Add the independent entity-event Kafka source |
+| `entityEvents.groupId` | `graph-element-engine-entities` | Entity-event source consumer group |
+| `entityEvents.reportIntervalGraceSeconds` | `30` | Grace added to positive report intervals |
 | `job.interactionTtlSeconds` | `300` | Delete inactivity threshold |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |
 | `job.stateTtlSeconds` | `86400` | Keyed-state cleanup TTL |
@@ -50,7 +56,7 @@ also available in the chart.
 | `storage.accessModes` | `[ReadWriteMany]` | State volume access |
 | `storage.retainClaim` | `true` | Keep created claim on uninstall |
 
-Kafka security fields and both topic names must match the Collector and
+Kafka security fields and every enabled topic name must match the Collector and
 consumers.
 
 ## ArangoDB indexer

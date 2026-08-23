@@ -1,5 +1,5 @@
-site_name: Extended OpenTelemetry Semantic Conventions
-site_description: Configurable semantic entities and a live service graph derived from OpenTelemetry.
+site_name: Semconv Graph
+site_description: Turn existing OpenTelemetry traces into a live typed entity graph without changing app instrumentation.
 site_url: https://ron1510.github.io/extended-opentelemetry-semconv/
 repo_url: https://github.com/ron1510/extended-opentelemetry-semconv
 repo_name: ron1510/extended-opentelemetry-semconv
@@ -51,9 +51,10 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Product Direction: product.md
   - Getting Started:
       - Overview: getting-started/index.md
-      - Local Quickstart: getting-started/quickstart.md
+      - Five-Minute Quickstart: getting-started/quickstart.md
       - Your First Custom Entity: getting-started/custom-entity.md
   - Concepts:
       - Semantic Entity Model: concepts/semantic-model.md
@@ -76,7 +77,9 @@ nav:
       - Troubleshooting: operations/troubleshooting.md
   - Reference:
       - Graph Element Event Schema: reference/event-schema.md
+      - OTel Entity Conformance: reference/otel-entity-conformance.md
       - Helm Values: reference/helm-values.md
+  - Community and Launch: community.md
   - Development:
       - Repository Development: development.md
       - Testing: development/testing.md

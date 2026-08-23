@@ -1,12 +1,17 @@
 # Architecture
 
+This page describes both implemented input paths. Inferred service-graph
+telemetry is always present; OpenTelemetry `entity.state` and `entity.delete`
+ingestion is opt-in. See [Product Direction](product.md#two-source-runtime) and
+[OpenTelemetry Entity Conformance](reference/otel-entity-conformance.md).
+
 ## Runtime
 
 ```text
 OTLP clients or optional live demo
-  -> two Collector routers (trace-ID load balancing)
-  -> two stateful Collector backends (service_graph connector)
-  -> otel.servicegraph.metrics
+  -> two Collector routers
+       |-> trace-ID load balancing -> service_graph backends -> otel.servicegraph.metrics
+       `-> filtered entity event logs -----------------------> otel.entity.events (opt-in)
   -> Flink graph-element engine
   -> graph.elements.events
   -> ArangoDB current-state graph
@@ -23,6 +28,10 @@ The Flink job runs in a Helm-managed standalone Session cluster. Helm owns the
 JobManager and TaskManager Deployments, REST Service, configuration, and
 submission Job. Kubernetes HA metadata plus checkpoints on the shared claim let
 a replacement JobManager recover the fixed-ID job.
+
+The entity-event source has its own Kafka topic and consumer group. It is
+created only when configured, then unioned with inferred graph contributions
+before the element-keyed lifecycle stage.
 
 ## Semantic extraction
 
@@ -50,6 +59,14 @@ The lifecycle stage publishes complete upserts when merged state changes and a
 delete when the final contributor expires. Kafka uses `element_id` as its key.
 At-least-once sink delivery is safe because events have deterministic IDs and
 projection operations are idempotent.
+
+For explicit entity events, Flink keys producer snapshots by contributor ID.
+`otel.entity.observer.id` is preferred; without it, a deterministic fingerprint
+of OTLP Resource attributes and instrumentation Scope identifies the observer.
+Each `entity.state` is complete for that observer: outgoing relationships
+omitted from the next state are retracted immediately. Different observers and
+the inferred metrics source remain independent contributors to the same graph
+element.
 
 ## Projection and access
 

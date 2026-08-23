@@ -52,6 +52,87 @@ job:
 
 `stateTtlSeconds` must exceed contributor TTL plus allowed lateness.
 
+## Optional entity-event source
+
+The standard entity-event source is disabled by default. Enable it with a
+dedicated topic, consumer group, and report-interval grace:
+
+```yaml
+streamContract:
+  topics:
+    servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
+    interactionEvents: graph.elements.events
+
+entityEvents:
+  enabled: true
+  groupId: graph-element-engine-entities
+  reportIntervalGraceSeconds: 30
+```
+
+| Value | Meaning |
+| --- | --- |
+| `entityEvents.enabled` | Create the independent entity-event Kafka source; default `false` |
+| `streamContract.topics.entityEvents` | OTLP JSON logs topic; required when enabled |
+| `entityEvents.groupId` | Consumer group used only by the entity-event source |
+| `entityEvents.reportIntervalGraceSeconds` | Nonnegative seconds added to a positive `entity.report.interval` |
+
+The entity-event topic must differ from both the metrics input and graph output
+topics. It uses the same Kafka brokers and security settings, starts from
+committed offsets or `earliest`, and has automatic commits and automatic topic
+creation disabled. Metrics continue to use `job.groupId`; enabling entity
+events does not change or share that source's offsets.
+
+### Parsing and reconciliation
+
+Flink accepts `entity.state` and `entity.delete` OTLP JSON log records. It also
+recognizes the compatibility `otel.entity.event.type` attribute when records
+reach the topic without a standard event name. Unrelated logs are ignored;
+malformed supported events increment `rejected_entity_events`, log a bounded
+warning, and do not restart the job.
+
+Each complete state is scoped to one observer and entity. The optional,
+nonstandard `otel.entity.observer.id` attribute is the preferred observer key.
+Without it, Flink fingerprints the OTLP Resource attributes and instrumentation
+Scope name, version, and schema URL. Different observer keys become independent
+contributors to the shared element lifecycle.
+
+For a newer `entity.state`, Flink reconstructs the source node and every
+registry-approved outgoing relationship. Outgoing relationships present in the
+observer's previous state but omitted now are retracted immediately. An
+`entity.delete` retracts that observer's node and recorded outgoing
+relationships. It does not yet remove incoming relationships owned by other
+source entities.
+
+Only entity types participating in generated `service_graph` relationships are
+accepted, because that set owns the generated ArangoDB topology. A type can be
+known to the upstream SDK and still be rejected when no projectable collection
+exists. Relationship source type, relationship type, and target type must match
+an exact generated relationship definition.
+
+### Expiry precedence
+
+For each explicit state contribution:
+
+1. A positive `entity.report.interval` in seconds uses
+   `interval + entityEvents.reportIntervalGraceSeconds`.
+2. An absent or zero interval falls back to
+   `job.interactionTtlSeconds`, the global contributor TTL.
+3. Negative, non-integer, or otherwise malformed intervals reject that event.
+
+Because report intervals arrive at runtime, Helm cannot validate their maximum.
+Size `job.stateTtlSeconds` above the largest expected report interval plus grace
+and allowed lateness; otherwise generic Flink state cleanup can preempt the
+source's intended expiry.
+
+### Identity and output boundary
+
+Entity IDs continue to follow identifying fields in the generated local
+semantic model. Additional keys from the OTel `entity.id` map are preserved in
+node attributes but do not participate in deterministic IDs. Output remains
+project schema `2.0` on `graph.elements.events`; Flink does not emit standard
+OTel entity events or historical state.
+
 ## Kafka contract
 
 The input topic contains OTLP JSON metrics from the Collector. The output topic
@@ -69,12 +150,16 @@ streamContract:
       existingSecret: servicegraph-kafka-auth
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
     interactionEvents: graph.elements.events
 ```
 
 The source starts from committed offsets or `earliest` when the consumer group
 has no offsets. Auto topic creation is disabled. The output sink is
 at-least-once.
+
+When enabled, the entity-event source follows the same offset and security
+rules but uses `entityEvents.groupId` independently.
 
 Supported protocols are `PLAINTEXT`, `SASL_PLAINTEXT`, and `SASL_SSL`.
 Both SASL modes use the configured SCRAM credentials. `SASL_SSL` validates
@@ -166,6 +251,9 @@ The chart maps values to these application variables:
 | `INTERACTION_DIFF_INPUT_TOPIC` | `streamContract.topics.servicegraphMetrics` |
 | `INTERACTION_DIFF_OUTPUT_TOPIC` | `streamContract.topics.interactionEvents` |
 | `INTERACTION_DIFF_GROUP_ID` | `job.groupId` |
+| `ENTITY_EVENTS_INPUT_TOPIC` | `streamContract.topics.entityEvents` when `entityEvents.enabled=true` |
+| `ENTITY_EVENTS_GROUP_ID` | `entityEvents.groupId` when enabled |
+| `ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS` | `entityEvents.reportIntervalGraceSeconds` when enabled |
 | `INTERACTION_DIFF_TTL_SECONDS` | `job.interactionTtlSeconds` |
 | `INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS` | `job.allowedLatenessSeconds` |
 | `INTERACTION_DIFF_STATE_TTL_SECONDS` | `job.stateTtlSeconds` |

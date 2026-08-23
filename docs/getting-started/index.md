@@ -37,17 +37,28 @@ Python 3.12 is required.
 
 ## Run the live graph pipeline
 
-Use the complete runtime when you need a continuously maintained topology:
+Use the complete runtime when you need a continuously maintained topology. It
+can receive graph evidence from two independent sources:
 
-1. Applications emit paired OpenTelemetry client/server spans.
-2. Collector routers keep all spans from a trace on one backend.
-3. Collector backends derive service-graph metrics and publish them to Kafka.
-4. Flink privately correlates observations and maintains graph-element state.
-5. Consumers apply complete element `upsert` and `delete` commands.
+1. By default, applications emit normal OpenTelemetry client/server spans;
+   Collector backends derive service-graph metrics and publish them to Kafka.
+2. Optionally, the Collector router forwards filtered `entity.state` and
+   `entity.delete` OTLP logs to an independent Kafka topic.
+3. Flink reconciles both sources into lifecycle-managed graph elements.
+4. Consumers apply complete element `upsert` and `delete` commands.
+
+Entity-event ingestion is disabled by default. It accepts only entity and
+relationship types represented in the generated `service_graph` topology; a
+known upstream entity model outside that topology is rejected because the
+ArangoDB projection has no generated collection for it. See [Collector
+configuration](../configuration/collector.md), [Flink
+configuration](../configuration/flink.md), and the [entity-event compatibility
+matrix](../reference/otel-entity-conformance.md) for the exact contract.
 
 The production deployment expects Kubernetes, Helm, Kafka-compatible brokers,
-two pre-created topics, persistent storage for Flink, and an existing ArangoDB
-3.12 deployment for the current-state property graph.
+two pre-created topics (three when entity events are enabled), persistent
+storage for Flink, and an existing ArangoDB 3.12 deployment for the
+current-state property graph.
 
 For an isolated demonstration, follow the [local Kind
 quickstart](quickstart.md). For an existing cluster, follow the [Kubernetes
