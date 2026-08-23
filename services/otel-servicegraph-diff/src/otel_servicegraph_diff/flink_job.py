@@ -15,7 +15,6 @@ from typing import Protocol, cast
 
 from pyflink.common import Configuration, Duration, Row, Types, WatermarkStrategy
 from pyflink.common.serialization import SerializationSchema, SimpleStringSchema
-from pyflink.common.time import Time
 from pyflink.common.watermark_strategy import TimestampAssigner
 from pyflink.datastream import RuntimeExecutionMode, StreamExecutionEnvironment
 from pyflink.datastream.connectors.kafka import (
@@ -27,7 +26,7 @@ from pyflink.datastream.connectors.kafka import (
     KafkaSource,
 )
 from pyflink.datastream.functions import FlatMapFunction, KeyedProcessFunction, RuntimeContext, TimeDomain
-from pyflink.datastream.state import StateTtlConfig, ValueState, ValueStateDescriptor
+from pyflink.datastream.state import ValueState, ValueStateDescriptor
 from pyflink.java_gateway import get_gateway
 
 from otel_servicegraph_diff.config import GraphEngineConfig, graph_engine_config_from_env
@@ -140,7 +139,7 @@ def _configure_job_graph(
         )
         entity_contributions = (
             entity_observations.key_by(_entity_source_key, key_type=Types.STRING())
-            .process(_EntityEventContributionsProcess(config.state_ttl_seconds))
+            .process(_EntityEventContributionsProcess())
             .name("reconcile-otel-entity-events")
             .uid("graph-v3-reconcile-otel-entity-events")
         )
@@ -160,10 +159,7 @@ def _configure_job_graph(
     events = (
         timestamped_contributions.key_by(_element_key, key_type=Types.STRING())
         .process(
-            _GraphElementLifecycleProcess(
-                config.contributor_ttl_seconds,
-                config.state_ttl_seconds,
-            )
+            _GraphElementLifecycleProcess(config.contributor_ttl_seconds)
         )
         .name("graph-element-lifecycle")
         .uid("graph-v3-element-lifecycle")
@@ -284,20 +280,11 @@ class _EntityPayloadParser(FlatMapFunction):
 
 
 class _EntityEventContributionsProcess(KeyedProcessFunction):
-    def __init__(self, state_ttl_seconds: int) -> None:
-        self._state_ttl_seconds = state_ttl_seconds
+    def __init__(self) -> None:
         self._state: ValueState[str] | None = None
 
     def open(self, runtime_context: RuntimeContext) -> None:
         descriptor = ValueStateDescriptor("otel-entity-source-state-v1", Types.STRING())
-        ttl_config = (
-            StateTtlConfig.new_builder(Time.seconds(self._state_ttl_seconds))
-            .update_ttl_on_create_and_write()
-            .never_return_expired()
-            .cleanup_full_snapshot()
-            .build()
-        )
-        descriptor.enable_time_to_live(ttl_config)
         self._state = runtime_context.get_state(descriptor)
 
     def process_element(
@@ -321,21 +308,12 @@ class _EntityEventContributionsProcess(KeyedProcessFunction):
 
 
 class _GraphElementLifecycleProcess(KeyedProcessFunction):
-    def __init__(self, ttl_seconds: int, state_ttl_seconds: int) -> None:
+    def __init__(self, ttl_seconds: int) -> None:
         self._ttl_seconds = ttl_seconds
-        self._state_ttl_seconds = state_ttl_seconds
         self._state: ValueState[str] | None = None
 
     def open(self, runtime_context: RuntimeContext) -> None:
         descriptor = ValueStateDescriptor("graph-element-lifecycle-state-v3", Types.STRING())
-        ttl_config = (
-            StateTtlConfig.new_builder(Time.seconds(self._state_ttl_seconds))
-            .update_ttl_on_create_and_write()
-            .never_return_expired()
-            .cleanup_full_snapshot()
-            .build()
-        )
-        descriptor.enable_time_to_live(ttl_config)
         self._state = runtime_context.get_state(descriptor)
 
     def process_element(
@@ -368,8 +346,10 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
         state_handle.update(result.state.model_dump_json())
         if isinstance(value, GraphContribution):
             snapshot = result.state.contributors[value.contributor_id]
-            timer_service.register_event_time_timer(_timer_millis(snapshot.event_expires_at_unix_nano))
-            timer_service.register_processing_time_timer(snapshot.processing_expires_at_unix_ms)
+            if snapshot.event_expires_at_unix_nano is not None:
+                timer_service.register_event_time_timer(_timer_millis(snapshot.event_expires_at_unix_nano))
+            if snapshot.processing_expires_at_unix_ms is not None:
+                timer_service.register_processing_time_timer(snapshot.processing_expires_at_unix_ms)
         return (result.event,) if result.event is not None else ()
 
     def on_timer(

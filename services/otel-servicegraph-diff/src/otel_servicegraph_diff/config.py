@@ -76,17 +76,13 @@ class GraphEngineConfig(BaseSettings):
         ge=0,
         validation_alias="INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS",
     )
-    state_ttl_seconds: int = Field(default=86_400, gt=0, validation_alias="INTERACTION_DIFF_STATE_TTL_SECONDS")
     checkpoint_interval_ms: int = Field(default=30_000, ge=1_000, validation_alias="FLINK_CHECKPOINT_INTERVAL_MS")
     parallelism: int = Field(default=3, gt=0, validation_alias="FLINK_PARALLELISM")
     restart_attempts: int = Field(default=3, ge=0, validation_alias="FLINK_RESTART_ATTEMPTS")
     restart_delay_seconds: int = Field(default=10, ge=0, validation_alias="FLINK_RESTART_DELAY_SECONDS")
 
     @model_validator(mode="after")
-    def validate_ttl_relationship(self) -> GraphEngineConfig:
-        minimum_state_ttl = self.contributor_ttl_seconds + self.allowed_lateness_seconds
-        if self.state_ttl_seconds <= minimum_state_ttl:
-            raise ValueError("state TTL must exceed contributor TTL plus allowed lateness")
+    def validate_contract(self) -> GraphEngineConfig:
         if self.entity_input_topic is not None and self.entity_input_topic in {
             self.input_topic,
             self.output_topic,

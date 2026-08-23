@@ -166,9 +166,25 @@ def test_explicit_retraction_deletes_final_contributor_and_clears_state() -> Non
     assert state.serialized is None
 
 
+def test_non_expiring_contribution_registers_no_timers_and_survives_timer_callbacks() -> None:
+    state = FakeValueState[str]()
+    timers = FakeTimerService()
+    operator = _operator(state)
+    contribution = _service_contribution(1_000_000_001).model_copy(update={"ttl_seconds": 0})
+
+    events = tuple(operator.process_element(contribution, _process_context(timers)))
+
+    assert len(events) == 1
+    assert timers.registered_event == []
+    assert timers.registered_processing == []
+    assert tuple(operator.on_timer(10**12, _timer_context(timers, TimeDomain.EVENT_TIME))) == ()
+    assert tuple(operator.on_timer(10**12, _timer_context(timers, TimeDomain.PROCESSING_TIME))) == ()
+    assert state.serialized is not None
+
+
 def test_entity_source_operator_checkpoints_snapshot_reconciliation() -> None:
     state = FakeValueState[str]()
-    operator = _EntityEventContributionsProcess(state_ttl_seconds=60)
+    operator = _EntityEventContributionsProcess()
     operator._state = cast(ValueState[str], state)
     contribution = _service_contribution(1_000_000_001)
     observation = EntityStateObservation(
@@ -237,14 +253,14 @@ def test_payload_parser_counts_warns_and_discards_rejected_inputs(caplog: pytest
 
 
 def test_operator_requires_runtime_initialization() -> None:
-    operator = _GraphElementLifecycleProcess(ttl_seconds=5, state_ttl_seconds=60)
+    operator = _GraphElementLifecycleProcess(ttl_seconds=5)
 
     with pytest.raises(RuntimeError, match="graph element state accessed before operator initialization"):
         operator._require_state()
 
 
 def _operator(state: FakeValueState[str]) -> _GraphElementLifecycleProcess:
-    operator = _GraphElementLifecycleProcess(ttl_seconds=5, state_ttl_seconds=60)
+    operator = _GraphElementLifecycleProcess(ttl_seconds=5)
     operator._state = cast(ValueState[str], state)
     return operator
 

@@ -45,7 +45,6 @@ job:
   groupId: graph-element-engine
   interactionTtlSeconds: 300
   allowedLatenessSeconds: 60
-  stateTtlSeconds: 86400
   checkpointIntervalMs: 30000
   restartAttempts: 3
   restartDelaySeconds: 10

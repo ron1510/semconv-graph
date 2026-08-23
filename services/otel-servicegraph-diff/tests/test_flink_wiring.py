@@ -125,7 +125,7 @@ def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pyt
     monkeypatch.setattr(flink_job, "Duration", duration)
     monkeypatch.setattr(flink_job, "Types", SimpleNamespace(STRING=MagicMock(return_value="string")))
 
-    config = GraphEngineConfig(allowed_lateness_seconds=3, contributor_ttl_seconds=10, state_ttl_seconds=30)
+    config = GraphEngineConfig(allowed_lateness_seconds=3, contributor_ttl_seconds=10)
     flink_job._configure_job_graph(
         cast(Any, env),
         config,
@@ -211,7 +211,6 @@ def test_configure_job_graph_unions_checkpointed_entity_reconciliation(monkeypat
         entity_input_topic="otel.entity.events",
         allowed_lateness_seconds=3,
         contributor_ttl_seconds=10,
-        state_ttl_seconds=30,
     )
 
     flink_job._configure_job_graph(
@@ -368,17 +367,9 @@ def test_payload_parser_yields_multiple_points_and_ignores_unknown_metrics() -> 
     counter.inc.assert_not_called()
 
 
-def test_process_open_registers_versioned_ttl_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    ttl = object()
-    ttl_builder = _fluent_builder(
-        "update_ttl_on_create_and_write",
-        "never_return_expired",
-        "cleanup_full_snapshot",
-    )
-    ttl_builder.build.return_value = ttl
-    new_builder = MagicMock(return_value=ttl_builder)
-    monkeypatch.setattr(flink_job, "StateTtlConfig", SimpleNamespace(new_builder=new_builder))
-    monkeypatch.setattr(flink_job, "Time", SimpleNamespace(seconds=MagicMock(return_value="60s")))
+def test_process_open_registers_versioned_state_without_framework_ttl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         flink_job,
         "Types",
@@ -392,18 +383,21 @@ def test_process_open_registers_versioned_ttl_state(monkeypatch: pytest.MonkeyPa
         return result
 
     monkeypatch.setattr(flink_job, "ValueStateDescriptor", descriptor)
-    states = [object()]
+    states = [object(), object()]
     runtime = MagicMock()
     runtime.get_state.side_effect = states
-    operator = flink_job._GraphElementLifecycleProcess(ttl_seconds=5, state_ttl_seconds=60)
+    entity_operator = flink_job._EntityEventContributionsProcess()
+    lifecycle_operator = flink_job._GraphElementLifecycleProcess(ttl_seconds=5)
 
-    operator.open(runtime)
+    entity_operator.open(runtime)
+    lifecycle_operator.open(runtime)
 
-    new_builder.assert_called_once_with("60s")
     assert [(item.name, item.value_type, item.ttl) for item in descriptors] == [
-        ("graph-element-lifecycle-state-v3", "string", ttl),
+        ("otel-entity-source-state-v1", "string", None),
+        ("graph-element-lifecycle-state-v3", "string", None),
     ]
-    assert operator._state is states[0]  # pyright: ignore[reportPrivateUsage]
+    assert entity_operator._state is states[0]  # pyright: ignore[reportPrivateUsage]
+    assert lifecycle_operator._state is states[1]  # pyright: ignore[reportPrivateUsage]
 
 
 def test_small_stream_adapters_preserve_identity_and_time() -> None:

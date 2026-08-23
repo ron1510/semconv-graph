@@ -80,8 +80,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.job.interactionTtlSeconds | quote }}
 - name: INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS
   value: {{ .Values.job.allowedLatenessSeconds | quote }}
-- name: INTERACTION_DIFF_STATE_TTL_SECONDS
-  value: {{ .Values.job.stateTtlSeconds | quote }}
 - name: FLINK_CHECKPOINT_INTERVAL_MS
   value: {{ .Values.job.checkpointIntervalMs | quote }}
 - name: FLINK_PARALLELISM

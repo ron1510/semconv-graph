@@ -81,7 +81,7 @@ class GraphContribution(FrozenModel):
     observed_at_unix_nano: UnixNano
     element: GraphElement
     metric_deltas: dict[str, MetricDelta] = Field(default_factory=dict)
-    ttl_seconds: int | None = Field(default=None, gt=0)
+    ttl_seconds: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_metric_deltas(self) -> GraphContribution:
@@ -105,8 +105,8 @@ type GraphElementMutation = Annotated[
 
 class ContributorSnapshot(FrozenModel):
     observed_at_unix_nano: UnixNano
-    event_expires_at_unix_nano: UnixNano
-    processing_expires_at_unix_ms: UnixMilli
+    event_expires_at_unix_nano: UnixNano | None = None
+    processing_expires_at_unix_ms: UnixMilli | None = None
     element: GraphElement
 
 
@@ -131,9 +131,21 @@ def apply_contribution(
     processing_time_unix_ms: int,
     emitted_at_unix_ms: int | None = None,
 ) -> GraphElementLifecycleResult:
-    effective_ttl_seconds = contribution.ttl_seconds or ttl_seconds
-    if effective_ttl_seconds <= 0:
-        raise ValueError("contributor TTL must be greater than zero")
+    if contribution.ttl_seconds is None:
+        if ttl_seconds <= 0:
+            raise ValueError("default contributor TTL must be greater than zero")
+        effective_ttl_seconds = ttl_seconds
+    else:
+        effective_ttl_seconds = contribution.ttl_seconds
+    if effective_ttl_seconds == 0:
+        event_expiry = None
+        processing_expiry = None
+    else:
+        ttl_nanoseconds = effective_ttl_seconds * 1_000_000_000
+        ttl_milliseconds = effective_ttl_seconds * 1_000
+        event_expiry_base = max(contribution.observed_at_unix_nano, event_expiry_base_unix_nano or 0)
+        event_expiry = event_expiry_base + ttl_nanoseconds
+        processing_expiry = processing_time_unix_ms + ttl_milliseconds
     element_id = contribution.element.id
     existing = previous.contributors.get(contribution.contributor_id) if previous is not None else None
     if existing is not None and contribution.observed_at_unix_nano < existing.observed_at_unix_nano:
@@ -141,14 +153,11 @@ def apply_contribution(
     if previous is not None:
         _validate_element_identity(previous, contribution.element)
 
-    ttl_nanoseconds = effective_ttl_seconds * 1_000_000_000
-    ttl_milliseconds = effective_ttl_seconds * 1_000
-    event_expiry_base = max(contribution.observed_at_unix_nano, event_expiry_base_unix_nano or 0)
     contributors = dict(previous.contributors) if previous is not None else {}
     contributors[contribution.contributor_id] = ContributorSnapshot(
         observed_at_unix_nano=contribution.observed_at_unix_nano,
-        event_expires_at_unix_nano=event_expiry_base + ttl_nanoseconds,
-        processing_expires_at_unix_ms=processing_time_unix_ms + ttl_milliseconds,
+        event_expires_at_unix_nano=event_expiry,
+        processing_expires_at_unix_ms=processing_expiry,
         element=contribution.element,
     )
     metrics = dict(previous.metrics) if previous is not None else {}
@@ -219,7 +228,10 @@ def expire_contributors(
         for contributor_id, snapshot in previous.contributors.items()
         if contributor_id not in expired
     }
-    observed_at = max(snapshot.event_expires_at_unix_nano for snapshot in expired.values())
+    observed_at = max(
+        snapshot.event_expires_at_unix_nano or snapshot.observed_at_unix_nano
+        for snapshot in expired.values()
+    )
     if not contributors:
         emitted_at = emitted_at_unix_ms if emitted_at_unix_ms is not None else int(time() * 1000)
         return GraphElementLifecycleResult(
@@ -312,9 +324,15 @@ def _validate_element_identity(state: GraphElementState, element: GraphElement) 
 def _snapshot_expired(snapshot: ContributorSnapshot, clock: ExpiryClock, timestamp: int) -> bool:
     match clock:
         case "event_time":
-            return snapshot.event_expires_at_unix_nano <= timestamp
+            return (
+                snapshot.event_expires_at_unix_nano is not None
+                and snapshot.event_expires_at_unix_nano <= timestamp
+            )
         case "processing_time":
-            return snapshot.processing_expires_at_unix_ms <= timestamp
+            return (
+                snapshot.processing_expires_at_unix_ms is not None
+                and snapshot.processing_expires_at_unix_ms <= timestamp
+            )
 
 
 def _upsert_event(

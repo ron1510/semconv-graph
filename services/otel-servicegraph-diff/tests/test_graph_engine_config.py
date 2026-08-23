@@ -31,15 +31,6 @@ def test_environment_config_is_one_snapshot_per_process(monkeypatch: pytest.Monk
         graph_engine_config_from_env.cache_clear()
 
 
-def test_config_rejects_state_ttl_that_can_preempt_business_expiry() -> None:
-    with pytest.raises(ValidationError):
-        GraphEngineConfig(
-            contributor_ttl_seconds=300,
-            allowed_lateness_seconds=60,
-            state_ttl_seconds=360,
-        )
-
-
 def test_config_rejects_invalid_topic_name() -> None:
     with pytest.raises(ValidationError):
         GraphEngineConfig(output_topic="contains spaces")

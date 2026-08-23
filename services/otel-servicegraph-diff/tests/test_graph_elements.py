@@ -255,6 +255,36 @@ def test_contribution_specific_ttl_overrides_engine_default() -> None:
     assert snapshot.processing_expires_at_unix_ms == 30_100
 
 
+def test_zero_ttl_contribution_is_non_expiring_until_explicit_retraction() -> None:
+    contribution = GraphContribution(
+        contributor_id="explicit",
+        observed_at_unix_nano=1_000_000_000,
+        element=GraphNode(id="k8s.pod:pod-1", type="k8s.pod"),
+        ttl_seconds=0,
+    )
+    active = _apply(None, contribution, processing_time=100)
+
+    assert active.state is not None
+    snapshot = active.state.contributors["explicit"]
+    assert snapshot.event_expires_at_unix_nano is None
+    assert snapshot.processing_expires_at_unix_ms is None
+    assert expire_contributors(active.state, clock="event_time", timestamp=10**30).state == active.state
+    assert expire_contributors(active.state, clock="processing_time", timestamp=10**15).state == active.state
+
+    retracted = retract_contribution(
+        active.state,
+        GraphContributionRetraction(
+            contributor_id="explicit",
+            element_id=contribution.element.id,
+            observed_at_unix_nano=2_000_000_000,
+        ),
+        emitted_at_unix_ms=200,
+    )
+    assert retracted.state is None
+    assert retracted.event is not None
+    assert retracted.event.operation == "delete"
+
+
 def test_older_contributor_observation_is_ignored_without_refreshing_expiry() -> None:
     first = _apply(None, _node_contribution("a", 20, {"version": "new"}), processing_time=200)
     late = _apply(first.state, _node_contribution("a", 10, {"version": "old"}), processing_time=300)
@@ -311,7 +341,7 @@ def test_contribution_validates_metric_identity() -> None:
 
 
 def test_contribution_requires_positive_ttl() -> None:
-    with pytest.raises(ValueError, match="TTL must be greater than zero"):
+    with pytest.raises(ValueError, match="default contributor TTL must be greater than zero"):
         apply_contribution(
             None,
             _node_contribution("a", 10, {}),
