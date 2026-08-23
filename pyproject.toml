@@ -14,6 +14,7 @@ dev = [
   "hypothesis==6.158.0",
   "httpx==0.28.1",
   "gremlinpython==3.8.1",
+  "kafka-python-ng==2.2.3",
   "pyright==1.1.411",
   "pytest==9.1.1",
   "pytest-cov==7.1.0",
@@ -46,6 +47,8 @@ testpaths = [
   "services/servicegraph-demo/tests",
   "services/servicegraph-indexer/tests",
   "tools/semconv_codegen/tests",
+  "tests/benchmarks",
+  "tests/local_demo",
   "tests/e2e",
 ]
 
@@ -92,6 +95,10 @@ include = [
   "services/servicegraph-indexer/src",
   "services/servicegraph-indexer/tests",
   "tools/semconv_codegen",
+  "tools/local_demo",
+  "benchmarks",
+  "tests/benchmarks",
+  "tests/local_demo",
   "conftest.py",
   "tests/e2e",
 ]
