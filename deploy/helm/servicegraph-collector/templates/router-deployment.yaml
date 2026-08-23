@@ -42,6 +42,19 @@ spec:
           image: {{ include "servicegraph-collector.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["--config=/etc/otelcol/config.yaml"]
+          {{- if and .Values.entityEvents.enabled (ne .Values.streamContract.kafka.security.protocol "PLAINTEXT") }}
+          env:
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "streamContract.kafka.security.existingSecret is required for Kafka SASL" .Values.streamContract.kafka.security.existingSecret }}
+                  key: {{ .Values.streamContract.kafka.security.usernameKey }}
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.streamContract.kafka.security.existingSecret }}
+                  key: {{ .Values.streamContract.kafka.security.passwordKey }}
+          {{- end }}
           ports:
             - name: otlp-grpc
               containerPort: 4317

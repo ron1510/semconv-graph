@@ -31,7 +31,13 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
     interactionEvents: graph.elements.events
+
+entityEvents:
+  enabled: false
+  groupId: graph-element-engine-entities
+  reportIntervalGraceSeconds: 30
 
 job:
   fixedJobId: "00000000000000000000000000000001"

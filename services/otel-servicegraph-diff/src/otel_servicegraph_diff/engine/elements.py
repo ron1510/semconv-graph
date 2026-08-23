@@ -76,16 +76,31 @@ type GraphElementEvent = Annotated[
 
 
 class GraphContribution(FrozenModel):
+    operation: Literal["upsert"] = "upsert"
     contributor_id: NonEmptyString
     observed_at_unix_nano: UnixNano
     element: GraphElement
     metric_deltas: dict[str, MetricDelta] = Field(default_factory=dict)
+    ttl_seconds: int | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def validate_metric_deltas(self) -> GraphContribution:
         if isinstance(self.element, GraphNode) and self.metric_deltas:
             raise ValueError("node contributions cannot contain metric deltas")
         return self
+
+
+class GraphContributionRetraction(FrozenModel):
+    operation: Literal["retract"] = "retract"
+    contributor_id: NonEmptyString
+    element_id: NonEmptyString
+    observed_at_unix_nano: UnixNano
+
+
+type GraphElementMutation = Annotated[
+    GraphContribution | GraphContributionRetraction,
+    Field(discriminator="operation"),
+]
 
 
 class ContributorSnapshot(FrozenModel):
@@ -116,7 +131,8 @@ def apply_contribution(
     processing_time_unix_ms: int,
     emitted_at_unix_ms: int | None = None,
 ) -> GraphElementLifecycleResult:
-    if ttl_seconds <= 0:
+    effective_ttl_seconds = contribution.ttl_seconds or ttl_seconds
+    if effective_ttl_seconds <= 0:
         raise ValueError("contributor TTL must be greater than zero")
     element_id = contribution.element.id
     existing = previous.contributors.get(contribution.contributor_id) if previous is not None else None
@@ -125,8 +141,8 @@ def apply_contribution(
     if previous is not None:
         _validate_element_identity(previous, contribution.element)
 
-    ttl_nanoseconds = ttl_seconds * 1_000_000_000
-    ttl_milliseconds = ttl_seconds * 1_000
+    ttl_nanoseconds = effective_ttl_seconds * 1_000_000_000
+    ttl_milliseconds = effective_ttl_seconds * 1_000
     event_expiry_base = max(contribution.observed_at_unix_nano, event_expiry_base_unix_nano or 0)
     contributors = dict(previous.contributors) if previous is not None else {}
     contributors[contribution.contributor_id] = ContributorSnapshot(
@@ -145,6 +161,41 @@ def apply_contribution(
         metrics,
         contribution.observed_at_unix_nano,
         emitted_at_unix_ms,
+    )
+
+
+def retract_contribution(
+    previous: GraphElementState | None,
+    retraction: GraphContributionRetraction,
+    *,
+    emitted_at_unix_ms: int | None = None,
+) -> GraphElementLifecycleResult:
+    if previous is None:
+        return GraphElementLifecycleResult(state=None)
+    if previous.element_id != retraction.element_id:
+        raise ValueError(
+            f"retraction for {retraction.element_id!r} reached state for {previous.element_id!r}"
+        )
+    snapshot = previous.contributors.get(retraction.contributor_id)
+    if snapshot is None or retraction.observed_at_unix_nano < snapshot.observed_at_unix_nano:
+        return GraphElementLifecycleResult(state=previous)
+
+    contributors = dict(previous.contributors)
+    del contributors[retraction.contributor_id]
+    if contributors:
+        return _updated_state(
+            previous,
+            previous.element_id,
+            contributors,
+            previous.metrics,
+            retraction.observed_at_unix_nano,
+            emitted_at_unix_ms,
+        )
+
+    emitted_at = emitted_at_unix_ms if emitted_at_unix_ms is not None else int(time() * 1000)
+    return GraphElementLifecycleResult(
+        state=None,
+        event=_delete_event(previous.element_id, retraction.observed_at_unix_nano, emitted_at),
     )
 
 

@@ -55,9 +55,18 @@
           "type": "object",
           "required": ["servicegraphMetrics"],
           "properties": {
-            "servicegraphMetrics": {"type": "string", "minLength": 1}
+            "servicegraphMetrics": {"type": "string", "minLength": 1},
+            "entityEvents": {"type": "string", "minLength": 1}
           }
         }
+      }
+    },
+    "entityEvents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"}
       }
     },
     "podSecurityContext": {"type": "object"},
@@ -67,7 +76,7 @@
     "tolerations": {"type": "array"},
     "affinity": {"type": "object"}
   },
-  "required": ["image", "router", "backend", "streamContract"],
+  "required": ["image", "router", "backend", "streamContract", "entityEvents"],
   "$defs": {
     "image": {
       "type": "object",

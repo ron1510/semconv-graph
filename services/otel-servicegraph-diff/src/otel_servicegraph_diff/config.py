@@ -49,6 +49,10 @@ class GraphEngineConfig(BaseSettings):
         default="otel.servicegraph.metrics",
         validation_alias="INTERACTION_DIFF_INPUT_TOPIC",
     )
+    entity_input_topic: TopicName | None = Field(
+        default=None,
+        validation_alias="ENTITY_EVENTS_INPUT_TOPIC",
+    )
     output_topic: TopicName = Field(
         default="graph.elements.events",
         validation_alias="INTERACTION_DIFF_OUTPUT_TOPIC",
@@ -56,6 +60,15 @@ class GraphEngineConfig(BaseSettings):
     group_id: TopicName = Field(
         default="graph-element-engine",
         validation_alias="INTERACTION_DIFF_GROUP_ID",
+    )
+    entity_group_id: TopicName = Field(
+        default="graph-element-engine-entities",
+        validation_alias="ENTITY_EVENTS_GROUP_ID",
+    )
+    entity_report_interval_grace_seconds: int = Field(
+        default=30,
+        ge=0,
+        validation_alias="ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS",
     )
     contributor_ttl_seconds: int = Field(default=300, gt=0, validation_alias="INTERACTION_DIFF_TTL_SECONDS")
     allowed_lateness_seconds: int = Field(
@@ -74,6 +87,11 @@ class GraphEngineConfig(BaseSettings):
         minimum_state_ttl = self.contributor_ttl_seconds + self.allowed_lateness_seconds
         if self.state_ttl_seconds <= minimum_state_ttl:
             raise ValueError("state TTL must exceed contributor TTL plus allowed lateness")
+        if self.entity_input_topic is not None and self.entity_input_topic in {
+            self.input_topic,
+            self.output_topic,
+        }:
+            raise ValueError("entity-event input topic must differ from metrics input and graph output topics")
         if self.kafka_security_protocol is not KafkaSecurityProtocol.PLAINTEXT:
             if self.kafka_sasl_mechanism is None:
                 raise ValueError("SASL mechanism is required when Kafka uses authentication")

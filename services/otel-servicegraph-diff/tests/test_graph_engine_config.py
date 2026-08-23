@@ -45,6 +45,26 @@ def test_config_rejects_invalid_topic_name() -> None:
         GraphEngineConfig(output_topic="contains spaces")
 
 
+def test_entity_event_source_is_opt_in_with_independent_group_and_grace() -> None:
+    disabled = GraphEngineConfig()
+    enabled = GraphEngineConfig(
+        entity_input_topic="otel.entity.events",
+        entity_group_id="entity-consumers",
+        entity_report_interval_grace_seconds=15,
+    )
+
+    assert disabled.entity_input_topic is None
+    assert enabled.entity_input_topic == "otel.entity.events"
+    assert enabled.entity_group_id == "entity-consumers"
+    assert enabled.entity_report_interval_grace_seconds == 15
+
+
+@pytest.mark.parametrize("topic", ["otel.servicegraph.metrics", "graph.elements.events"])
+def test_entity_event_topic_must_not_overlap_existing_contract(topic: str) -> None:
+    with pytest.raises(ValidationError, match="must differ"):
+        GraphEngineConfig(entity_input_topic=topic)
+
+
 def test_config_rejects_non_positive_parallelism() -> None:
     with pytest.raises(ValidationError):
         GraphEngineConfig(parallelism=0)

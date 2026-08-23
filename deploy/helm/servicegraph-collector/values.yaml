@@ -58,6 +58,10 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
+    entityEvents: otel.entity.events
+
+entityEvents:
+  enabled: false
 
 podSecurityContext:
   runAsNonRoot: true

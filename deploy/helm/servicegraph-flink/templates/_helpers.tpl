@@ -68,6 +68,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.streamContract.topics.interactionEvents | quote }}
 - name: INTERACTION_DIFF_GROUP_ID
   value: {{ .Values.job.groupId | quote }}
+{{- if .Values.entityEvents.enabled }}
+- name: ENTITY_EVENTS_INPUT_TOPIC
+  value: {{ required "streamContract.topics.entityEvents is required when entityEvents.enabled=true" .Values.streamContract.topics.entityEvents | quote }}
+- name: ENTITY_EVENTS_GROUP_ID
+  value: {{ .Values.entityEvents.groupId | quote }}
+- name: ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS
+  value: {{ .Values.entityEvents.reportIntervalGraceSeconds | quote }}
+{{- end }}
 - name: INTERACTION_DIFF_TTL_SECONDS
   value: {{ .Values.job.interactionTtlSeconds | quote }}
 - name: INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS

@@ -15,6 +15,7 @@ from pyflink.datastream.state import ValueState
 
 from otel_servicegraph_diff.engine.elements import (
     GraphContribution,
+    GraphContributionRetraction,
     GraphElementState,
     GraphElementUpsertEvent,
     GraphNode,
@@ -23,10 +24,12 @@ from otel_servicegraph_diff.flink_job import (
     Counter,
     OnTimerProcessContext,
     ProcessContext,
+    _EntityEventContributionsProcess,
     _GraphElementLifecycleProcess,
     _PayloadParser,
 )
 from otel_servicegraph_diff.ingest.contributions import contributions_from_servicegraph_datapoint
+from otel_servicegraph_diff.ingest.entity_events import EntitySourceState, EntityStateObservation
 from otel_servicegraph_diff.ingest.metrics import SERVICE_GRAPH_REQUEST_TOTAL
 
 
@@ -138,6 +141,51 @@ def test_event_timer_deletes_final_contributor_and_clears_state() -> None:
     assert len(events) == 1
     assert events[0].operation == "delete"
     assert state.serialized is None
+
+
+def test_explicit_retraction_deletes_final_contributor_and_clears_state() -> None:
+    state = FakeValueState[str]()
+    timers = FakeTimerService()
+    operator = _operator(state)
+    contribution = _service_contribution(1_000_000_001)
+    tuple(operator.process_element(contribution, _process_context(timers)))
+
+    events = tuple(
+        operator.process_element(
+            GraphContributionRetraction(
+                contributor_id=contribution.contributor_id,
+                element_id=contribution.element.id,
+                observed_at_unix_nano=2_000_000_001,
+            ),
+            _process_context(timers),
+        )
+    )
+
+    assert len(events) == 1
+    assert events[0].operation == "delete"
+    assert state.serialized is None
+
+
+def test_entity_source_operator_checkpoints_snapshot_reconciliation() -> None:
+    state = FakeValueState[str]()
+    operator = _EntityEventContributionsProcess(state_ttl_seconds=60)
+    operator._state = cast(ValueState[str], state)
+    contribution = _service_contribution(1_000_000_001)
+    observation = EntityStateObservation(
+        source_key="source",
+        contributor_id=contribution.contributor_id,
+        node_element_id=contribution.element.id,
+        observed_at_unix_nano=contribution.observed_at_unix_nano,
+        payload_hash="hash",
+        contributions=(contribution,),
+    )
+
+    mutations = tuple(operator.process_element(observation, cast(KeyedProcessFunction.Context, object())))
+
+    assert mutations == (contribution,)
+    assert state.serialized is not None
+    restored = EntitySourceState.model_validate_json(state.serialized)
+    assert restored.element_ids == (contribution.element.id,)
 
 
 def test_processing_timer_expires_when_event_time_is_idle() -> None:

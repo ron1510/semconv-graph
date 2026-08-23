@@ -73,8 +73,40 @@ def test_run_flink_job_configures_runtime_and_executes_once(monkeypatch: pytest.
     env.enable_checkpointing.assert_called_once_with(5_000)
     flink_job._kafka_source.assert_called_once_with(config)  # pyright: ignore[reportFunctionMemberAccess]
     flink_job._kafka_sink.assert_called_once_with(config, config.output_topic)  # pyright: ignore[reportFunctionMemberAccess]
-    configure_graph.assert_called_once_with(env, config, source, sink)
+    configure_graph.assert_called_once_with(env, config, source, sink, None)
     env.execute.assert_called_once_with("servicegraph-graph-element-engine")
+
+
+def test_run_flink_job_builds_independent_optional_entity_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = GraphEngineConfig(entity_input_topic="otel.entity.events")
+    env = MagicMock()
+    metrics_source = object()
+    entity_source = object()
+    sink = object()
+    source_builder = MagicMock(side_effect=[metrics_source, entity_source])
+    configure_graph = MagicMock()
+
+    monkeypatch.setattr(flink_job, "Configuration", _FakeConfiguration)
+    monkeypatch.setattr(
+        flink_job,
+        "StreamExecutionEnvironment",
+        SimpleNamespace(get_execution_environment=MagicMock(return_value=env)),
+    )
+    monkeypatch.setattr(flink_job, "_kafka_source", source_builder)
+    monkeypatch.setattr(flink_job, "_kafka_sink", MagicMock(return_value=sink))
+    monkeypatch.setattr(flink_job, "_configure_job_graph", configure_graph)
+
+    flink_job.run_flink_job(config)
+
+    assert source_builder.call_args_list == [
+        call(config),
+        call(
+            config,
+            topic="otel.entity.events",
+            group_id="graph-element-engine-entities",
+        ),
+    ]
+    configure_graph.assert_called_once_with(env, config, metrics_source, sink, entity_source)
 
 
 def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,6 +174,68 @@ def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pyt
     event_rows.sink_to.assert_called_once_with(sink)
     sink_operator.name.assert_called_once_with("graph-element-events")
     sink_named.uid.assert_called_once_with("graph-v3-events-sink")
+
+
+def test_configure_job_graph_unions_checkpointed_entity_reconciliation(monkeypatch: pytest.MonkeyPatch) -> None:
+    env = MagicMock()
+    metric_source = object()
+    entity_source = object()
+    sink = object()
+    metric_source_operator = MagicMock()
+    entity_source_operator = MagicMock()
+    env.from_source.side_effect = [metric_source_operator, entity_source_operator]
+    metric_payloads = metric_source_operator.name.return_value.uid.return_value
+    metric_contributions = metric_payloads.flat_map.return_value.name.return_value.uid.return_value
+    entity_payloads = entity_source_operator.name.return_value.uid.return_value
+    entity_observations = entity_payloads.flat_map.return_value.name.return_value.uid.return_value
+    entity_mutations = entity_observations.key_by.return_value.process.return_value.name.return_value.uid.return_value
+    merged = metric_contributions.union.return_value
+    timestamped = merged.assign_timestamps_and_watermarks.return_value.name.return_value.uid.return_value
+    events = timestamped.key_by.return_value.process.return_value.name.return_value.uid.return_value
+    rows = events.map.return_value.name.return_value.uid.return_value
+    rows.sink_to.return_value.name.return_value.uid.return_value = None
+    watermark = MagicMock()
+    watermark.with_idleness.return_value = watermark
+    watermark.with_timestamp_assigner.return_value = watermark
+    monkeypatch.setattr(
+        flink_job,
+        "WatermarkStrategy",
+        SimpleNamespace(
+            no_watermarks=MagicMock(return_value="no-watermarks"),
+            for_bounded_out_of_orderness=MagicMock(return_value=watermark),
+        ),
+    )
+    monkeypatch.setattr(flink_job, "Duration", SimpleNamespace(of_seconds=MagicMock(side_effect=_duration)))
+    monkeypatch.setattr(flink_job, "Types", SimpleNamespace(STRING=MagicMock(return_value="string")))
+    config = GraphEngineConfig(
+        entity_input_topic="otel.entity.events",
+        allowed_lateness_seconds=3,
+        contributor_ttl_seconds=10,
+        state_ttl_seconds=30,
+    )
+
+    flink_job._configure_job_graph(
+        cast(Any, env),
+        config,
+        cast(Any, metric_source),
+        cast(Any, sink),
+        cast(Any, entity_source),
+    )
+
+    assert env.from_source.call_args_list == [
+        call(metric_source, "no-watermarks", "servicegraph-otlp-json"),
+        call(entity_source, "no-watermarks", "otel-entity-events-json"),
+    ]
+    entity_source_operator.name.assert_called_once_with("otel-entity-events-kafka-source")
+    entity_source_operator.name.return_value.uid.assert_called_once_with("graph-v3-entity-events-kafka-source")
+    entity_observations.key_by.assert_called_once_with(flink_job._entity_source_key, key_type="string")
+    entity_observations.key_by.return_value.process.return_value.name.assert_called_once_with(
+        "reconcile-otel-entity-events"
+    )
+    entity_observations.key_by.return_value.process.return_value.name.return_value.uid.assert_called_once_with(
+        "graph-v3-reconcile-otel-entity-events"
+    )
+    metric_contributions.union.assert_called_once_with(entity_mutations)
 
 
 def test_kafka_source_maps_all_contract_properties(monkeypatch: pytest.MonkeyPatch) -> None:

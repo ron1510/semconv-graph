@@ -33,12 +33,21 @@ from pyflink.java_gateway import get_gateway
 from otel_servicegraph_diff.config import GraphEngineConfig, graph_engine_config_from_env
 from otel_servicegraph_diff.engine.elements import (
     GraphContribution,
+    GraphContributionRetraction,
     GraphElementEvent,
+    GraphElementMutation,
     GraphElementState,
     apply_contribution,
     expire_contributors,
+    retract_contribution,
 )
 from otel_servicegraph_diff.ingest.contributions import iter_otlp_json_contributions
+from otel_servicegraph_diff.ingest.entity_events import (
+    EntityEventObservation,
+    EntitySourceState,
+    iter_otlp_json_entity_events,
+    reconcile_entity_event,
+)
 from otel_servicegraph_diff.ingest.metrics import IngestRejection
 
 OUTPUT_ROW_TYPE = Types.ROW_NAMED(["key", "value"], [Types.STRING(), Types.STRING()])
@@ -83,9 +92,18 @@ def run_flink_job(config: GraphEngineConfig) -> None:
     env.enable_checkpointing(config.checkpoint_interval_ms)
 
     source = _kafka_source(config)
+    entity_source = (
+        _kafka_source(
+            config,
+            topic=config.entity_input_topic,
+            group_id=config.entity_group_id,
+        )
+        if config.entity_input_topic is not None
+        else None
+    )
     event_sink = _kafka_sink(config, config.output_topic)
 
-    _configure_job_graph(env, config, source, event_sink)
+    _configure_job_graph(env, config, source, event_sink, entity_source)
     env.execute("servicegraph-graph-element-engine")
 
 
@@ -94,17 +112,42 @@ def _configure_job_graph(
     config: GraphEngineConfig,
     source: KafkaSource,
     event_sink: KafkaSink,
+    entity_source: KafkaSource | None = None,
 ) -> None:
     payloads = (
         env.from_source(source, WatermarkStrategy.no_watermarks(), "servicegraph-otlp-json")
         .name("servicegraph-kafka-source")
         .uid("graph-v3-kafka-source")
     )
-    contributions = (
+    metric_contributions = (
         payloads.flat_map(_PayloadParser())
         .name("extract-graph-contributions")
         .uid("graph-v3-extract-contributions")
-        .assign_timestamps_and_watermarks(
+    )
+    contributions = metric_contributions
+    if entity_source is not None:
+        entity_observations = (
+            env.from_source(
+                entity_source,
+                WatermarkStrategy.no_watermarks(),
+                "otel-entity-events-json",
+            )
+            .name("otel-entity-events-kafka-source")
+            .uid("graph-v3-entity-events-kafka-source")
+            .flat_map(_EntityPayloadParser(config.entity_report_interval_grace_seconds))
+            .name("parse-otel-entity-events")
+            .uid("graph-v3-parse-otel-entity-events")
+        )
+        entity_contributions = (
+            entity_observations.key_by(_entity_source_key, key_type=Types.STRING())
+            .process(_EntityEventContributionsProcess(config.state_ttl_seconds))
+            .name("reconcile-otel-entity-events")
+            .uid("graph-v3-reconcile-otel-entity-events")
+        )
+        contributions = metric_contributions.union(entity_contributions)
+
+    timestamped_contributions = (
+        contributions.assign_timestamps_and_watermarks(
             WatermarkStrategy.for_bounded_out_of_orderness(
                 Duration.of_seconds(config.allowed_lateness_seconds)
             )
@@ -115,7 +158,7 @@ def _configure_job_graph(
         .uid("graph-v3-watermarks")
     )
     events = (
-        contributions.key_by(_element_key, key_type=Types.STRING())
+        timestamped_contributions.key_by(_element_key, key_type=Types.STRING())
         .process(
             _GraphElementLifecycleProcess(
                 config.contributor_ttl_seconds,
@@ -133,12 +176,17 @@ def _configure_job_graph(
     event_rows.sink_to(event_sink).name("graph-element-events").uid("graph-v3-events-sink")
 
 
-def _kafka_source(config: GraphEngineConfig) -> KafkaSource:
+def _kafka_source(
+    config: GraphEngineConfig,
+    *,
+    topic: str | None = None,
+    group_id: str | None = None,
+) -> KafkaSource:
     builder = (
         KafkaSource.builder()
         .set_bootstrap_servers(config.bootstrap_servers)
-        .set_topics(config.input_topic)
-        .set_group_id(config.group_id)
+        .set_topics(topic or config.input_topic)
+        .set_group_id(group_id or config.group_id)
         .set_starting_offsets(
             KafkaOffsetsInitializer.committed_offsets(KafkaOffsetResetStrategy.EARLIEST)
         )
@@ -205,6 +253,73 @@ class _PayloadParser(FlatMapFunction):
         return self._rejected_inputs
 
 
+class _EntityPayloadParser(FlatMapFunction):
+    def __init__(self, report_interval_grace_seconds: int) -> None:
+        self._report_interval_grace_seconds = report_interval_grace_seconds
+        self._rejected_inputs: Counter | None = None
+
+    def open(self, runtime_context: RuntimeContext) -> None:
+        self._rejected_inputs = cast(Counter, runtime_context.get_metrics_group().counter("rejected_entity_events"))
+
+    def flat_map(self, value: str) -> Iterable[EntityEventObservation]:
+        for parsed in iter_otlp_json_entity_events(
+            value,
+            report_interval_grace_seconds=self._report_interval_grace_seconds,
+        ):
+            match parsed:
+                case IngestRejection():
+                    self._require_rejected_inputs().inc()
+                    LOGGER.warning(
+                        "discarding rejected OTel entity event: reason=%s detail=%s",
+                        parsed.reason,
+                        (parsed.detail or "")[:512],
+                    )
+                case _:
+                    yield parsed
+
+    def _require_rejected_inputs(self) -> Counter:
+        if self._rejected_inputs is None:
+            raise RuntimeError("entity parser metrics accessed before operator initialization")
+        return self._rejected_inputs
+
+
+class _EntityEventContributionsProcess(KeyedProcessFunction):
+    def __init__(self, state_ttl_seconds: int) -> None:
+        self._state_ttl_seconds = state_ttl_seconds
+        self._state: ValueState[str] | None = None
+
+    def open(self, runtime_context: RuntimeContext) -> None:
+        descriptor = ValueStateDescriptor("otel-entity-source-state-v1", Types.STRING())
+        ttl_config = (
+            StateTtlConfig.new_builder(Time.seconds(self._state_ttl_seconds))
+            .update_ttl_on_create_and_write()
+            .never_return_expired()
+            .cleanup_full_snapshot()
+            .build()
+        )
+        descriptor.enable_time_to_live(ttl_config)
+        self._state = runtime_context.get_state(descriptor)
+
+    def process_element(
+        self,
+        value: EntityEventObservation,
+        ctx: KeyedProcessFunction.Context,
+    ) -> Iterable[GraphElementMutation]:
+        del ctx
+        state_handle = self._require_state()
+        previous_json = state_handle.value()
+        previous = EntitySourceState.model_validate_json(previous_json) if previous_json else None
+        result = reconcile_entity_event(previous, value)
+        if result.state is not previous:
+            state_handle.update(result.state.model_dump_json())
+        return result.mutations
+
+    def _require_state(self) -> ValueState[str]:
+        if self._state is None:
+            raise RuntimeError("entity source state accessed before operator initialization")
+        return self._state
+
+
 class _GraphElementLifecycleProcess(KeyedProcessFunction):
     def __init__(self, ttl_seconds: int, state_ttl_seconds: int) -> None:
         self._ttl_seconds = ttl_seconds
@@ -225,7 +340,7 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
 
     def process_element(
         self,
-        value: GraphContribution,
+        value: GraphElementMutation,
         ctx: KeyedProcessFunction.Context,
     ) -> Iterable[GraphElementEvent]:
         state_handle = self._require_state()
@@ -234,21 +349,27 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
         timer_service = cast(ProcessContext, ctx).timer_service()
         watermark_nano = max(timer_service.current_watermark(), 0) * 1_000_000
         processing_time = timer_service.current_processing_time()
-        result = apply_contribution(
-            previous,
-            value,
-            ttl_seconds=self._ttl_seconds,
-            event_expiry_base_unix_nano=watermark_nano,
-            processing_time_unix_ms=processing_time,
-        )
+        match value:
+            case GraphContribution():
+                result = apply_contribution(
+                    previous,
+                    value,
+                    ttl_seconds=self._ttl_seconds,
+                    event_expiry_base_unix_nano=watermark_nano,
+                    processing_time_unix_ms=processing_time,
+                )
+            case GraphContributionRetraction():
+                result = retract_contribution(previous, value)
         if result.state is previous:
             return ()
         if result.state is None:
-            raise RuntimeError("applying a contribution unexpectedly cleared graph element state")
+            state_handle.clear()
+            return (result.event,) if result.event is not None else ()
         state_handle.update(result.state.model_dump_json())
-        snapshot = result.state.contributors[value.contributor_id]
-        timer_service.register_event_time_timer(_timer_millis(snapshot.event_expires_at_unix_nano))
-        timer_service.register_processing_time_timer(snapshot.processing_expires_at_unix_ms)
+        if isinstance(value, GraphContribution):
+            snapshot = result.state.contributors[value.contributor_id]
+            timer_service.register_event_time_timer(_timer_millis(snapshot.event_expires_at_unix_nano))
+            timer_service.register_processing_time_timer(snapshot.processing_expires_at_unix_ms)
         return (result.event,) if result.event is not None else ()
 
     def on_timer(
@@ -279,13 +400,21 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
 
 
 class _ObservationTimestampAssigner(TimestampAssigner):
-    def extract_timestamp(self, value: GraphContribution, record_timestamp: int) -> int:
+    def extract_timestamp(self, value: GraphElementMutation, record_timestamp: int) -> int:
         del record_timestamp
         return value.observed_at_unix_nano // 1_000_000
 
 
-def _element_key(item: GraphContribution) -> str:
-    return item.element.id
+def _element_key(item: GraphElementMutation) -> str:
+    match item:
+        case GraphContribution():
+            return item.element.id
+        case GraphContributionRetraction():
+            return item.element_id
+
+
+def _entity_source_key(item: EntityEventObservation) -> str:
+    return item.source_key
 
 
 def _event_row(event: GraphElementEvent) -> Row:

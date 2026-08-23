@@ -7,6 +7,7 @@ from otel_servicegraph_diff.engine.elements import (
     GRAPH_REQUEST_FAILED_TOTAL,
     GRAPH_REQUEST_TOTAL,
     GraphContribution,
+    GraphContributionRetraction,
     GraphEdge,
     GraphElementEvent,
     GraphElementLifecycleResult,
@@ -16,6 +17,7 @@ from otel_servicegraph_diff.engine.elements import (
     apply_contribution,
     edge_id,
     expire_contributors,
+    retract_contribution,
 )
 
 TTL_SECONDS = 5
@@ -168,6 +170,89 @@ def test_edge_delete_and_recreation_reset_metric_lifetime() -> None:
 
     assert recreated.state is not None
     assert recreated.state.metrics == {GRAPH_REQUEST_TOTAL: 2}
+
+
+def test_explicit_retraction_recomputes_shared_element_and_deletes_final_contributor() -> None:
+    first = _apply(None, _node_contribution("a", 10, {"zone": "eu", "version": "1"}))
+    second = _apply(first.state, _node_contribution("b", 20, {"version": "2"}))
+
+    partial = retract_contribution(
+        second.state,
+        GraphContributionRetraction(
+            contributor_id="a",
+            element_id="k8s.pod:pod-1",
+            observed_at_unix_nano=30,
+        ),
+        emitted_at_unix_ms=101,
+    )
+    assert partial.state is not None
+    assert isinstance(partial.event, GraphElementUpsertEvent)
+    assert isinstance(partial.event.element, GraphNode)
+    assert partial.event.element.attributes == {"version": "2"}
+
+    deleted = retract_contribution(
+        partial.state,
+        GraphContributionRetraction(
+            contributor_id="b",
+            element_id="k8s.pod:pod-1",
+            observed_at_unix_nano=40,
+        ),
+        emitted_at_unix_ms=102,
+    )
+    assert deleted.state is None
+    assert deleted.event is not None
+    assert deleted.event.operation == "delete"
+
+
+def test_stale_or_unknown_retraction_is_idempotent() -> None:
+    active = _apply(None, _node_contribution("a", 20, {"version": "2"}))
+    stale = retract_contribution(
+        active.state,
+        GraphContributionRetraction(
+            contributor_id="a",
+            element_id="k8s.pod:pod-1",
+            observed_at_unix_nano=10,
+        ),
+    )
+    unknown = retract_contribution(
+        active.state,
+        GraphContributionRetraction(
+            contributor_id="missing",
+            element_id="k8s.pod:pod-1",
+            observed_at_unix_nano=30,
+        ),
+    )
+
+    assert stale.state is active.state
+    assert stale.event is None
+    assert unknown.state is active.state
+    assert unknown.event is None
+
+
+def test_retraction_rejects_mismatched_element_state() -> None:
+    active = _apply(None, _node_contribution("a", 20, {}))
+
+    with pytest.raises(ValueError, match="retraction for"):
+        retract_contribution(
+            active.state,
+            GraphContributionRetraction(
+                contributor_id="a",
+                element_id="service:other",
+                observed_at_unix_nano=30,
+            ),
+        )
+
+
+def test_contribution_specific_ttl_overrides_engine_default() -> None:
+    contribution = _node_contribution("a", 1_000_000_000, {}).model_copy(
+        update={"ttl_seconds": 30}
+    )
+    result = _apply(None, contribution, processing_time=100)
+
+    assert result.state is not None
+    snapshot = result.state.contributors["a"]
+    assert snapshot.event_expires_at_unix_nano == 31_000_000_000
+    assert snapshot.processing_expires_at_unix_ms == 30_100
 
 
 def test_older_contributor_observation_is_ignored_without_refreshing_expiry() -> None:
