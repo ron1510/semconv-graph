@@ -121,8 +121,10 @@ def test_entity_report_interval_adds_configured_grace_to_contribution_ttl() -> N
 
 
 def test_parser_accepts_standard_and_legacy_entity_event_names() -> None:
-    standard = _parse(_payload(event_name="entity.state"))
-    legacy_state = _parse(_payload(event_name="", legacy_event_type="entity.state"))
+    standard = _parse(_payload(event_name="entity.state", report_interval=1))
+    legacy_state = _parse(
+        _payload(event_name="", legacy_event_type="entity.state", report_interval=1)
+    )
     legacy_delete = _parse(_payload(event_name="", legacy_event_type="entity.delete"))
 
     assert isinstance(standard, EntityStateObservation)
