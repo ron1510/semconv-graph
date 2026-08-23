@@ -1,0 +1,66 @@
+name: Semantic entity or relationship
+description: Propose one bounded semantic-registry addition.
+title: "[Semantic]: "
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Addition type
+      options:
+        - Entity
+        - Relationship
+        - Attributes on an existing entity
+        - Extraction support for existing semantics
+    validations:
+      required: true
+  - type: input
+    id: semantic-name
+    attributes:
+      label: Canonical semantic name
+      placeholder: k8s.workload or service calls service
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Operational use case
+      description: Explain what users can discover or traverse after this addition.
+    validations:
+      required: true
+  - type: textarea
+    id: attributes
+    attributes:
+      label: Attributes and identity
+      description: List canonical OTel keys, value types, required identity fields, and upstream or extension provenance.
+    validations:
+      required: true
+  - type: textarea
+    id: observation
+    attributes:
+      label: Telemetry source
+      description: Show how the current Collector service-graph pipeline observes every proposed field.
+    validations:
+      required: true
+  - type: textarea
+    id: relationships
+    attributes:
+      label: Relationships and lifecycle
+      description: For relationships, define permitted source and target types. Explain contributor and expiry behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Generated artifacts and tests
+      description: List expected model, dimensions, ArangoDB topology, extraction, and reconstruction coverage.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked the upstream OpenTelemetry semantic-conventions registry first.
+          required: true
+        - label: Every proposed field is scalar and observable by the current pipeline.
+          required: true

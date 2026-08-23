@@ -1,0 +1,245 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  validate-tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require a semantic version tag on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+  build-python:
+    name: Build Python distributions
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build and inspect distributions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install build check-wheel-contents twine
+          for package in \
+            packages/extended-opentelemetry-semconv \
+            services/otel-servicegraph-diff \
+            services/servicegraph-demo \
+            services/servicegraph-indexer; do
+            python -m build --sdist --wheel --outdir dist "$package"
+          done
+          python -m twine check dist/*
+          check-wheel-contents dist/*.whl
+
+      - name: Upload Python distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-python-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-pypi:
+    name: Publish Python distributions to PyPI
+    needs: build-python
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/
+    permissions:
+      id-token: write
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: release-python-distributions
+          path: dist/
+
+      - name: Publish with trusted publishing
+        uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          skip-existing: true
+
+  publish-images:
+    name: Publish image / ${{ matrix.image }}
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: extended-otel-flink-runtime
+            context: .
+            file: services/otel-servicegraph-diff/Dockerfile
+          - image: extended-otel-servicegraph-demo
+            context: .
+            file: services/servicegraph-demo/Dockerfile
+          - image: extended-otel-servicegraph-indexer
+            context: .
+            file: services/servicegraph-indexer/Dockerfile
+          - image: extended-otel-servicegraph-gremlin
+            context: services/servicegraph-gremlin
+            file: services/servicegraph-gremlin/Dockerfile
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  publish-charts:
+    name: Publish OCI Helm charts
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.21.3
+
+      - name: Package charts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir chart-dist
+          for chart in deploy/helm/*; do
+            helm lint "$chart"
+            helm package "$chart" --destination chart-dist
+          done
+
+      - name: Log in to GHCR for Helm
+        shell: bash
+        env:
+          HELM_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$HELM_REGISTRY_PASSWORD" | helm registry login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish new chart versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+          for archive in chart-dist/*.tgz; do
+            name="$(helm show chart "$archive" | awk '$1 == "name:" { print $2; exit }')"
+            version="$(helm show chart "$archive" | awk '$1 == "version:" { print $2; exit }')"
+            if helm show chart "$registry/$name" --version "$version" >/dev/null 2>&1; then
+              echo "$name $version already exists; skipping"
+            else
+              helm push "$archive" "$registry"
+            fi
+          done
+
+      - name: Upload chart packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-helm-charts
+          path: chart-dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  github-release:
+    name: Create GitHub release
+    needs: [publish-pypi, publish-images, publish-charts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: release-python-distributions
+          path: release-assets/python
+
+      - name: Download Helm charts
+        uses: actions/download-artifact@v8
+        with:
+          name: release-helm-charts
+          path: release-assets/charts
+
+      - name: Create release and attach artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          args=(--verify-tag --generate-notes --title "$GITHUB_REF_NAME")
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" release-assets/python/* release-assets/charts/* "${args[@]}"

@@ -1,0 +1,63 @@
+name: Bug report
+description: Report reproducible incorrect behavior in a supported component.
+title: "[Bug]: "
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Semantic SDK or generated models
+        - Semantic code generator
+        - Collector configuration
+        - Flink ingest or lifecycle engine
+        - Kafka-to-ArangoDB indexer
+        - Gremlin Server or typed client
+        - Helm deployment
+        - Documentation or tooling
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and its operational impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest safe input, query, command, or values override that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include project revision, Python, Flink, Kubernetes, Kafka, ArangoDB, Gremlin, and Helm versions that matter.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Add bounded logs, events, stack traces, or lifecycle records. Remove credentials and private telemetry.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+        - label: This report contains no credentials, customer data, or private telemetry.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

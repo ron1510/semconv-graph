@@ -1,0 +1,54 @@
+name: Deployment problem
+description: Report a focused Helm, Kubernetes, image, or private-network problem.
+title: "[Deployment]: "
+body:
+  - type: dropdown
+    id: chart
+    attributes:
+      label: Chart or image
+      options:
+        - servicegraph-collector
+        - servicegraph-flink
+        - servicegraph-indexer
+        - servicegraph-gremlin
+        - servicegraph-arangodb
+        - servicegraph-demo
+        - Cross-chart installation
+    validations:
+      required: true
+  - type: textarea
+    id: platform
+    attributes:
+      label: Platform constraints
+      description: Include Kubernetes or OpenShift version, namespace permissions, storage mode, non-root policy, and network restrictions.
+    validations:
+      required: true
+  - type: textarea
+    id: values
+    attributes:
+      label: Minimal sanitized values
+      description: Include only overrides required to reproduce the problem. Remove credentials and internal addresses.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Bounded diagnostics
+      description: Include pod status, events, hook status, and relevant current or previous logs.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The affected chart passes `helm lint` and `helm template` with these values.
+          required: true
+        - label: This report contains no Secret values or private infrastructure details.
+          required: true

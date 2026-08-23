@@ -1,0 +1,64 @@
+name: Feature proposal
+description: Propose a focused product capability or architectural change.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user or operational problem without prescribing an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed capability
+      description: State the smallest complete behavior that would solve the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Semantic SDK
+        - Code generation
+        - Collector ingest
+        - Flink lifecycle engine
+        - Kafka event contract
+        - ArangoDB projection
+        - Gremlin access
+        - Kubernetes deployment
+        - Contributor experience
+    validations:
+      required: true
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contract and state impact
+      description: Identify affected IDs, schemas, state, topics, collections, APIs, deployment values, or compatibility boundaries.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing OpenTelemetry, Flink, Kafka, ArangoDB, Gremlin, or Kubernetes capabilities considered first.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Acceptance evidence
+      description: Define the tests, measurements, or runtime observations that would prove the feature works.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: I searched for an existing issue or implementation.
+          required: true
+        - label: I have separated required behavior from possible follow-up features.
+          required: true
