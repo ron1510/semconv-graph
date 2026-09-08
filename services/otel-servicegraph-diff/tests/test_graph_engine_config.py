@@ -50,15 +50,71 @@ def test_entity_event_source_is_opt_in_with_independent_group_and_grace() -> Non
     assert enabled.entity_report_interval_grace_seconds == 15
 
 
+def test_root_span_source_is_opt_in_with_independent_group() -> None:
+    disabled = GraphEngineConfig()
+    enabled = GraphEngineConfig(
+        root_span_input_topic="otel.root.spans",
+        root_span_group_id="root-span-consumers",
+    )
+
+    assert disabled.root_span_input_topic is None
+    assert enabled.root_span_input_topic == "otel.root.spans"
+    assert enabled.root_span_group_id == "root-span-consumers"
+
+
 @pytest.mark.parametrize("topic", ["otel.servicegraph.metrics", "graph.elements.events"])
 def test_entity_event_topic_must_not_overlap_existing_contract(topic: str) -> None:
     with pytest.raises(ValidationError, match="must differ"):
         GraphEngineConfig(entity_input_topic=topic)
 
 
+@pytest.mark.parametrize(
+    "topic",
+    ["otel.servicegraph.metrics", "otel.entity.events", "graph.elements.events"],
+)
+def test_root_span_topic_must_not_overlap_existing_contract(topic: str) -> None:
+    with pytest.raises(ValidationError, match="must differ"):
+        GraphEngineConfig(
+            entity_input_topic="otel.entity.events",
+            root_span_input_topic=topic,
+        )
+
+
 def test_config_rejects_non_positive_parallelism() -> None:
     with pytest.raises(ValidationError):
         GraphEngineConfig(parallelism=0)
+
+
+def test_element_ttls_are_loaded_from_environment_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    graph_engine_config_from_env.cache_clear()
+    try:
+        monkeypatch.setenv(
+            "GRAPH_ELEMENT_TTL_SECONDS",
+            '{"service":900,"etl.pipeline":86400,"calls":300}',
+        )
+
+        config = graph_engine_config_from_env()
+
+        assert config.element_ttl_seconds == {
+            "service": 900,
+            "etl.pipeline": 86_400,
+            "calls": 300,
+        }
+    finally:
+        graph_engine_config_from_env.cache_clear()
+
+
+@pytest.mark.parametrize(
+    "element_ttls",
+    [
+        {"unknown.interface": 60},
+        {"service": 0},
+        {"service": True},
+    ],
+)
+def test_config_rejects_invalid_element_ttls(element_ttls: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        GraphEngineConfig.model_validate({"element_ttl_seconds": element_ttls})
 
 
 def test_plaintext_config_has_only_explicit_security_protocol() -> None:
@@ -76,7 +132,7 @@ def test_sasl_config_builds_complete_kafka_properties(protocol: KafkaSecurityPro
         kafka_security_protocol=protocol,
         kafka_sasl_mechanism=KafkaSaslMechanism.SCRAM_SHA_256,
         kafka_sasl_username='service"graph',
-        kafka_sasl_password=SecretStr('pass\\word'),
+        kafka_sasl_password=SecretStr("pass\\word"),
     )
 
     assert config.kafka_client_properties == {

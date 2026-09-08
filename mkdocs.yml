@@ -55,6 +55,7 @@ nav:
   - Getting Started:
       - Overview: getting-started/index.md
       - Local Demo: getting-started/quickstart.md
+      - Auto-Instrumented Endpoint: getting-started/auto-instrumentation.md
       - Your First Custom Entity: getting-started/custom-entity.md
   - Concepts:
       - Semantic Entity Model: concepts/semantic-model.md
@@ -80,6 +81,8 @@ nav:
       - OTel Entity Conformance: reference/otel-entity-conformance.md
       - Helm Values: reference/helm-values.md
   - Community and Launch: community.md
+  - Architecture Decisions:
+      - Interaction-Derived ETL Topology: adr/0001-discover-etl-topology-from-interactions.md
   - Development:
       - Repository Development: development.md
       - Testing: development/testing.md

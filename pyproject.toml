@@ -16,6 +16,8 @@ dev = [
   "httpx==0.28.1",
   "gremlinpython==3.8.1",
   "kafka-python-ng==2.2.3",
+  "opentelemetry-instrumentation-httpx==0.65b0",
+  "opentelemetry-sdk==1.44.0",
   "pyright==1.1.411",
   "pytest==9.1.1",
   "pytest-cov==7.1.0",
@@ -44,6 +46,7 @@ pythonpath = [
 ]
 testpaths = [
   "packages/extended-opentelemetry-semconv/tests",
+  "examples/auto-instrumentation",
   "services/otel-servicegraph-diff/tests",
   "services/servicegraph-demo/tests",
   "services/servicegraph-indexer/tests",
@@ -89,6 +92,7 @@ known-first-party = [
 include = [
   "packages/extended-opentelemetry-semconv/src",
   "packages/extended-opentelemetry-semconv/tests",
+  "examples/auto-instrumentation",
   "services/otel-servicegraph-diff/src",
   "services/otel-servicegraph-diff/tests",
   "services/servicegraph-demo/src",

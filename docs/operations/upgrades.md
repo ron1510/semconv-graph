@@ -18,16 +18,23 @@ The routers are stateless, but backends hold in-memory span-pairing and
 cumulative-to-delta state. A restart can lose in-flight pairs and reset local
 metric streams.
 
-Use a controlled rollout, keep the two-member backend identity stable, and
-expect a short observation gap. Do not change the backend replica count as part
-of an ordinary image upgrade.
+Use a controlled rollout and expect a short observation gap. Do not change
+`backend.mode` or the horizontal replica count as part of an ordinary image
+upgrade. Moving from horizontal to single-writer mode is a planned topology
+change: routers roll to the direct exporter while the StatefulSet scales down,
+and some in-flight pairs can be lost during convergence.
 
 After rollout, verify:
 
-- both fixed backend DNS names resolve;
-- both backends export delta metrics;
+- every configured backend endpoint resolves;
+- the backend exports only positive request and failed-request deltas;
 - input topic offsets advance;
 - Flink does not produce a burst of incorrect graph-element churn.
+
+Rollback to the previous horizontal topology with
+`backend.mode=horizontal` and `backend.replicaCount=2`. The hash-ring change can
+again split in-flight traces, but it requires no Kafka, Flink-state, or graph
+data migration.
 
 ## Flink application upgrade
 

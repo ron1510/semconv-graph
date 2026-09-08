@@ -25,9 +25,11 @@ kubectl logs -n servicegraph-system \
   --since=15m
 ```
 
-Both backend ordinal DNS names must resolve and both pods must remain ready.
-One unavailable backend remaps traces only after send failures and can disrupt
-in-flight pairing.
+In default single-writer mode, the one backend endpoint must resolve and the pod
+must remain ready. A restart creates a short observation gap; existing graph
+elements should remain while the gap stays below the Flink contributor TTL.
+In horizontal mode, verify every configured ordinal and watch for uneven shard
+load and repeated metric-series writers.
 
 ## Kafka
 
@@ -56,6 +58,7 @@ Track:
 - JobManager leadership changes;
 - restart count;
 - `rejected_inputs`;
+- `rejected_root_spans` when selective discovery is enabled;
 - state volume capacity.
 
 Open the Flink UI:
@@ -106,6 +109,7 @@ Alert on:
 - repeated Collector export failures;
 - Collector or TaskManager restart loops;
 - `rejected_inputs` increasing;
+- `rejected_root_spans` increasing;
 - Flink state or ArangoDB storage nearing capacity;
 - Gremlin readiness failure;
 - indexer restarts or sustained consumer lag;

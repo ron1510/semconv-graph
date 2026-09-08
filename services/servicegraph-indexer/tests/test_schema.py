@@ -10,8 +10,16 @@ def test_generated_schema_is_valid_and_complete() -> None:
     schema = load_graph_schema()
 
     assert schema.graph_name == "servicegraph"
-    assert len(schema.vertex_collections) == 29
+    assert len(schema.vertex_collections) == 32
     assert len(schema.edge_collections) == 9
+    assert schema.vertices_by_type["etl.pipeline"].collection == "etl_pipeline"
+    assert schema.vertices_by_type["etl.run"].collection == "etl_run"
+    assert schema.vertices_by_type["etl.part.run"].collection == "etl_part_run"
+    contains = schema.edges_by_type["contains"]
+    assert "etl_pipeline" in contains.from_collections
+    assert "etl_run" in contains.from_collections
+    assert "etl_run" in contains.to_collections
+    assert "etl_part_run" in contains.to_collections
     assert schema.vertices_by_type["service.instance"].collection == "service_instance"
     assert schema.vertices_by_type["k8s.pod"].collection == "k8s_pod"
     assert schema.edges_by_type["calls"].collection == "calls"

@@ -38,14 +38,16 @@ Python 3.12 is required.
 ## Run the live graph pipeline
 
 Use the complete runtime when you need a continuously maintained topology. It
-can receive graph evidence from two independent sources:
+can receive graph evidence from three independent sources:
 
 1. By default, applications emit normal OpenTelemetry client/server spans;
    Collector backends derive service-graph metrics and publish them to Kafka.
-2. Optionally, the Collector router forwards filtered `entity.state` and
+2. Optionally, the Collector router forwards explicitly marked root spans for
+   node-only discovery of non-interacting executions.
+3. Optionally, the Collector router forwards filtered `entity.state` and
    `entity.delete` OTLP logs to an independent Kafka topic.
-3. Flink reconciles both sources into lifecycle-managed graph elements.
-4. Consumers apply complete element `upsert` and `delete` commands.
+4. Flink reconciles all enabled sources into lifecycle-managed graph elements.
+5. Consumers apply complete element `upsert` and `delete` commands.
 
 Entity-event ingestion is disabled by default. It accepts only entity and
 relationship types represented in the generated `service_graph` topology; a
@@ -56,7 +58,7 @@ configuration](../configuration/flink.md), and the [entity-event compatibility
 matrix](../reference/otel-entity-conformance.md) for the exact contract.
 
 The production deployment expects Kubernetes, Helm, Kafka-compatible brokers,
-two pre-created topics (three when entity events are enabled), persistent
+two pre-created topics plus one for each optional input, persistent
 storage for Flink, and an existing ArangoDB 3.12 deployment for the
 current-state property graph.
 

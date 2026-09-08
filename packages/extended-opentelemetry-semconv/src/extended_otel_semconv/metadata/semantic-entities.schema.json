@@ -201,6 +201,99 @@
       "x-semantic-type": "container.runtime",
       "x-template-fields": []
     },
+    "EtlPartRunFields": {
+      "additionalProperties": false,
+      "properties": {
+        "etl.part.name": {
+          "description": "The human-readable name of an ETL part.",
+          "type": "string"
+        },
+        "etl.part.run.id": {
+          "description": "The identifier of a logical ETL part execution within its pipeline run.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "etl.pipeline.id": {
+          "description": "The stable identifier of an ETL pipeline definition.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "etl.run.id": {
+          "description": "The identifier of an ETL pipeline execution within its pipeline.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "etl.pipeline.id",
+        "etl.run.id",
+        "etl.part.run.id"
+      ],
+      "title": "EtlPartRunFields",
+      "type": "object",
+      "x-identity-fields": [
+        "etl.pipeline.id",
+        "etl.run.id",
+        "etl.part.run.id"
+      ],
+      "x-semantic-type": "etl.part.run",
+      "x-template-fields": []
+    },
+    "EtlPipelineFields": {
+      "additionalProperties": false,
+      "properties": {
+        "etl.pipeline.id": {
+          "description": "The stable identifier of an ETL pipeline definition.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "etl.pipeline.name": {
+          "description": "The human-readable name of an ETL pipeline definition.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "etl.pipeline.id"
+      ],
+      "title": "EtlPipelineFields",
+      "type": "object",
+      "x-identity-fields": [
+        "etl.pipeline.id"
+      ],
+      "x-semantic-type": "etl.pipeline",
+      "x-template-fields": []
+    },
+    "EtlRunFields": {
+      "additionalProperties": false,
+      "properties": {
+        "etl.pipeline.id": {
+          "description": "The stable identifier of an ETL pipeline definition.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "etl.run.id": {
+          "description": "The identifier of an ETL pipeline execution within its pipeline.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "etl.run.name": {
+          "description": "The human-readable name of an ETL pipeline execution.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "etl.pipeline.id",
+        "etl.run.id"
+      ],
+      "title": "EtlRunFields",
+      "type": "object",
+      "x-identity-fields": [
+        "etl.pipeline.id",
+        "etl.run.id"
+      ],
+      "x-semantic-type": "etl.run",
+      "x-template-fields": []
+    },
     "GcpGceInstanceGroupManagerFields": {
       "additionalProperties": false,
       "properties": {
@@ -1318,6 +1411,15 @@
     },
     {
       "$ref": "#/$defs/ContainerRuntimeFields"
+    },
+    {
+      "$ref": "#/$defs/EtlPartRunFields"
+    },
+    {
+      "$ref": "#/$defs/EtlPipelineFields"
+    },
+    {
+      "$ref": "#/$defs/EtlRunFields"
     },
     {
       "$ref": "#/$defs/GcpGceInstanceGroupManagerFields"

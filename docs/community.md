@@ -11,7 +11,8 @@ not through its dependency list.
 The supporting sentence is:
 
 > It combines inferred semantic entities with opt-in standard OpenTelemetry
-> entity events in one contributor-aware lifecycle engine.
+> entity events and selectively marked roots in one contributor-aware lifecycle
+> engine.
 
 ## Demonstration story
 
@@ -28,6 +29,8 @@ query:
 6. Stop the final contributor and show explicit graph-element deletion.
 7. Enable explicit entity events and show that the explicit source can complete
    the same graph element without replacing inferred provenance.
+8. Mark a non-interacting execution root and show node-only discovery without
+   exporting ordinary roots to Kafka.
 
 Use concrete services, IDs, attributes, and traversals. The repository's
 in-process benchmark is reproducible, but avoid distributed throughput or cost
@@ -61,13 +64,14 @@ shared-contributor survival, final expiry, replay, and typed query results.
 
 Reference the official [Entity Data Model](https://opentelemetry.io/docs/specs/otel/entities/data-model/)
 and [Entity Events](https://opentelemetry.io/docs/specs/otel/entities/entity-events/)
-specifications. Present inferred telemetry and explicit entity events as two
-sources for one graph, and show the [conformance matrix](reference/otel-entity-conformance.md).
+specifications. Present servicegraph metrics, selective root spans, and explicit
+entity events as independent sources for one graph, and show the [conformance
+matrix](reference/otel-entity-conformance.md).
 
 ### 6. Honest boundaries
 
 State that standard output, incoming-relationship implicit deletion, historical
-queries, full-path automated E2E, and public scale benchmarks are not complete.
+queries, and public scale benchmarks are not complete.
 
 ### 7. Contribution request
 

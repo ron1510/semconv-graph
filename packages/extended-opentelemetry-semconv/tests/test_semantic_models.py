@@ -23,7 +23,7 @@ def test_relationship_metadata_is_loaded_once_per_process() -> None:
 
 def test_generated_registries_cover_entities_and_relationships() -> None:
     assert "service" in ENTITY_MODELS
-    assert len(EDGE_MODELS) == 33
+    assert len(EDGE_MODELS) == 35
     assert EDGE_MODELS[("service", "calls", "service")] is ServiceCallsServiceEdge
 
     with pytest.raises(TypeError):

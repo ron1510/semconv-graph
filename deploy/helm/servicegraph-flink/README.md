@@ -10,6 +10,21 @@ The default uses one JobManager, two TaskManagers, and one RWX claim for HA
 metadata, checkpoints, and savepoints. Recovery has brief downtime and resumes
 from the latest successful checkpoint.
 
+Selective root-span node discovery is disabled by default. To consume the
+Collector's filtered OTLP trace topic, configure the same topic in both charts:
+
+```yaml
+rootSpanDiscovery:
+  enabled: true
+streamContract:
+  topics:
+    rootSpans: otel.root.spans
+```
+
+This independent source extracts semantic nodes only and merges them into the
+same contributor lifecycle state. It never infers relationships from a lone
+root span.
+
 ```powershell
 helm upgrade --install servicegraph-flink deploy/helm/servicegraph-flink `
   --namespace servicegraph-system --create-namespace `

@@ -12,6 +12,20 @@ class ContainerRuntimeRunsK8sContainerEdge(SemanticEdge):
     target_entity_type: ClassVar[str] = "k8s.container"
 
 
+class EtlPipelineContainsEtlRunEdge(SemanticEdge):
+    relationship_id: ClassVar[str] = "relationship.etl_pipeline_contains_run"
+    relationship_type: ClassVar[str] = "contains"
+    source_entity_type: ClassVar[str] = "etl.pipeline"
+    target_entity_type: ClassVar[str] = "etl.run"
+
+
+class EtlRunContainsEtlPartRunEdge(SemanticEdge):
+    relationship_id: ClassVar[str] = "relationship.etl_run_contains_part_run"
+    relationship_type: ClassVar[str] = "contains"
+    source_entity_type: ClassVar[str] = "etl.run"
+    target_entity_type: ClassVar[str] = "etl.part.run"
+
+
 class K8sClusterContainsK8sNamespaceEdge(SemanticEdge):
     relationship_id: ClassVar[str] = "relationship.k8s_cluster_contains_namespace"
     relationship_type: ClassVar[str] = "contains"
@@ -238,6 +252,8 @@ class VcsRepositoryContainsVcsRefEdge(SemanticEdge):
 
 EDGE_MODELS = MappingProxyType({
     ("container.runtime", "runs", "k8s.container"): ContainerRuntimeRunsK8sContainerEdge,
+    ("etl.pipeline", "contains", "etl.run"): EtlPipelineContainsEtlRunEdge,
+    ("etl.run", "contains", "etl.part.run"): EtlRunContainsEtlPartRunEdge,
     ("k8s.cluster", "contains", "k8s.namespace"): K8sClusterContainsK8sNamespaceEdge,
     ("k8s.cluster", "contains", "k8s.node"): K8sClusterContainsK8sNodeEdge,
     ("k8s.cluster", "contains", "k8s.persistentvolume"): K8sClusterContainsK8sPersistentvolumeEdge,
@@ -275,6 +291,8 @@ EDGE_MODELS = MappingProxyType({
 
 __all__ = [
     "ContainerRuntimeRunsK8sContainerEdge",
+    "EtlPipelineContainsEtlRunEdge",
+    "EtlRunContainsEtlPartRunEdge",
     "K8sClusterContainsK8sNamespaceEdge",
     "K8sClusterContainsK8sNodeEdge",
     "K8sClusterContainsK8sPersistentvolumeEdge",

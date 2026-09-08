@@ -251,6 +251,129 @@ def test_app_endpoint_is_extracted_for_server_only() -> None:
     assert endpoints == ["app.endpoint:checkout:checkout:POST:%2Fserver%2F%7Bid%7D"]
 
 
+@pytest.mark.parametrize(
+    ("etl_attributes", "expected_types", "expected_edges"),
+    [
+        (
+            {"etl.pipeline.id": "extract-customers"},
+            {"etl.pipeline"},
+            set[tuple[str, str, str]](),
+        ),
+        (
+            {
+                "etl.pipeline.id": "extract-customers",
+                "etl.run.id": "run-001",
+            },
+            {"etl.pipeline", "etl.run"},
+            {
+                (
+                    "etl.pipeline:extract-customers",
+                    "etl.run:extract-customers:run-001",
+                    "contains",
+                )
+            },
+        ),
+        (
+            {
+                "etl.pipeline.id": "extract-customers",
+                "etl.run.id": "run-001",
+                "etl.part.run.id": "extract-source-001",
+            },
+            {"etl.pipeline", "etl.run", "etl.part.run"},
+            {
+                (
+                    "etl.pipeline:extract-customers",
+                    "etl.run:extract-customers:run-001",
+                    "contains",
+                ),
+                (
+                    "etl.run:extract-customers:run-001",
+                    "etl.part.run:extract-customers:run-001:extract-source-001",
+                    "contains",
+                ),
+            },
+        ),
+    ],
+)
+def test_etl_hierarchy_is_extracted_from_each_valid_attribute_prefix(
+    etl_attributes: dict[str, str],
+    expected_types: set[str],
+    expected_edges: set[tuple[str, str, str]],
+) -> None:
+    contributions = _contributions(
+        attributes={
+            "client": "etl-worker",
+            "server": "customer-source",
+            **{f"client_{key}": value for key, value in etl_attributes.items()},
+        }
+    )
+
+    etl_nodes = {
+        item.element.type
+        for item in contributions
+        if isinstance(item.element, GraphNode) and item.element.type.startswith("etl.")
+    }
+    etl_edges = {
+        (item.element.source_id, item.element.target_id, item.element.type)
+        for item in contributions
+        if isinstance(item.element, GraphEdge) and item.element.source_id.startswith("etl.")
+    }
+
+    assert etl_nodes == expected_types
+    assert etl_edges == expected_edges
+
+
+def test_incomplete_etl_part_identity_keeps_valid_pipeline_contribution() -> None:
+    contributions = _contributions(
+        attributes={
+            "client": "etl-worker",
+            "server": "customer-source",
+            "client_etl.pipeline.id": "extract-customers",
+            "client_etl.part.run.id": "orphan-part",
+            "client_etl.part.name": "Orphan part",
+        }
+    )
+
+    etl_nodes = {
+        item.element.id
+        for item in contributions
+        if isinstance(item.element, GraphNode) and item.element.type.startswith("etl.")
+    }
+
+    assert etl_nodes == {"etl.pipeline:extract-customers"}
+
+
+def test_etl_retries_keep_identity_and_later_runs_create_new_entities() -> None:
+    def etl_ids(run_id: str, part_name: str) -> set[str]:
+        contributions = _contributions(
+            attributes={
+                "client": "etl-worker",
+                "server": "customer-source",
+                "client_etl.pipeline.id": "extract-customers",
+                "client_etl.pipeline.name": "Extract Customers",
+                "client_etl.run.id": run_id,
+                "client_etl.run.name": "Customer import",
+                "client_etl.part.run.id": "extract-source",
+                "client_etl.part.name": part_name,
+            }
+        )
+        return {
+            item.element.id
+            for item in contributions
+            if isinstance(item.element, GraphNode) and item.element.type.startswith("etl.")
+        }
+
+    first_attempt = etl_ids("run-001", "Extract source attempt one")
+    retry = etl_ids("run-001", "Extract source attempt two")
+    next_run = etl_ids("run-002", "Extract source")
+
+    assert first_attempt == retry
+    assert "etl.pipeline:extract-customers" in first_attempt & next_run
+    assert "etl.run:extract-customers:run-001" in first_attempt
+    assert "etl.run:extract-customers:run-002" in next_run
+    assert first_attempt != next_run
+
+
 def test_datapoint_can_extract_all_generated_server_entities() -> None:
     raw_attributes = _maximal_entity_attributes(service_name="max-server")
     contributions = _contributions(

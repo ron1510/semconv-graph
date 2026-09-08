@@ -17,7 +17,11 @@ def e2e_environment(
         pytest.skip("pass --run-e2e to provision the disposable Kind environment")
 
     root = pytestconfig.rootpath
-    environment = DemoEnvironment(root=root, work_dir=tmp_path_factory.mktemp("servicegraph-e2e"))
+    environment = DemoEnvironment(
+        root=root,
+        work_dir=tmp_path_factory.mktemp("servicegraph-e2e"),
+        with_ingest_pipeline=True,
+    )
     keep = bool(pytestconfig.getoption("--keep-e2e-cluster"))
     try:
         try:

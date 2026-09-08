@@ -2,6 +2,12 @@ dimensions:
 - container.runtime.description
 - container.runtime.name
 - container.runtime.version
+- etl.part.name
+- etl.part.run.id
+- etl.pipeline.id
+- etl.pipeline.name
+- etl.run.id
+- etl.run.name
 - http.request.method
 - http.route
 - k8s.cluster.name

@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Protocol, cast
 
 from pyflink.common import Configuration, Duration, Row, Types, WatermarkStrategy
@@ -33,6 +33,8 @@ from otel_servicegraph_diff.config import GraphEngineConfig, graph_engine_config
 from otel_servicegraph_diff.engine.elements import (
     GraphContribution,
     GraphContributionRetraction,
+    GraphEdge,
+    GraphElement,
     GraphElementEvent,
     GraphElementMutation,
     GraphElementState,
@@ -48,6 +50,7 @@ from otel_servicegraph_diff.ingest.entity_events import (
     reconcile_entity_event,
 )
 from otel_servicegraph_diff.ingest.metrics import IngestRejection
+from otel_servicegraph_diff.ingest.root_spans import iter_otlp_json_root_span_contributions
 
 OUTPUT_ROW_TYPE = Types.ROW_NAMED(["key", "value"], [Types.STRING(), Types.STRING()])
 LOGGER = logging.getLogger(__name__)
@@ -100,9 +103,18 @@ def run_flink_job(config: GraphEngineConfig) -> None:
         if config.entity_input_topic is not None
         else None
     )
+    root_span_source = (
+        _kafka_source(
+            config,
+            topic=config.root_span_input_topic,
+            group_id=config.root_span_group_id,
+        )
+        if config.root_span_input_topic is not None
+        else None
+    )
     event_sink = _kafka_sink(config, config.output_topic)
 
-    _configure_job_graph(env, config, source, event_sink, entity_source)
+    _configure_job_graph(env, config, source, event_sink, entity_source, root_span_source)
     env.execute("servicegraph-graph-element-engine")
 
 
@@ -112,6 +124,7 @@ def _configure_job_graph(
     source: KafkaSource,
     event_sink: KafkaSink,
     entity_source: KafkaSource | None = None,
+    root_span_source: KafkaSource | None = None,
 ) -> None:
     payloads = (
         env.from_source(source, WatermarkStrategy.no_watermarks(), "servicegraph-otlp-json")
@@ -119,9 +132,7 @@ def _configure_job_graph(
         .uid("graph-v3-kafka-source")
     )
     metric_contributions = (
-        payloads.flat_map(_PayloadParser())
-        .name("extract-graph-contributions")
-        .uid("graph-v3-extract-contributions")
+        payloads.flat_map(_PayloadParser()).name("extract-graph-contributions").uid("graph-v3-extract-contributions")
     )
     contributions = metric_contributions
     if entity_source is not None:
@@ -144,12 +155,24 @@ def _configure_job_graph(
             .uid("graph-v3-reconcile-otel-entity-events")
         )
         contributions = metric_contributions.union(entity_contributions)
+    if root_span_source is not None:
+        root_span_contributions = (
+            env.from_source(
+                root_span_source,
+                WatermarkStrategy.no_watermarks(),
+                "otel-root-spans-json",
+            )
+            .name("root-spans-kafka-source")
+            .uid("graph-v3-root-spans-kafka-source")
+            .flat_map(_RootSpanPayloadParser())
+            .name("extract-root-span-node-contributions")
+            .uid("graph-v3-extract-root-span-nodes")
+        )
+        contributions = contributions.union(root_span_contributions)
 
     timestamped_contributions = (
         contributions.assign_timestamps_and_watermarks(
-            WatermarkStrategy.for_bounded_out_of_orderness(
-                Duration.of_seconds(config.allowed_lateness_seconds)
-            )
+            WatermarkStrategy.for_bounded_out_of_orderness(Duration.of_seconds(config.allowed_lateness_seconds))
             .with_idleness(Duration.of_seconds(max(config.allowed_lateness_seconds * 2, 1)))
             .with_timestamp_assigner(_ObservationTimestampAssigner())
         )
@@ -159,7 +182,10 @@ def _configure_job_graph(
     events = (
         timestamped_contributions.key_by(_element_key, key_type=Types.STRING())
         .process(
-            _GraphElementLifecycleProcess(config.contributor_ttl_seconds)
+            _GraphElementLifecycleProcess(
+                config.contributor_ttl_seconds,
+                config.element_ttl_seconds,
+            )
         )
         .name("graph-element-lifecycle")
         .uid("graph-v3-element-lifecycle")
@@ -183,9 +209,7 @@ def _kafka_source(
         .set_bootstrap_servers(config.bootstrap_servers)
         .set_topics(topic or config.input_topic)
         .set_group_id(group_id or config.group_id)
-        .set_starting_offsets(
-            KafkaOffsetsInitializer.committed_offsets(KafkaOffsetResetStrategy.EARLIEST)
-        )
+        .set_starting_offsets(KafkaOffsetsInitializer.committed_offsets(KafkaOffsetResetStrategy.EARLIEST))
         .set_property("commit.offsets.on.checkpoint", "true")
         .set_property("allow.auto.create.topics", "false")
     )
@@ -279,6 +303,32 @@ class _EntityPayloadParser(FlatMapFunction):
         return self._rejected_inputs
 
 
+class _RootSpanPayloadParser(FlatMapFunction):
+    def __init__(self) -> None:
+        self._rejected_inputs: Counter | None = None
+
+    def open(self, runtime_context: RuntimeContext) -> None:
+        self._rejected_inputs = cast(Counter, runtime_context.get_metrics_group().counter("rejected_root_spans"))
+
+    def flat_map(self, value: str) -> Iterable[GraphContribution]:
+        for parsed in iter_otlp_json_root_span_contributions(value):
+            match parsed:
+                case IngestRejection():
+                    self._require_rejected_inputs().inc()
+                    LOGGER.warning(
+                        "discarding rejected root-span input: reason=%s detail=%s",
+                        parsed.reason,
+                        (parsed.detail or "")[:512],
+                    )
+                case GraphContribution():
+                    yield parsed
+
+    def _require_rejected_inputs(self) -> Counter:
+        if self._rejected_inputs is None:
+            raise RuntimeError("root-span parser metrics accessed before operator initialization")
+        return self._rejected_inputs
+
+
 class _EntityEventContributionsProcess(KeyedProcessFunction):
     def __init__(self) -> None:
         self._state: ValueState[str] | None = None
@@ -308,8 +358,13 @@ class _EntityEventContributionsProcess(KeyedProcessFunction):
 
 
 class _GraphElementLifecycleProcess(KeyedProcessFunction):
-    def __init__(self, ttl_seconds: int) -> None:
+    def __init__(
+        self,
+        ttl_seconds: int,
+        element_ttl_seconds: Mapping[str, int] | None = None,
+    ) -> None:
         self._ttl_seconds = ttl_seconds
+        self._element_ttl_seconds = dict(element_ttl_seconds or {})
         self._state: ValueState[str] | None = None
 
     def open(self, runtime_context: RuntimeContext) -> None:
@@ -332,7 +387,11 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
                 result = apply_contribution(
                     previous,
                     value,
-                    ttl_seconds=self._ttl_seconds,
+                    ttl_seconds=_element_ttl_seconds(
+                        value.element,
+                        self._ttl_seconds,
+                        self._element_ttl_seconds,
+                    ),
                     event_expiry_base_unix_nano=watermark_nano,
                     processing_time_unix_ms=processing_time,
                 )
@@ -403,6 +462,29 @@ def _event_row(event: GraphElementEvent) -> Row:
 
 def _timer_millis(unix_nano: int) -> int:
     return (unix_nano + 999_999) // 1_000_000
+
+
+def _element_ttl_seconds(
+    element: GraphElement,
+    default_ttl_seconds: int,
+    configured_ttl_seconds: Mapping[str, int],
+) -> int:
+    if not isinstance(element, GraphEdge):
+        return configured_ttl_seconds.get(element.type, default_ttl_seconds)
+
+    endpoint_ttl = min(
+        configured_ttl_seconds.get(_entity_type_from_id(element.source_id), default_ttl_seconds),
+        configured_ttl_seconds.get(_entity_type_from_id(element.target_id), default_ttl_seconds),
+    )
+    configured_edge_ttl = configured_ttl_seconds.get(element.type)
+    return endpoint_ttl if configured_edge_ttl is None else min(configured_edge_ttl, endpoint_ttl)
+
+
+def _entity_type_from_id(element_id: str) -> str:
+    entity_type, separator, _ = element_id.partition(":")
+    if not separator or not entity_type:
+        raise ValueError(f"graph node ID has no semantic type prefix: {element_id!r}")
+    return entity_type
 
 
 if __name__ == "__main__":

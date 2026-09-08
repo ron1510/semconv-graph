@@ -11,17 +11,22 @@ the executable defaults.
 | `image.tag` | `0.156.0` | Collector tag |
 | `image.digest` | empty | Optional immutable digest |
 | `router.replicaCount` | `2` | Fixed stateless router count |
-| `router.queueSize` | `100000` | Load-balancer sending queue |
-| `backend.replicaCount` | `2` | Fixed stateful backend count |
+| `router.queueSize` | `100000` | Router-to-backend sending queue |
+| `backend.mode` | `singleWriter` | `singleWriter` or explicit `horizontal` capacity mode |
+| `backend.replicaCount` | `1` | Must be one in `singleWriter`; at least two in `horizontal` |
 | `backend.serviceGraph.storeTtl` | `10s` | Unpaired span retention |
 | `backend.serviceGraph.storeMaxItems` | `10000` | Pairing-store limit |
-| `backend.serviceGraph.metricsFlushInterval` | `5s` | Metric flush period |
+| `backend.serviceGraph.metricsFlushInterval` | `30s` | Metric flush period |
+| `backend.serviceGraph.metricBatchSize` | `256` | Maximum datapoints per Kafka-bound batch |
 | `streamContract.kafka.brokers` | example broker | Kafka bootstrap servers |
 | `streamContract.kafka.security.protocol` | `SASL_SSL` | `PLAINTEXT`, `SASL_PLAINTEXT`, or `SASL_SSL` |
 | `streamContract.kafka.security.existingSecret` | `servicegraph-kafka-auth` | Existing SASL credentials |
 | `streamContract.topics.servicegraphMetrics` | `otel.servicegraph.metrics` | Metrics topic |
 | `streamContract.topics.entityEvents` | `otel.entity.events` | Optional filtered OTLP entity-event logs topic |
 | `entityEvents.enabled` | `false` | Add the router entity-event logs pipeline |
+| `streamContract.topics.rootSpans` | `otel.root.spans` | Filtered OTLP root-span trace topic |
+| `rootSpanDiscovery.enabled` | `false` | Add the selective root-span router pipeline |
+| `rootSpanDiscovery.markerAttribute` | `semconv.graph.discovery` | Boolean span marker used by the router filter |
 
 Resource, scheduling, ServiceAccount, image-pull, and security-context values are
 also available in the chart.
@@ -43,7 +48,11 @@ also available in the chart.
 | `entityEvents.enabled` | `false` | Add the independent entity-event Kafka source |
 | `entityEvents.groupId` | `graph-element-engine-entities` | Entity-event source consumer group |
 | `entityEvents.reportIntervalGraceSeconds` | `30` | Grace added to positive report intervals |
+| `streamContract.topics.rootSpans` | `otel.root.spans` | Optional root-span input topic |
+| `rootSpanDiscovery.enabled` | `false` | Add the independent root-span Kafka source |
+| `rootSpanDiscovery.groupId` | `graph-element-engine-root-spans` | Root-span source consumer group |
 | `job.interactionTtlSeconds` | `300` | Delete inactivity threshold |
+| `job.elementTtlSeconds` | `{}` | Optional inactivity thresholds by semantic element type |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |
 | `job.checkpointIntervalMs` | `30000` | Checkpoint interval |
 | `job.restartAttempts` | `3` | Fixed-delay attempts |

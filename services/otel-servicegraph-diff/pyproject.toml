@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "apache-flink==2.2.1",
-  "extended-opentelemetry-semconv>=0.4.0,<0.5.0",
+  "extended-opentelemetry-semconv>=0.5.0,<0.6.0",
   "opentelemetry-proto==1.44.0",
   "pydantic==2.13.4",
   "pydantic-settings==2.14.2",

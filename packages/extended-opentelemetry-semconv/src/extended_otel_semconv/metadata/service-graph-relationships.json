@@ -13,6 +13,30 @@
     "type": "relationship"
   },
   {
+    "brief": "An ETL pipeline contains an observed execution.",
+    "id": "relationship.etl_pipeline_contains_run",
+    "name": "contains",
+    "source_entity": "etl.pipeline",
+    "source_signals": [
+      "service_graph"
+    ],
+    "stability": "development",
+    "target_entity": "etl.run",
+    "type": "relationship"
+  },
+  {
+    "brief": "An ETL run contains an observed logical part execution.",
+    "id": "relationship.etl_run_contains_part_run",
+    "name": "contains",
+    "source_entity": "etl.run",
+    "source_signals": [
+      "service_graph"
+    ],
+    "stability": "development",
+    "target_entity": "etl.part.run",
+    "type": "relationship"
+  },
+  {
     "brief": "A Kubernetes cluster contains an observed namespace.",
     "id": "relationship.k8s_cluster_contains_namespace",
     "name": "contains",

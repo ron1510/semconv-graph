@@ -295,3 +295,21 @@ groups:
     source_signals: [service_graph]
     stability: development
     brief: A service queries another observed service or database-service facade.
+
+  - id: relationship.etl_pipeline_contains_run
+    type: relationship
+    name: contains
+    source_entity: etl.pipeline
+    target_entity: etl.run
+    source_signals: [service_graph]
+    stability: development
+    brief: An ETL pipeline contains an observed execution.
+
+  - id: relationship.etl_run_contains_part_run
+    type: relationship
+    name: contains
+    source_entity: etl.run
+    target_entity: etl.part.run
+    source_signals: [service_graph]
+    stability: development
+    brief: An ETL run contains an observed logical part execution.

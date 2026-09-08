@@ -148,7 +148,7 @@ def test_initializer_creates_then_is_an_exact_noop() -> None:
 
     assert ensure_topology(database, schema, "servicegraph") == "created"
     assert ensure_topology(database, schema, "servicegraph") == "unchanged"
-    assert len(database.collections) == 39
+    assert len(database.collections) == 42
     assert len(database.graphs["servicegraph"].definitions) == 9
     assert database.collections["TINKERPOP-GRAPH-VARIABLES"].documents == {
         "servicegraph": {"_key": "servicegraph", "_version": "4.0.0"}

@@ -2,9 +2,9 @@
 
 from extended_otel_semconv.edges import SemanticEdge, semantic_edge_from_data
 from extended_otel_semconv.entities import SemanticEntity, entity_from_attributes
-from extended_otel_semconv.generated.entities import App, AppEndpoint, BrowserDocument, CicdPipeline, CicdPipelineRun, CicdWorker, ContainerRuntime, GcpGceInstanceGroupManager, K8sCluster, K8sContainer, K8sCronjob, K8sDaemonset, K8sDeployment, K8sHpa, K8sJob, K8sNamespace, K8sNode, K8sNodeSystemContainer, K8sPersistentvolume, K8sPersistentvolumeclaim, K8sPod, K8sReplicaset, K8sReplicationcontroller, K8sResourcequota, K8sService, K8sStatefulset, OpenshiftClusterquota, Process, ProcessExecutable, ProcessRuntime, Service, ServiceInstance, ServiceNamespace, TelemetryDistro, TelemetrySdk, VcsRef, VcsRepository
+from extended_otel_semconv.generated.entities import App, AppEndpoint, BrowserDocument, CicdPipeline, CicdPipelineRun, CicdWorker, ContainerRuntime, EtlPartRun, EtlPipeline, EtlRun, GcpGceInstanceGroupManager, K8sCluster, K8sContainer, K8sCronjob, K8sDaemonset, K8sDeployment, K8sHpa, K8sJob, K8sNamespace, K8sNode, K8sNodeSystemContainer, K8sPersistentvolume, K8sPersistentvolumeclaim, K8sPod, K8sReplicaset, K8sReplicationcontroller, K8sResourcequota, K8sService, K8sStatefulset, OpenshiftClusterquota, Process, ProcessExecutable, ProcessRuntime, Service, ServiceInstance, ServiceNamespace, TelemetryDistro, TelemetrySdk, VcsRef, VcsRepository
 from extended_otel_semconv.generated.entities import ENTITY_MODELS, entities_from_attributes
-from extended_otel_semconv.generated.edges import ContainerRuntimeRunsK8sContainerEdge, K8sClusterContainsK8sNamespaceEdge, K8sClusterContainsK8sNodeEdge, K8sClusterContainsK8sPersistentvolumeEdge, K8sContainerRunsProcessEdge, K8sNamespaceContainsK8sCronjobEdge, K8sNamespaceContainsK8sDaemonsetEdge, K8sNamespaceContainsK8sDeploymentEdge, K8sNamespaceContainsK8sHpaEdge, K8sNamespaceContainsK8sJobEdge, K8sNamespaceContainsK8sPersistentvolumeclaimEdge, K8sNamespaceContainsK8sPodEdge, K8sNamespaceContainsK8sReplicasetEdge, K8sNamespaceContainsK8sReplicationcontrollerEdge, K8sNamespaceContainsK8sResourcequotaEdge, K8sNamespaceContainsK8sServiceEdge, K8sNamespaceContainsK8sStatefulsetEdge, K8sNodeRunsK8sPodEdge, K8sPodContainsK8sContainerEdge, K8sPodRunsServiceEdge, K8sPodRunsServiceInstanceEdge, ProcessUsesProcessExecutableEdge, ProcessUsesProcessRuntimeEdge, ServiceBuiltFromVcsRepositoryEdge, ServiceCallsServiceEdge, ServiceContainsServiceInstanceEdge, ServiceExposesAppEndpointEdge, ServiceInstrumentedByTelemetryDistroEdge, ServiceInstrumentedByTelemetrySdkEdge, ServiceNamespaceContainsServiceEdge, ServicePublishesToServiceEdge, ServiceQueriesServiceEdge, VcsRepositoryContainsVcsRefEdge
+from extended_otel_semconv.generated.edges import ContainerRuntimeRunsK8sContainerEdge, EtlPipelineContainsEtlRunEdge, EtlRunContainsEtlPartRunEdge, K8sClusterContainsK8sNamespaceEdge, K8sClusterContainsK8sNodeEdge, K8sClusterContainsK8sPersistentvolumeEdge, K8sContainerRunsProcessEdge, K8sNamespaceContainsK8sCronjobEdge, K8sNamespaceContainsK8sDaemonsetEdge, K8sNamespaceContainsK8sDeploymentEdge, K8sNamespaceContainsK8sHpaEdge, K8sNamespaceContainsK8sJobEdge, K8sNamespaceContainsK8sPersistentvolumeclaimEdge, K8sNamespaceContainsK8sPodEdge, K8sNamespaceContainsK8sReplicasetEdge, K8sNamespaceContainsK8sReplicationcontrollerEdge, K8sNamespaceContainsK8sResourcequotaEdge, K8sNamespaceContainsK8sServiceEdge, K8sNamespaceContainsK8sStatefulsetEdge, K8sNodeRunsK8sPodEdge, K8sPodContainsK8sContainerEdge, K8sPodRunsServiceEdge, K8sPodRunsServiceInstanceEdge, ProcessUsesProcessExecutableEdge, ProcessUsesProcessRuntimeEdge, ServiceBuiltFromVcsRepositoryEdge, ServiceCallsServiceEdge, ServiceContainsServiceInstanceEdge, ServiceExposesAppEndpointEdge, ServiceInstrumentedByTelemetryDistroEdge, ServiceInstrumentedByTelemetrySdkEdge, ServiceNamespaceContainsServiceEdge, ServicePublishesToServiceEdge, ServiceQueriesServiceEdge, VcsRepositoryContainsVcsRefEdge
 from extended_otel_semconv.generated.edges import EDGE_MODELS
 
 __all__ = [
@@ -15,6 +15,9 @@ __all__ = [
     "CicdPipelineRun",
     "CicdWorker",
     "ContainerRuntime",
+    "EtlPartRun",
+    "EtlPipeline",
+    "EtlRun",
     "GcpGceInstanceGroupManager",
     "K8sCluster",
     "K8sContainer",
@@ -46,6 +49,8 @@ __all__ = [
     "VcsRef",
     "VcsRepository",
     "ContainerRuntimeRunsK8sContainerEdge",
+    "EtlPipelineContainsEtlRunEdge",
+    "EtlRunContainsEtlPartRunEdge",
     "K8sClusterContainsK8sNamespaceEdge",
     "K8sClusterContainsK8sNodeEdge",
     "K8sClusterContainsK8sPersistentvolumeEdge",

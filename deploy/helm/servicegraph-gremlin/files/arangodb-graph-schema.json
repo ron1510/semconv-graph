@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "schema_hash": "7f8ec0096a5619a8ee9c2372436b589528dd0e5993c097c3f842deacbb0dd2b6",
+    "schema_hash": "aa92e453eef50d2dc3bf9ca774475eb1665daedb4032fff9beb60166c1391236",
     "schema_version": "1",
     "upstream_registry_lock_sha256": "12a2a5c340ddadf503c228ef75fb22b2988f19aa1ee2f2204cacc5d4a9988be6"
   },
@@ -28,6 +28,8 @@
     {
       "collection": "contains",
       "from": [
+        "etl_pipeline",
+        "etl_run",
         "k8s_cluster",
         "k8s_namespace",
         "k8s_pod",
@@ -37,6 +39,8 @@
       ],
       "semantic_type": "contains",
       "to": [
+        "etl_part_run",
+        "etl_run",
         "k8s_container",
         "k8s_cronjob",
         "k8s_daemonset",
@@ -134,6 +138,12 @@
       "container.runtime.description": "container_runtime_description",
       "container.runtime.name": "container_runtime_name",
       "container.runtime.version": "container_runtime_version",
+      "etl.part.name": "etl_part_name",
+      "etl.part.run.id": "etl_part_run_id",
+      "etl.pipeline.id": "etl_pipeline_id",
+      "etl.pipeline.name": "etl_pipeline_name",
+      "etl.run.id": "etl_run_id",
+      "etl.run.name": "etl_run_name",
       "http.request.method": "http_request_method",
       "http.route": "http_route",
       "k8s.cluster.name": "k8s_cluster_name",
@@ -273,6 +283,48 @@
         }
       ],
       "semantic_type": "container.runtime"
+    },
+    {
+      "collection": "etl_part_run",
+      "identifying_properties": [
+        {
+          "attribute": "etl.pipeline.id",
+          "property": "etl_pipeline_id"
+        },
+        {
+          "attribute": "etl.run.id",
+          "property": "etl_run_id"
+        },
+        {
+          "attribute": "etl.part.run.id",
+          "property": "etl_part_run_id"
+        }
+      ],
+      "semantic_type": "etl.part.run"
+    },
+    {
+      "collection": "etl_pipeline",
+      "identifying_properties": [
+        {
+          "attribute": "etl.pipeline.id",
+          "property": "etl_pipeline_id"
+        }
+      ],
+      "semantic_type": "etl.pipeline"
+    },
+    {
+      "collection": "etl_run",
+      "identifying_properties": [
+        {
+          "attribute": "etl.pipeline.id",
+          "property": "etl_pipeline_id"
+        },
+        {
+          "attribute": "etl.run.id",
+          "property": "etl_run_id"
+        }
+      ],
+      "semantic_type": "etl.run"
     },
     {
       "collection": "k8s_cluster",

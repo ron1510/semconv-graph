@@ -23,6 +23,13 @@ data:
         spike_limit_percentage: 20
       cumulativetodelta/servicegraph:
         initial_value: auto
+      filter/servicegraph_output:
+        error_mode: ignore
+        metric_conditions:
+          - >-
+            metric.name != "traces_service_graph_request_total" and
+            metric.name != "traces_service_graph_request_failed_total"
+          - datapoint.value_int == 0
       batch/traces:
         timeout: 1s
         send_batch_size: 256
@@ -86,5 +93,5 @@ data:
           exporters: [service_graph]
         metrics/servicegraph:
           receivers: [service_graph]
-          processors: [memory_limiter, cumulativetodelta/servicegraph, batch/servicegraph_metrics]
+          processors: [memory_limiter, cumulativetodelta/servicegraph, filter/servicegraph_output, batch/servicegraph_metrics]
           exporters: [kafka/servicegraph_metrics]

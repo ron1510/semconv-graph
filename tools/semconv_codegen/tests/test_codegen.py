@@ -387,11 +387,11 @@ def test_real_arangodb_schema_contains_every_graph_type_and_dimension_once() -> 
     document = json.loads(_render_arangodb_schema(registry, paths.upstream_lock))
     attributes = document["property_aliases"]["attributes"]
 
-    assert len(dimensions) == 84
+    assert len(dimensions) == 90
     assert tuple(attributes) == tuple(sorted(dimensions))
     assert len(attributes) == len(set(attributes))
     assert not any(name.endswith((".label", ".annotation", ".selector")) for name in attributes)
-    assert len(document["vertex_collections"]) == 29
+    assert len(document["vertex_collections"]) == 32
     assert len(document["edge_collections"]) == 9
     assert {item["semantic_type"] for item in document["vertex_collections"]} == codegen.service_graph_entity_names(
         registry

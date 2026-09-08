@@ -53,6 +53,26 @@ attributes enrich an entity but do not change its identity. Array and template
 attributes retain their registry types; template fields such as
 `k8s.pod.label.<key>` are exposed as canonical dotted attributes.
 
+### ETL hierarchy
+
+The local ETL extension models observed execution topology with hierarchical
+identity:
+
+| Entity | Identifying fields | Descriptive fields |
+| --- | --- | --- |
+| `etl.pipeline` | `etl.pipeline.id` | `etl.pipeline.name` |
+| `etl.run` | `etl.pipeline.id`, `etl.run.id` | `etl.run.name` |
+| `etl.part.run` | `etl.pipeline.id`, `etl.run.id`, `etl.part.run.id` | `etl.part.name` |
+
+The registry defines `Pipeline -> contains -> Run -> contains -> Part Run`.
+Retries preserve the same logical Part Run identity. A later Pipeline Run uses
+a new Run ID and therefore creates a new Run and Part Run.
+
+Extraction is additive: Pipeline identity alone creates only a Pipeline;
+adding Run identity creates the Run and first relationship; complete Part Run
+identity creates the full hierarchy. ETL executions without a matched
+interaction remain undiscovered.
+
 ## Relationships
 
 A relationship names a directed edge between entity types:

@@ -19,6 +19,14 @@ def test_servicegraph_dimensions_come_from_participating_entity_refs() -> None:
     assert "service.namespace" in dimensions
     assert "k8s.pod.uid" in dimensions
     assert "http.route" in dimensions
+    assert {
+        "etl.pipeline.id",
+        "etl.pipeline.name",
+        "etl.run.id",
+        "etl.run.name",
+        "etl.part.run.id",
+        "etl.part.name",
+    } <= set(dimensions)
     assert "k8s.pod.label" not in dimensions
     assert "k8s.pod.annotation" not in dimensions
 

@@ -25,6 +25,19 @@ data:
       batch/traces:
         timeout: 1s
         send_batch_size: 256
+      {{- if .Values.rootSpanDiscovery.enabled }}
+      filter/root_span_discovery:
+        error_mode: ignore
+        trace_conditions:
+          - context: span
+            conditions:
+              - >-
+                not IsRootSpan() or
+                attributes[{{ .Values.rootSpanDiscovery.markerAttribute | quote }}] != true
+      batch/root_spans:
+        timeout: 1s
+        send_batch_size: 256
+      {{- end }}
       {{- if .Values.entityEvents.enabled }}
       filter/entity_events:
         error_mode: ignore
@@ -43,6 +56,22 @@ data:
         send_batch_size: 256
       {{- end }}
     exporters:
+      {{- if eq .Values.backend.mode "singleWriter" }}
+      otlp/servicegraph_backend:
+        endpoint: {{ include "servicegraph-collector.fullname" . }}-backend-headless.{{ .Release.Namespace }}.svc:4317
+        timeout: 5s
+        tls:
+          insecure: true
+        sending_queue:
+          enabled: true
+          sizer: items
+          queue_size: {{ .Values.router.queueSize }}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 0s
+      {{- else }}
       load_balancing:
         routing_key: traceID
         protocol:
@@ -76,6 +105,7 @@ data:
           initial_interval: 1s
           max_interval: 30s
           max_elapsed_time: 0s
+      {{- end }}
       {{- if .Values.entityEvents.enabled }}
       kafka/entity_events:
         brokers:
@@ -112,16 +142,62 @@ data:
           max_interval: 30s
           max_elapsed_time: 0s
       {{- end }}
+      {{- if .Values.rootSpanDiscovery.enabled }}
+      kafka/root_spans:
+        brokers:
+          {{- range .Values.streamContract.kafka.brokers }}
+          - {{ . | quote }}
+          {{- end }}
+        traces:
+          topic: {{ .Values.streamContract.topics.rootSpans | quote }}
+          encoding: otlp_json
+        {{- if eq .Values.streamContract.kafka.security.protocol "SASL_SSL" }}
+        tls:
+          insecure: false
+          insecure_skip_verify: false
+        {{- end }}
+        {{- if ne .Values.streamContract.kafka.security.protocol "PLAINTEXT" }}
+        auth:
+          sasl:
+            username: ${env:KAFKA_SASL_USERNAME}
+            password: ${env:KAFKA_SASL_PASSWORD}
+            mechanism: {{ .Values.streamContract.kafka.security.saslMechanism }}
+        {{- end }}
+        producer:
+          compression: gzip
+          required_acks: -1
+          allow_auto_topic_creation: false
+        sending_queue:
+          enabled: true
+          sizer: items
+          num_consumers: 4
+          queue_size: 10000
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 0s
+      {{- end }}
     service:
       extensions: [health_check]
       pipelines:
         traces:
           receivers: [otlp]
           processors: [memory_limiter, batch/traces]
+          {{- if eq .Values.backend.mode "singleWriter" }}
+          exporters: [otlp/servicegraph_backend]
+          {{- else }}
           exporters: [load_balancing]
+          {{- end }}
         {{- if .Values.entityEvents.enabled }}
         logs/entity_events:
           receivers: [otlp]
           processors: [memory_limiter, filter/entity_events, batch/entity_events]
           exporters: [kafka/entity_events]
+        {{- end }}
+        {{- if .Values.rootSpanDiscovery.enabled }}
+        traces/root_span_discovery:
+          receivers: [otlp]
+          processors: [memory_limiter, filter/root_span_discovery, batch/root_spans]
+          exporters: [kafka/root_spans]
         {{- end }}

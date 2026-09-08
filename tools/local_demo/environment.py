@@ -78,9 +78,11 @@ class DemoEnvironment:
     resource_suffix: str | None = None
     image_tag_prefix: str = "e2e"
     announce_prefix: str = "servicegraph-e2e"
+    with_ingest_pipeline: bool = False
     arango_host_url: str | None = field(default=None, init=False)
     kafka_host_address: str | None = field(default=None, init=False)
     gremlin_forward: PortForward | None = field(default=None, init=False)
+    collector_forward: PortForward | None = field(default=None, init=False)
 
     @property
     def kubeconfig(self) -> Path:
@@ -97,6 +99,10 @@ class DemoEnvironment:
     @property
     def gremlin_image(self) -> str:
         return f"extended-otel-servicegraph-gremlin:{self.image_tag}"
+
+    @property
+    def flink_image(self) -> str:
+        return f"extended-otel-flink-runtime:{self.image_tag}"
 
     @property
     def image_tag(self) -> str:
@@ -138,7 +144,10 @@ class DemoEnvironment:
             timeout=600,
             include_kubeconfig=False,
         )
-        for image in (self.indexer_image, self.gremlin_image):
+        images = [self.indexer_image, self.gremlin_image]
+        if self.with_ingest_pipeline:
+            images.append(self.flink_image)
+        for image in images:
             self.run(
                 ["kind", "load", "docker-image", image, "--name", self.cluster_name],
                 timeout=600,
@@ -151,6 +160,9 @@ class DemoEnvironment:
         self._create_secret("servicegraph-arangodb-writer", "root", ARANGO_ROOT_PASSWORD)
         self._announce("installing topology initializer and indexer")
         self._install_indexer()
+        if self.with_ingest_pipeline:
+            self._announce("installing Collector and Flink ingest pipeline")
+            self._install_ingest_pipeline()
         self._create_read_only_user()
         self._create_secret("servicegraph-arangodb-reader", "servicegraph-reader", ARANGO_READER_PASSWORD)
         self._announce("installing read-only Gremlin Server")
@@ -169,6 +181,7 @@ class DemoEnvironment:
         )
 
     def cleanup(self) -> None:
+        self._close_collector_forward()
         self._close_gremlin_forward()
         self.run(
             ["docker", "rm", "--force", self.arango_container, self.redpanda_container],
@@ -182,24 +195,39 @@ class DemoEnvironment:
             check=False,
             include_kubeconfig=False,
         )
-        for image in (self.indexer_image, self.gremlin_image):
+        images = [self.indexer_image, self.gremlin_image]
+        if self.with_ingest_pipeline:
+            images.append(self.flink_image)
+        for image in images:
             self.run(["docker", "image", "rm", image], timeout=120, check=False, include_kubeconfig=False)
         self.kubeconfig.unlink(missing_ok=True)
 
     def close(self) -> None:
+        self._close_collector_forward()
         self._close_gremlin_forward()
 
     def diagnostics(self) -> str:
         sections: list[str] = []
         if self.kubeconfig.exists():
-            for command in (
+            commands = [
                 ["get", "pods", "-o", "wide"],
                 ["get", "jobs"],
                 ["get", "events", "--sort-by=.metadata.creationTimestamp"],
                 ["logs", "deployment/servicegraph-indexer", "--tail=200"],
                 ["logs", "deployment/servicegraph-indexer", "--previous", "--tail=200"],
                 ["logs", "deployment/servicegraph-gremlin", "--tail=200"],
-            ):
+            ]
+            if self.with_ingest_pipeline:
+                commands.extend(
+                    (
+                        ["logs", "deployment/servicegraph-collector-router", "--tail=200"],
+                        ["logs", "statefulset/servicegraph-collector-backend", "--tail=200"],
+                        ["logs", "deployment/processing-servicegraph-flink-jobmanager", "--tail=200"],
+                        ["logs", "deployment/processing-servicegraph-flink-taskmanager", "--tail=200"],
+                        ["logs", "job/processing-servicegraph-flink-submitter", "--tail=200"],
+                    )
+                )
+            for command in commands:
                 result = self.kubectl(*command, check=False, timeout=60)
                 sections.append(f"$ kubectl {' '.join(command)}\n{result.stdout}{result.stderr}")
         for container in (self.redpanda_container, self.arango_container):
@@ -230,7 +258,44 @@ class DemoEnvironment:
         finally:
             producer.close(timeout=10)
 
-    def committed_offset(self) -> int:
+    def send_otlp_traces(self, payload: bytes) -> None:
+        if not self.with_ingest_pipeline:
+            raise RuntimeError("Collector and Flink are not enabled in this environment")
+        if self.collector_forward is None:
+            self._start_collector_forward()
+        forward = self.collector_forward
+        if forward is None:
+            raise RuntimeError("Collector port-forward is not initialized")
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{forward.local_port}/v1/traces",
+            data=payload,
+            headers={"content-type": "application/x-protobuf"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                raise RuntimeError(f"Collector rejected OTLP traces with HTTP {response.status}")
+            response.read()
+
+    def topic_values(self, topic: str, *, timeout_ms: int = 2_000) -> list[str]:
+        from kafka import KafkaConsumer
+
+        address = self.kafka_host_address
+        if address is None:
+            raise RuntimeError("Redpanda host address is not initialized")
+        consumer = KafkaConsumer(
+            topic,
+            bootstrap_servers=address,
+            auto_offset_reset="earliest",
+            enable_auto_commit=False,
+            consumer_timeout_ms=timeout_ms,
+        )
+        try:
+            return [record.value.decode("utf-8") for record in consumer]
+        finally:
+            consumer.close()
+
+    def committed_offset(self, group_id: str = "servicegraph-arangodb-indexer") -> int:
         from kafka import KafkaAdminClient
 
         address = self.kafka_host_address
@@ -238,7 +303,7 @@ class DemoEnvironment:
             raise RuntimeError("Redpanda host address is not initialized")
         admin = KafkaAdminClient(bootstrap_servers=address)
         try:
-            offsets = admin.list_consumer_group_offsets("servicegraph-arangodb-indexer")
+            offsets = admin.list_consumer_group_offsets(group_id)
             return max((metadata.offset for metadata in offsets.values()), default=0)
         finally:
             admin.close()
@@ -400,6 +465,24 @@ class DemoEnvironment:
             timeout=1200,
             include_kubeconfig=False,
         )
+        if self.with_ingest_pipeline:
+            maven_settings = os.getenv("MAVEN_SETTINGS")
+            maven_secret = ["--secret", f"id=maven_settings,src={maven_settings}"] if maven_settings else []
+            self.run(
+                [
+                    "docker",
+                    "build",
+                    "--tag",
+                    self.flink_image,
+                    "--file",
+                    "services/otel-servicegraph-diff/Dockerfile",
+                    *pip_arguments,
+                    *maven_secret,
+                    ".",
+                ],
+                timeout=1800,
+                include_kubeconfig=False,
+            )
         gremlin_arguments: list[str] = []
         for name in ("TINKERPOP_SERVER_URL", "MAVEN_REPOSITORY_URL"):
             if value := os.getenv(name):
@@ -502,9 +585,15 @@ class DemoEnvironment:
         try:
             admin = KafkaAdminClient(bootstrap_servers=address, request_timeout_ms=5_000)
             try:
-                admin.create_topics(
-                    (NewTopic("graph.elements.events", 1, 1, topic_configs={"cleanup.policy": "compact"}),)
-                )
+                topics = [NewTopic("graph.elements.events", 1, 1, topic_configs={"cleanup.policy": "compact"})]
+                if self.with_ingest_pipeline:
+                    topics.extend(
+                        (
+                            NewTopic("otel.servicegraph.metrics", 1, 1),
+                            NewTopic("otel.root.spans", 1, 1),
+                        )
+                    )
+                admin.create_topics(tuple(topics))
             finally:
                 admin.close()
             return True
@@ -604,6 +693,84 @@ class DemoEnvironment:
             timeout=360,
         )
 
+    def _install_ingest_pipeline(self) -> None:
+        self.run(
+            [
+                "helm",
+                "upgrade",
+                "--install",
+                "collection",
+                "deploy/helm/servicegraph-collector",
+                "--namespace",
+                self.namespace,
+                "--set",
+                "fullnameOverride=servicegraph-collector",
+                "--set",
+                "streamContract.kafka.brokers[0]=servicegraph-redpanda:9092",
+                "--set",
+                "streamContract.kafka.security.protocol=PLAINTEXT",
+                "--set",
+                "rootSpanDiscovery.enabled=true",
+                "--wait",
+                "--timeout",
+                "5m",
+            ],
+            timeout=360,
+        )
+        self.run(
+            [
+                "helm",
+                "upgrade",
+                "--install",
+                "processing",
+                "deploy/helm/servicegraph-flink",
+                "--namespace",
+                self.namespace,
+                "--set",
+                f"image.ref={self.flink_image}",
+                "--set",
+                "image.pullPolicy=IfNotPresent",
+                "--set",
+                "application.parallelism=1",
+                "--set",
+                "application.jobManagerReplicas=1",
+                "--set",
+                "application.taskManagerReplicas=1",
+                "--set",
+                "application.taskManagerSlots=1",
+                "--set",
+                "streamContract.kafka.brokers[0]=servicegraph-redpanda:9092",
+                "--set",
+                "streamContract.kafka.security.protocol=PLAINTEXT",
+                "--set",
+                "rootSpanDiscovery.enabled=true",
+                "--set",
+                "storage.storageClassName=standard",
+                "--set",
+                "storage.size=2Gi",
+                "--set",
+                "storage.accessModes[0]=ReadWriteOnce",
+                "--set",
+                "storage.retainClaim=false",
+                "--set",
+                "podSecurityContext.runAsUser=9999",
+                "--set",
+                "podSecurityContext.runAsGroup=9999",
+                "--set",
+                "podSecurityContext.fsGroup=9999",
+                "--set",
+                "job.interactionTtlSeconds=15",
+                "--set",
+                "job.allowedLatenessSeconds=1",
+                "--set",
+                "job.checkpointIntervalMs=5000",
+                "--wait",
+                "--timeout",
+                "10m",
+            ],
+            timeout=660,
+        )
+
     def _create_read_only_user(self) -> None:
         try:
             self._arango_request(
@@ -701,10 +868,50 @@ class DemoEnvironment:
 
         wait_for("Gremlin GraphBinary endpoint", 60, ready)
 
+    def _start_collector_forward(self) -> None:
+        local_port = _free_port()
+        process = subprocess.Popen(
+            [
+                "kubectl",
+                "port-forward",
+                "--namespace",
+                self.namespace,
+                "service/servicegraph-collector-router",
+                f"{local_port}:4318",
+                "--address",
+                "127.0.0.1",
+            ],
+            cwd=self.root,
+            env=self.command_environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        self.collector_forward = PortForward(process, local_port)
+
+        def ready() -> bool:
+            if process.poll() is not None:
+                output = process.stdout.read() if process.stdout is not None else ""
+                raise RuntimeError(f"Collector port-forward failed: {output}")
+            try:
+                with socket.create_connection(("127.0.0.1", local_port), timeout=1):
+                    return True
+            except OSError:
+                return False
+
+        wait_for("Collector OTLP/HTTP endpoint", 30, ready)
+
     def _close_gremlin_forward(self) -> None:
         if self.gremlin_forward is not None:
             self.gremlin_forward.close()
             self.gremlin_forward = None
+
+    def _close_collector_forward(self) -> None:
+        if self.collector_forward is not None:
+            self.collector_forward.close()
+            self.collector_forward = None
 
     def _announce(self, message: str) -> None:
         print(f"[{self.announce_prefix}] {message}", flush=True)

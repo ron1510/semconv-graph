@@ -42,7 +42,7 @@ spec:
           image: {{ include "servicegraph-collector.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["--config=/etc/otelcol/config.yaml"]
-          {{- if and .Values.entityEvents.enabled (ne .Values.streamContract.kafka.security.protocol "PLAINTEXT") }}
+          {{- if and (or .Values.entityEvents.enabled .Values.rootSpanDiscovery.enabled) (ne .Values.streamContract.kafka.security.protocol "PLAINTEXT") }}
           env:
             - name: KAFKA_SASL_USERNAME
               valueFrom:

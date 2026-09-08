@@ -1,0 +1,31 @@
+groups:
+  - id: registry.etl
+    type: attribute_group
+    display_name: ETL Attributes
+    brief: Attributes describing ETL pipelines and their executions.
+    attributes:
+      - id: etl.pipeline.id
+        type: string
+        stability: development
+        brief: The stable identifier of an ETL pipeline definition.
+      - id: etl.pipeline.name
+        type: string
+        stability: development
+        brief: The human-readable name of an ETL pipeline definition.
+      - id: etl.run.id
+        type: string
+        stability: development
+        brief: The identifier of an ETL pipeline execution within its pipeline.
+      - id: etl.run.name
+        type: string
+        stability: development
+        brief: The human-readable name of an ETL pipeline execution.
+      - id: etl.part.run.id
+        type: string
+        stability: development
+        brief: The identifier of a logical ETL part execution within its pipeline run.
+      - id: etl.part.name
+        type: string
+        stability: development
+        brief: The human-readable name of an ETL part.
+

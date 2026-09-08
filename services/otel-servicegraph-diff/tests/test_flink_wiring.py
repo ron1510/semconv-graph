@@ -19,7 +19,7 @@ from pyflink.datastream.connectors.kafka import DeliveryGuarantee, KafkaOffsetRe
 
 from otel_servicegraph_diff import flink_job
 from otel_servicegraph_diff.config import GraphEngineConfig
-from otel_servicegraph_diff.engine.elements import GraphContribution, GraphNode, apply_contribution
+from otel_servicegraph_diff.engine.elements import GraphContribution, GraphEdge, GraphNode, apply_contribution, edge_id
 from otel_servicegraph_diff.ingest.contributions import contributions_from_servicegraph_datapoint
 from otel_servicegraph_diff.ingest.metrics import SERVICE_GRAPH_REQUEST_TOTAL
 
@@ -73,7 +73,7 @@ def test_run_flink_job_configures_runtime_and_executes_once(monkeypatch: pytest.
     env.enable_checkpointing.assert_called_once_with(5_000)
     flink_job._kafka_source.assert_called_once_with(config)  # pyright: ignore[reportFunctionMemberAccess]
     flink_job._kafka_sink.assert_called_once_with(config, config.output_topic)  # pyright: ignore[reportFunctionMemberAccess]
-    configure_graph.assert_called_once_with(env, config, source, sink, None)
+    configure_graph.assert_called_once_with(env, config, source, sink, None, None)
     env.execute.assert_called_once_with("servicegraph-graph-element-engine")
 
 
@@ -106,7 +106,39 @@ def test_run_flink_job_builds_independent_optional_entity_source(monkeypatch: py
             group_id="graph-element-engine-entities",
         ),
     ]
-    configure_graph.assert_called_once_with(env, config, metrics_source, sink, entity_source)
+    configure_graph.assert_called_once_with(env, config, metrics_source, sink, entity_source, None)
+
+
+def test_run_flink_job_builds_independent_optional_root_span_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = GraphEngineConfig(root_span_input_topic="otel.root.spans")
+    env = MagicMock()
+    metrics_source = object()
+    root_span_source = object()
+    sink = object()
+    source_builder = MagicMock(side_effect=[metrics_source, root_span_source])
+    configure_graph = MagicMock()
+
+    monkeypatch.setattr(flink_job, "Configuration", _FakeConfiguration)
+    monkeypatch.setattr(
+        flink_job,
+        "StreamExecutionEnvironment",
+        SimpleNamespace(get_execution_environment=MagicMock(return_value=env)),
+    )
+    monkeypatch.setattr(flink_job, "_kafka_source", source_builder)
+    monkeypatch.setattr(flink_job, "_kafka_sink", MagicMock(return_value=sink))
+    monkeypatch.setattr(flink_job, "_configure_job_graph", configure_graph)
+
+    flink_job.run_flink_job(config)
+
+    assert source_builder.call_args_list == [
+        call(config),
+        call(
+            config,
+            topic="otel.root.spans",
+            group_id="graph-element-engine-root-spans",
+        ),
+    ]
+    configure_graph.assert_called_once_with(env, config, metrics_source, sink, None, root_span_source)
 
 
 def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,7 +157,11 @@ def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pyt
     monkeypatch.setattr(flink_job, "Duration", duration)
     monkeypatch.setattr(flink_job, "Types", SimpleNamespace(STRING=MagicMock(return_value="string")))
 
-    config = GraphEngineConfig(allowed_lateness_seconds=3, contributor_ttl_seconds=10)
+    config = GraphEngineConfig(
+        allowed_lateness_seconds=3,
+        contributor_ttl_seconds=10,
+        element_ttl_seconds={"service": 30},
+    )
     flink_job._configure_job_graph(
         cast(Any, env),
         config,
@@ -166,6 +202,9 @@ def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pyt
     watermark_named.uid.assert_called_once_with("graph-v3-watermarks")
     contributions.key_by.assert_called_once_with(flink_job._element_key, key_type="string")
     keyed.process.assert_called_once_with(ANY)
+    lifecycle = keyed.process.call_args.args[0]
+    assert lifecycle._ttl_seconds == 10
+    assert lifecycle._element_ttl_seconds == {"service": 30}
     process_operator.name.assert_called_once_with("graph-element-lifecycle")
     process_named.uid.assert_called_once_with("graph-v3-element-lifecycle")
     events.map.assert_called_once_with(flink_job._event_row, output_type=flink_job.OUTPUT_ROW_TYPE)
@@ -235,6 +274,60 @@ def test_configure_job_graph_unions_checkpointed_entity_reconciliation(monkeypat
         "graph-v3-reconcile-otel-entity-events"
     )
     metric_contributions.union.assert_called_once_with(entity_mutations)
+
+
+def test_configure_job_graph_unions_root_span_node_contributions(monkeypatch: pytest.MonkeyPatch) -> None:
+    env = MagicMock()
+    metric_source = object()
+    root_span_source = object()
+    sink = object()
+    metric_source_operator = MagicMock()
+    root_source_operator = MagicMock()
+    env.from_source.side_effect = [metric_source_operator, root_source_operator]
+    metric_contributions = (
+        metric_source_operator.name.return_value.uid.return_value.flat_map.return_value.name.return_value.uid.return_value
+    )
+    root_payloads = root_source_operator.name.return_value.uid.return_value
+    root_contributions = root_payloads.flat_map.return_value.name.return_value.uid.return_value
+    merged = metric_contributions.union.return_value
+    timestamped = merged.assign_timestamps_and_watermarks.return_value.name.return_value.uid.return_value
+    events = timestamped.key_by.return_value.process.return_value.name.return_value.uid.return_value
+    rows = events.map.return_value.name.return_value.uid.return_value
+    rows.sink_to.return_value.name.return_value.uid.return_value = None
+    watermark = MagicMock()
+    watermark.with_idleness.return_value = watermark
+    watermark.with_timestamp_assigner.return_value = watermark
+    monkeypatch.setattr(
+        flink_job,
+        "WatermarkStrategy",
+        SimpleNamespace(
+            no_watermarks=MagicMock(return_value="no-watermarks"),
+            for_bounded_out_of_orderness=MagicMock(return_value=watermark),
+        ),
+    )
+    monkeypatch.setattr(flink_job, "Duration", SimpleNamespace(of_seconds=MagicMock(side_effect=_duration)))
+    monkeypatch.setattr(flink_job, "Types", SimpleNamespace(STRING=MagicMock(return_value="string")))
+
+    flink_job._configure_job_graph(
+        cast(Any, env),
+        GraphEngineConfig(root_span_input_topic="otel.root.spans"),
+        cast(Any, metric_source),
+        cast(Any, sink),
+        root_span_source=cast(Any, root_span_source),
+    )
+
+    assert env.from_source.call_args_list == [
+        call(metric_source, "no-watermarks", "servicegraph-otlp-json"),
+        call(root_span_source, "no-watermarks", "otel-root-spans-json"),
+    ]
+    root_source_operator.name.assert_called_once_with("root-spans-kafka-source")
+    root_source_operator.name.return_value.uid.assert_called_once_with("graph-v3-root-spans-kafka-source")
+    root_payloads.flat_map.assert_called_once_with(ANY)
+    root_payloads.flat_map.return_value.name.assert_called_once_with("extract-root-span-node-contributions")
+    root_payloads.flat_map.return_value.name.return_value.uid.assert_called_once_with(
+        "graph-v3-extract-root-span-nodes"
+    )
+    metric_contributions.union.assert_called_once_with(root_contributions)
 
 
 def test_kafka_source_maps_all_contract_properties(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -367,6 +460,38 @@ def test_payload_parser_yields_multiple_points_and_ignores_unknown_metrics() -> 
     counter.inc.assert_not_called()
 
 
+def test_root_span_payload_parser_counts_rejections_and_yields_nodes(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    contribution = GraphContribution(
+        contributor_id="root-span:one",
+        observed_at_unix_nano=1_234_567_890,
+        element=GraphNode(id="service:etl", type="service"),
+    )
+    rejection = flink_job.IngestRejection(reason="invalid_root_span", detail="bad timestamp")
+    monkeypatch.setattr(
+        flink_job,
+        "iter_otlp_json_root_span_contributions",
+        MagicMock(return_value=iter((rejection, contribution))),
+    )
+    counter = MagicMock()
+    runtime = MagicMock()
+    runtime.get_metrics_group.return_value.counter.return_value = counter
+    parser = flink_job._RootSpanPayloadParser()
+
+    with pytest.raises(RuntimeError, match="before operator initialization"):
+        parser._require_rejected_inputs()
+
+    parser.open(runtime)
+    with caplog.at_level("WARNING"):
+        assert tuple(parser.flat_map("payload")) == (contribution,)
+
+    runtime.get_metrics_group.return_value.counter.assert_called_once_with("rejected_root_spans")
+    counter.inc.assert_called_once_with()
+    assert "discarding rejected root-span input" in caplog.text
+
+
 def test_process_open_registers_versioned_state_without_framework_ttl(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -424,6 +549,46 @@ def test_small_stream_adapters_preserve_identity_and_time() -> None:
     row = flink_job._event_row(result.event)
     assert row[0] == result.event.element_id
     assert '"operation":"upsert"' in row[1]
+
+
+def test_element_ttl_policy_applies_to_nodes_and_caps_edges_by_endpoints() -> None:
+    configured = {
+        "service": 900,
+        "etl.run": 3_600,
+        "calls": 120,
+        "contains": 7_200,
+    }
+    service = GraphNode(id="service:checkout", type="service")
+    pod = GraphNode(id="k8s.pod:pod-1", type="k8s.pod")
+    calls = GraphEdge(
+        id=edge_id("service:checkout", "calls", "service:payments"),
+        type="calls",
+        source_id="service:checkout",
+        target_id="service:payments",
+    )
+    contains = GraphEdge(
+        id=edge_id("etl.pipeline:orders", "contains", "etl.run:orders:run-1"),
+        type="contains",
+        source_id="etl.pipeline:orders",
+        target_id="etl.run:orders:run-1",
+    )
+
+    assert flink_job._element_ttl_seconds(service, 300, configured) == 900
+    assert flink_job._element_ttl_seconds(pod, 300, configured) == 300
+    assert flink_job._element_ttl_seconds(calls, 300, configured) == 120
+    assert flink_job._element_ttl_seconds(contains, 300, configured) == 300
+
+
+def test_element_ttl_policy_rejects_malformed_edge_endpoint_ids() -> None:
+    edge = GraphEdge(
+        id=edge_id("malformed", "calls", "service:payments"),
+        type="calls",
+        source_id="malformed",
+        target_id="service:payments",
+    )
+
+    with pytest.raises(ValueError, match="semantic type prefix"):
+        flink_job._element_ttl_seconds(edge, 300, {})
 
 
 class _FakeConfiguration:

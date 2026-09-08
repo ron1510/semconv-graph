@@ -124,7 +124,7 @@ kubectl port-forward --namespace servicegraph-system `
 Install and use the typed GraphBinary client:
 
 ```console
-pip install "extended-opentelemetry-semconv[gremlin]==0.4.0"
+pip install "extended-opentelemetry-semconv[gremlin]==0.5.0"
 ```
 
 ```python

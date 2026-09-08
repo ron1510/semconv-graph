@@ -30,20 +30,22 @@ router:
   podAnnotations: {}
 
 backend:
-  # Keep this at two: changing the fixed ring remaps in-flight traces.
-  replicaCount: 2
+  # singleWriter minimizes repeated metric-series writes. Use horizontal only
+  # when one backend cannot hold the required trace-pairing workload.
+  mode: singleWriter
+  replicaCount: 1
   serviceGraph:
     storeTtl: 10s
     storeMaxItems: 10000
-    metricsFlushInterval: 5s
-    metricBatchSize: 64
+    metricsFlushInterval: 30s
+    metricBatchSize: 256
   resources:
     requests:
-      cpu: 250m
-      memory: 384Mi
+      cpu: 500m
+      memory: 768Mi
     limits:
-      cpu: "1"
-      memory: 512Mi
+      cpu: "2"
+      memory: 1Gi
   podAnnotations: {}
 
 streamContract:
@@ -59,9 +61,14 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
+    rootSpans: otel.root.spans
 
 entityEvents:
   enabled: false
+
+rootSpanDiscovery:
+  enabled: false
+  markerAttribute: semconv.graph.discovery
 
 podSecurityContext:
   runAsNonRoot: true

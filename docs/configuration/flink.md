@@ -32,6 +32,12 @@ job:
   allowNonRestoredState: false
   groupId: graph-element-engine
   interactionTtlSeconds: 300
+  elementTtlSeconds:
+    service: 900
+    etl.pipeline: 86400
+    etl.run: 3600
+    etl.part.run: 1800
+    calls: 300
   allowedLatenessSeconds: 60
   checkpointIntervalMs: 30000
   restartAttempts: 3
@@ -43,6 +49,7 @@ job:
 | `fixedJobId` | Stable 32-hex job ID used for recovery and duplicate prevention |
 | `allowNonRestoredState` | Permit an upgrade to discard savepoint state that no longer maps to an operator |
 | `interactionTtlSeconds` | Inactivity period before an internal contributor is retracted |
+| `elementTtlSeconds` | Optional inactivity thresholds keyed by semantic node or relationship type |
 | `allowedLatenessSeconds` | Out-of-order bound used to generate watermarks |
 | `checkpointIntervalMs` | Source-offset and state checkpoint interval |
 | `restartAttempts` | Fixed-delay job restart attempts |
@@ -51,6 +58,16 @@ job:
 Contributor expiry is owned by event-time and processing-time business timers.
 Generic Flink state TTL is deliberately disabled because it cannot emit the
 required graph delete when it removes state.
+
+Each service-graph contribution uses the configured TTL for its semantic node
+type, falling back to `interactionTtlSeconds`. An edge inherits the shorter TTL
+of its endpoint node types. A configured relationship TTL can shorten that
+period but cannot make the edge outlive either endpoint. Explicit entity-event
+report intervals remain authoritative for those contributions.
+
+Changing a type policy does not rewrite checkpointed snapshots immediately.
+The new TTL applies when each contributor is next observed and its absolute
+event-time and processing-time expiry timestamps are refreshed.
 
 ## Optional entity-event source
 
@@ -130,6 +147,38 @@ merged under an incomplete identity. Output remains project schema `2.0` on
 `graph.elements.events`; Flink does not emit standard OTel entity events or
 historical state.
 
+## Optional root-span discovery source
+
+Enable the independent OTLP trace source with:
+
+```yaml
+streamContract:
+  topics:
+    rootSpans: otel.root.spans
+
+rootSpanDiscovery:
+  enabled: true
+  groupId: graph-element-engine-root-spans
+```
+
+The source starts from committed offsets or `earliest` and uses the same Kafka
+security settings as the metrics source. For each root span, Flink combines
+scalar Resource and span attributes, rejects conflicting values for modeled
+semantic fields, and calls the generated entity extractor once. The span end
+timestamp becomes the observation timestamp.
+
+Every identifiable semantic entity becomes a node contribution. `AppEndpoint`
+is permitted only for server-kind roots. A valid root with no identifiable
+entity produces nothing, and this lane never emits edges or metric deltas.
+
+Contributor identity excludes trace IDs, span IDs, and timestamps. Repeated
+equivalent executions therefore refresh one contributor, while changed
+canonical semantic attributes create distinct contributors. Nodes inferred by
+servicegraph metrics and root spans merge under the same deterministic element
+ID and expire only after their final contributor disappears. A node discovered
+only from a root span remains disconnected until servicegraph or an explicit
+entity event supplies a relationship.
+
 ## Kafka contract
 
 The input topic contains OTLP JSON metrics from the Collector. The output topic
@@ -148,6 +197,7 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
+    rootSpans: otel.root.spans
     interactionEvents: graph.elements.events
 ```
 
@@ -157,6 +207,8 @@ at-least-once.
 
 When enabled, the entity-event source follows the same offset and security
 rules but uses `entityEvents.groupId` independently.
+
+The root-span source likewise uses `rootSpanDiscovery.groupId` independently.
 
 Supported protocols are `PLAINTEXT`, `SASL_PLAINTEXT`, and `SASL_SSL`.
 Both SASL modes use the configured SCRAM credentials. `SASL_SSL` validates
@@ -251,6 +303,8 @@ The chart maps values to these application variables:
 | `ENTITY_EVENTS_INPUT_TOPIC` | `streamContract.topics.entityEvents` when `entityEvents.enabled=true` |
 | `ENTITY_EVENTS_GROUP_ID` | `entityEvents.groupId` when enabled |
 | `ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS` | `entityEvents.reportIntervalGraceSeconds` when enabled |
+| `ROOT_SPANS_INPUT_TOPIC` | `streamContract.topics.rootSpans` when `rootSpanDiscovery.enabled=true` |
+| `ROOT_SPANS_GROUP_ID` | `rootSpanDiscovery.groupId` when enabled |
 | `INTERACTION_DIFF_TTL_SECONDS` | `job.interactionTtlSeconds` |
 | `INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS` | `job.allowedLatenessSeconds` |
 | `FLINK_CHECKPOINT_INTERVAL_MS` | `job.checkpointIntervalMs` |

@@ -1,24 +1,26 @@
 # Collector Configuration
 
-The Collector chart deploys a fixed two-layer topology:
+The Collector chart deploys a two-layer topology:
 
 - two stateless OTLP routers;
-- two stateful service-graph backends.
+- one stateful service-graph backend by default.
 
-Both replica counts are fixed at two by the chart schema.
+Router replicas are fixed at two. `backend.mode=singleWriter` requires exactly
+one backend. `backend.mode=horizontal` requires at least two.
 
 ## Trace-affine routing
 
-Every router uses the same static hash ring containing the stable DNS names of
-`backend-0` and `backend-1`. The load-balancing exporter hashes `traceID`, so
-all spans for one trace reach the same backend.
+In default `singleWriter` mode, both routers use a queued OTLP exporter targeting
+the one backend Service. All spans therefore reach the same connector without
+hashing, and each service-graph metric series has one writer.
 
-This is required because the service-graph connector pairs client and server
-spans in memory. Sending parts of a trace to different backends can create
-unpaired spans and missing edges.
+Horizontal mode renders the stable ordinal backend ring and hashes `traceID`.
+This is required because the connector pairs client and server spans in memory;
+sending parts of a trace to different backends creates unpaired spans and
+missing edges.
 
-Changing the backend count remaps the hash ring and can split in-flight traces.
-Treat it as a planned topology migration, not routine autoscaling.
+Changing modes or the horizontal backend count can split in-flight traces.
+Treat either operation as a planned topology migration, not routine autoscaling.
 
 ## OTLP endpoints
 
@@ -68,6 +70,47 @@ creation as the metrics topic. Enabling Collector forwarding does not enable
 the Flink consumer automatically; enable the matching Flink setting and use the
 same topic name.
 
+## Optional root-span discovery
+
+Root-span discovery is disabled by default. Enable it for execution entities
+that do not necessarily participate in a service interaction:
+
+```yaml
+streamContract:
+  topics:
+    rootSpans: otel.root.spans
+
+rootSpanDiscovery:
+  enabled: true
+  markerAttribute: semconv.graph.discovery
+```
+
+The router fans traces into a dedicated filter before batching and Kafka export.
+It retains a span only when both conditions hold:
+
+- `IsRootSpan()` is true;
+- the configured span attribute is the boolean `true`.
+
+Children, unmarked roots, and string values such as `"true"` are dropped from
+this pipeline. Matching spans are exported as gzip-compressed OTLP JSON to
+`streamContract.topics.rootSpans` using the existing Kafka security, retry,
+queue, and acknowledgement settings. The servicegraph trace path is unchanged.
+
+Set the marker when starting the span so a marker-aware sampler can retain it:
+
+```python
+with tracer.start_as_current_span(
+    "customers-import",
+    attributes={"semconv.graph.discovery": True},
+):
+    run_import()
+```
+
+The application SDK must retain and export marked spans. Discovery occurs after
+the root span ends, so one Kafka observation per distinct visible execution is
+unavoidable. Restrict the marker to meaningful operations rather than ordinary
+request roots.
+
 ## Generated dimensions
 
 `deploy/helm/servicegraph-collector/files/dimensions.yaml` is generated from
@@ -82,13 +125,11 @@ it, and review the resulting cardinality.
 
 ## Metric temporality
 
-Each service-graph backend owns an independent cumulative counter stream.
-Publishing both cumulative streams to one Kafka topic would make interleaved
-values resemble counter resets.
-
-The backend pipeline therefore converts its connector-local cumulative metrics
-to delta before Kafka. Flink treats non-zero deltas as activity and ignores idle
-zero deltas.
+The backend pipeline converts connector-local cumulative metrics to delta before
+Kafka. It then keeps only `traces_service_graph_request_total` and
+`traces_service_graph_request_failed_total`, the two counters Flink consumes,
+and drops zero deltas that Flink would ignore. Horizontal backends still own
+independent cumulative streams, so conversion happens separately on each shard.
 
 ## Main values
 
@@ -98,10 +139,13 @@ image:
   tag: "0.156.0"
 
 backend:
+  mode: singleWriter
+  replicaCount: 1
   serviceGraph:
     storeTtl: 10s
     storeMaxItems: 10000
-    metricsFlushInterval: 5s
+    metricsFlushInterval: 30s
+    metricBatchSize: 256
 
 streamContract:
   kafka:
@@ -116,13 +160,20 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
+    rootSpans: otel.root.spans
 
 entityEvents:
   enabled: false
+
+rootSpanDiscovery:
+  enabled: false
+  markerAttribute: semconv.graph.discovery
 ```
 
 `storeTtl` is the span-pairing retention inside the connector. It is separate
-from Flink's contributor TTL.
+from Flink's contributor TTL. Keep Flink's contributor TTL comfortably above
+the flush interval and expected backend restart time; the default 300 seconds
+provides that margin for a 30-second flush.
 
 ## Kafka security
 
@@ -153,12 +204,22 @@ Size these together:
 - router and backend queue sizes;
 - Kafka outage tolerance.
 
+Single-writer mode has a short observation gap while its backend restarts.
+In-flight pairs and unflushed request totals can be lost, but existing graph
+elements remain until Flink's contributor TTL expires. Horizontal mode adds
+pairing capacity but can multiply Kafka writes for series observed by several
+backends.
+
 Traffic between routers and backends is plaintext inside the cluster. Apply
 platform network isolation when this crosses a trust boundary.
 
 The optional entity-event logs pipeline also uses an in-memory queue. A
 prolonged Kafka outage can therefore reject matching entity events, and queue
 contents do not survive router replacement.
+
+The optional root-span pipeline has the same in-memory delivery boundary. Its
+Kafka volume scales with marked roots, not total trace volume; an unmarked trace
+batch produces no records on the discovery topic.
 
 ## Validate
 

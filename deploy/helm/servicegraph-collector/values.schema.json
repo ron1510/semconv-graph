@@ -21,13 +21,31 @@
     },
     "backend": {
       "type": "object",
-      "required": ["replicaCount", "serviceGraph", "resources"],
+      "additionalProperties": false,
+      "required": ["mode", "replicaCount", "serviceGraph", "resources"],
       "properties": {
-        "replicaCount": {"const": 2},
+        "mode": {"enum": ["singleWriter", "horizontal"]},
+        "replicaCount": {"type": "integer", "minimum": 1},
         "serviceGraph": {"type": "object"},
         "resources": {"type": "object"},
         "podAnnotations": {"type": "object"}
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"mode": {"const": "singleWriter"}},
+            "required": ["mode"]
+          },
+          "then": {"properties": {"replicaCount": {"const": 1}}}
+        },
+        {
+          "if": {
+            "properties": {"mode": {"const": "horizontal"}},
+            "required": ["mode"]
+          },
+          "then": {"properties": {"replicaCount": {"minimum": 2}}}
+        }
+      ]
     },
     "streamContract": {
       "type": "object",
@@ -56,7 +74,8 @@
           "required": ["servicegraphMetrics"],
           "properties": {
             "servicegraphMetrics": {"type": "string", "minLength": 1},
-            "entityEvents": {"type": "string", "minLength": 1}
+            "entityEvents": {"type": "string", "minLength": 1},
+            "rootSpans": {"type": "string", "minLength": 1}
           }
         }
       }
@@ -69,6 +88,15 @@
         "enabled": {"type": "boolean"}
       }
     },
+    "rootSpanDiscovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "markerAttribute"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "markerAttribute": {"type": "string", "minLength": 1}
+      }
+    },
     "podSecurityContext": {"type": "object"},
     "containerSecurityContext": {"type": "object"},
     "topologySpreadConstraints": {"type": "array"},
@@ -76,7 +104,29 @@
     "tolerations": {"type": "array"},
     "affinity": {"type": "object"}
   },
-  "required": ["image", "router", "backend", "streamContract", "entityEvents"],
+  "required": ["image", "router", "backend", "streamContract", "entityEvents", "rootSpanDiscovery"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "rootSpanDiscovery": {
+            "properties": {"enabled": {"const": true}},
+            "required": ["enabled"]
+          }
+        },
+        "required": ["rootSpanDiscovery"]
+      },
+      "then": {
+        "properties": {
+          "streamContract": {
+            "properties": {
+              "topics": {"required": ["rootSpans"]}
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "image": {
       "type": "object",

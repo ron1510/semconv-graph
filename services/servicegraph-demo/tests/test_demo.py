@@ -105,3 +105,48 @@ def test_request_encodes_rich_resource_attribute_types() -> None:
     assert attributes["process.pid"].WhichOneof("value") == "int_value"
     assert attributes["telemetry.sdk.language"].string_value
     assert attributes["vcs.ref.head.revision"].string_value
+
+
+def test_etl_demo_keeps_pipeline_on_resource_and_execution_on_client_span() -> None:
+    etl_edge = next(edge for edge in EDGES if edge.etl is not None)
+    request = build_request(
+        (etl_edge,),
+        namespace="shop",
+        instance_id="test",
+        error_rate=0,
+        rng=random.Random(17),
+    )
+
+    client_resource = {
+        attribute.key: attribute.value.string_value
+        for attribute in request.resource_spans[0].resource.attributes
+    }
+    server_resource = {
+        attribute.key: attribute.value.string_value
+        for attribute in request.resource_spans[1].resource.attributes
+    }
+    client_span = request.resource_spans[0].scope_spans[0].spans[0]
+    server_span = request.resource_spans[1].scope_spans[0].spans[0]
+    client_attributes = {attribute.key: attribute.value for attribute in client_span.attributes}
+    server_attributes = {attribute.key: attribute.value.string_value for attribute in server_span.attributes}
+
+    assert client_resource["etl.pipeline.id"] == "catalog-refresh"
+    assert client_resource["etl.pipeline.name"] == "Refresh Catalog"
+    assert "etl.pipeline.id" not in server_resource
+    expected_execution_attributes = {
+        "etl.run.id": "demo-run-001",
+        "etl.run.name": "Scheduled catalog refresh",
+        "etl.part.run.id": "load-products",
+        "etl.part.name": "Load products",
+    }
+    assert {
+        name: client_attributes[name].string_value
+        for name in expected_execution_attributes
+    } == expected_execution_attributes
+    assert client_attributes["semconv.graph.discovery"].bool_value is True
+    assert not set(client_attributes) & set(server_attributes) & {
+        "etl.run.id",
+        "etl.run.name",
+        "etl.part.run.id",
+        "etl.part.name",
+    }

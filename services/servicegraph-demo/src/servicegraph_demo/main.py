@@ -16,11 +16,22 @@ from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Sp
 
 
 @dataclass(frozen=True, slots=True)
+class EtlExecution:
+    pipeline_id: str
+    pipeline_name: str
+    run_id: str
+    run_name: str
+    part_run_id: str
+    part_name: str
+
+
+@dataclass(frozen=True, slots=True)
 class Edge:
     client: str
     server: str
     method: str
     route: str
+    etl: EtlExecution | None = None
 
 
 EDGES: Final[tuple[Edge, ...]] = (
@@ -43,7 +54,20 @@ EDGES: Final[tuple[Edge, ...]] = (
     Edge("payments-api", "ledger-api", "POST", "/entries"),
     Edge("shipping-api", "notifications-api", "POST", "/notifications"),
     Edge("shipping-api", "warehouse-api", "POST", "/pick-lists"),
-    Edge("catalog-worker", "catalog-api", "PUT", "/products/{product_id}"),
+    Edge(
+        "catalog-worker",
+        "catalog-api",
+        "PUT",
+        "/products/{product_id}",
+        EtlExecution(
+            pipeline_id="catalog-refresh",
+            pipeline_name="Refresh Catalog",
+            run_id="demo-run-001",
+            run_name="Scheduled catalog refresh",
+            part_run_id="load-products",
+            part_name="Load products",
+        ),
+    ),
     Edge("catalog-api", "pricing-api", "GET", "/prices/{sku}"),
     Edge("recommendations-api", "catalog-api", "GET", "/products/batch"),
     Edge("search-api", "catalog-api", "GET", "/products/search-index"),
@@ -175,7 +199,11 @@ def _add_trace(
     duration = rng.randint(5, 250) * 1_000_000
     failed = rng.random() < error_rate
     status = Status.STATUS_CODE_ERROR if failed else Status.STATUS_CODE_OK
-    attributes = (_attribute("http.request.method", edge.method), _attribute("http.route", edge.route))
+    interaction_attributes = (
+        _attribute("http.request.method", edge.method),
+        _attribute("http.route", edge.route),
+    )
+    client_attributes = interaction_attributes + _etl_span_attributes(edge.etl)
 
     client_span = Span(
         trace_id=trace_id,
@@ -184,7 +212,7 @@ def _add_trace(
         kind=Span.SPAN_KIND_CLIENT,
         start_time_unix_nano=start,
         end_time_unix_nano=start + duration,
-        attributes=attributes,
+        attributes=client_attributes,
         status=Status(code=status),
     )
     server_span = Span(
@@ -195,19 +223,31 @@ def _add_trace(
         kind=Span.SPAN_KIND_SERVER,
         start_time_unix_nano=start + 1_000_000,
         end_time_unix_nano=start + max(duration - 1_000_000, 1),
-        attributes=attributes,
+        attributes=interaction_attributes,
         status=Status(code=status),
     )
     request.resource_spans.extend(
         (
-            _resource_spans(edge.client, namespace, instance_id, client_span),
+            _resource_spans(
+                edge.client,
+                namespace,
+                instance_id,
+                client_span,
+                _etl_resource_attributes(edge.etl),
+            ),
             _resource_spans(edge.server, namespace, instance_id, server_span),
         )
     )
 
 
-def _resource_spans(service: str, namespace: str, instance_id: str, span: Span) -> ResourceSpans:
-    attributes = service_resource_attributes(service, namespace, instance_id)
+def _resource_spans(
+    service: str,
+    namespace: str,
+    instance_id: str,
+    span: Span,
+    extra_attributes: tuple[tuple[str, str], ...] = (),
+) -> ResourceSpans:
+    attributes = (*service_resource_attributes(service, namespace, instance_id), *extra_attributes)
     return ResourceSpans(
         resource=Resource(attributes=tuple(_attribute(key, value) for key, value in attributes)),
         scope_spans=(
@@ -216,6 +256,27 @@ def _resource_spans(service: str, namespace: str, instance_id: str, span: Span) 
                 spans=(span,),
             ),
         ),
+    )
+
+
+def _etl_resource_attributes(execution: EtlExecution | None) -> tuple[tuple[str, str], ...]:
+    if execution is None:
+        return ()
+    return (
+        ("etl.pipeline.id", execution.pipeline_id),
+        ("etl.pipeline.name", execution.pipeline_name),
+    )
+
+
+def _etl_span_attributes(execution: EtlExecution | None) -> tuple[KeyValue, ...]:
+    if execution is None:
+        return ()
+    return (
+        _attribute("semconv.graph.discovery", True),
+        _attribute("etl.run.id", execution.run_id),
+        _attribute("etl.run.name", execution.run_name),
+        _attribute("etl.part.run.id", execution.part_run_id),
+        _attribute("etl.part.name", execution.part_name),
     )
 
 
@@ -295,10 +356,15 @@ def _criticality(service: str) -> str:
     return "high"
 
 
-def _attribute(key: str, value: str | int) -> KeyValue:
-    if isinstance(value, int):
-        return KeyValue(key=key, value=AnyValue(int_value=value))
-    return KeyValue(key=key, value=AnyValue(string_value=value))
+def _attribute(key: str, value: str | bool | int) -> KeyValue:
+    match value:
+        case bool():
+            encoded = AnyValue(bool_value=value)
+        case int():
+            encoded = AnyValue(int_value=value)
+        case str():
+            encoded = AnyValue(string_value=value)
+    return KeyValue(key=key, value=encoded)
 
 
 def _send(endpoint: str, request: ExportTraceServiceRequest) -> None:

@@ -153,6 +153,77 @@ class ContainerRuntimeFields(SemanticEntity):
     ]
 
 
+class EtlPartRunFields(SemanticEntity):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    etl_part_name: Annotated[
+        StrictStr | None, Field(alias='etl.part.name', description='The human-readable name of an ETL part.')
+    ] = None
+    etl_part_run_id: Annotated[
+        StrictStr,
+        Field(
+            alias='etl.part.run.id',
+            description='The identifier of a logical ETL part execution within its pipeline run.',
+            min_length=1,
+        ),
+    ]
+    etl_pipeline_id: Annotated[
+        StrictStr,
+        Field(
+            alias='etl.pipeline.id', description='The stable identifier of an ETL pipeline definition.', min_length=1
+        ),
+    ]
+    etl_run_id: Annotated[
+        StrictStr,
+        Field(
+            alias='etl.run.id',
+            description='The identifier of an ETL pipeline execution within its pipeline.',
+            min_length=1,
+        ),
+    ]
+
+
+class EtlPipelineFields(SemanticEntity):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    etl_pipeline_id: Annotated[
+        StrictStr,
+        Field(
+            alias='etl.pipeline.id', description='The stable identifier of an ETL pipeline definition.', min_length=1
+        ),
+    ]
+    etl_pipeline_name: Annotated[
+        StrictStr | None,
+        Field(alias='etl.pipeline.name', description='The human-readable name of an ETL pipeline definition.'),
+    ] = None
+
+
+class EtlRunFields(SemanticEntity):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    etl_pipeline_id: Annotated[
+        StrictStr,
+        Field(
+            alias='etl.pipeline.id', description='The stable identifier of an ETL pipeline definition.', min_length=1
+        ),
+    ]
+    etl_run_id: Annotated[
+        StrictStr,
+        Field(
+            alias='etl.run.id',
+            description='The identifier of an ETL pipeline execution within its pipeline.',
+            min_length=1,
+        ),
+    ]
+    etl_run_name: Annotated[
+        StrictStr | None,
+        Field(alias='etl.run.name', description='The human-readable name of an ETL pipeline execution.'),
+    ] = None
+
+
 class GcpGceInstanceGroupManagerFields(SemanticEntity):
     model_config = ConfigDict(
         extra='forbid',

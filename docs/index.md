@@ -36,11 +36,12 @@ producers yet. Inference from traces provides a lower-friction starting point:
 deploy infrastructure around the telemetry pipeline, then obtain a useful graph
 without changing every instrumented application.
 
-Standard OTel entity events are an opt-in second source. Explicit entities and
-inferred entities enter the same contributor lifecycle without replacing the
-existing trace-derived path. Read the [product direction](product.md) and the
-[conformance matrix](reference/otel-entity-conformance.md) for the exact current
-boundary.
+Marked root spans and standard OTel entity events are opt-in sources. Root spans
+cover node-only executions absent from service interactions; explicit entities
+can provide complete state and relationships. All sources enter the same
+contributor lifecycle without replacing the default servicegraph path. Read the
+[product direction](product.md) and the [conformance
+matrix](reference/otel-entity-conformance.md) for the exact current boundary.
 
 ## Runtime guarantees
 
@@ -68,8 +69,9 @@ consumers apply events idempotently.
 
 The semantic SDK, inferred service-graph source, Flink lifecycle path, Kafka
 contract, ArangoDB projection, Gremlin runtime, and Helm charts are implemented.
-Opt-in standard entity-event ingestion is implemented. Historical queries,
-standard OTel output, incoming-relationship implicit deletion, published scale
-distributed benchmarks and a full automated Collector-to-Flink E2E are not yet
-implemented. A reproducible in-process benchmark covers parsing, extraction,
+Opt-in root-span and standard entity-event ingestion are implemented.
+Historical queries, standard OTel output, incoming-relationship implicit
+deletion, and published distributed scale benchmarks are not yet implemented. A focused automated
+Collector-to-Flink-to-Gremlin E2E covers selective root discovery. A
+reproducible in-process benchmark covers parsing, extraction,
 and lifecycle functions without making distributed-scale claims.

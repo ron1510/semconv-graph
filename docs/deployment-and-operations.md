@@ -8,7 +8,7 @@ assumes Kafka is already available.
 - Kubernetes 1.25 or newer;
 - Helm 3;
 - Kafka-compatible brokers reachable from the namespace;
-- two pre-created topics, or three when entity events are enabled;
+- two pre-created topics, plus one for each enabled optional input;
 - ArangoDB 3.12 reachable from the namespace;
 - an internal container registry;
 - shared persistent storage for Flink;
@@ -69,6 +69,12 @@ For opt-in OTel entity-event ingestion, also create:
 otel.entity.events
 ```
 
+For opt-in root-span discovery, also create:
+
+```text
+otel.root.spans
+```
+
 Choose partition counts for expected throughput and Flink parallelism. All
 created topics should use retention and replication appropriate for your recovery
 objectives. Disable automatic topic creation.
@@ -119,9 +125,14 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
+    rootSpans: otel.root.spans
 
 entityEvents:
   enabled: true
+
+rootSpanDiscovery:
+  enabled: true
+  markerAttribute: semconv.graph.discovery
 ```
 
 Create `internal-flink-values.yaml`:
@@ -148,12 +159,17 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
+    rootSpans: otel.root.spans
     interactionEvents: graph.elements.events
 
 entityEvents:
   enabled: true
   groupId: graph-element-engine-entities
   reportIntervalGraceSeconds: 30
+
+rootSpanDiscovery:
+  enabled: true
+  groupId: graph-element-engine-root-spans
 
 storage:
   createClaim: false
@@ -164,6 +180,12 @@ The entity-event blocks are optional and default to disabled. Enable both
 charts together and keep `streamContract.topics.entityEvents` identical. The
 Flink entity-event consumer group is independent from `job.groupId` used by
 service-graph metrics.
+
+The root-span discovery blocks are also optional and disabled by default.
+Enable them in both charts and keep `streamContract.topics.rootSpans`
+identical. Mark discovery-worthy roots with the boolean span attribute selected
+by `rootSpanDiscovery.markerAttribute`; Flink creates nodes only after those
+spans end.
 
 See [Collector configuration](configuration/collector.md), [Flink
 configuration](configuration/flink.md), and the [Helm values
@@ -280,7 +302,7 @@ services are explicitly desired.
 
 ## Verify end to end
 
-1. Confirm both routers and both backends are ready.
+1. Confirm both routers and every backend configured by the selected mode are ready.
 2. Confirm the Flink job is `RUNNING`.
 3. Confirm completed checkpoints continue increasing.
 4. Send paired client/server traces to the router.

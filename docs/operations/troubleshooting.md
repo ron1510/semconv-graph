@@ -8,7 +8,7 @@ Check:
 
 1. application spans contain a client and server side with the same trace ID;
 2. both sides reach the router;
-3. routers can resolve both backend ordinal names;
+3. routers can resolve every backend endpoint configured by the selected mode;
 4. the metrics topic receives OTLP JSON;
 5. Flink is `RUNNING`;
 6. output topic offsets advance;
@@ -43,6 +43,11 @@ python -m tools.semconv_codegen --check
 
 Existing upserts do not gain new entities until new activity produces an
 updated payload.
+
+For root-span-only entities, also verify that root-span discovery is enabled in
+both charts, the marker is the boolean `true` on a completed root span, the SDK
+retains that span, and `otel.root.spans` advances. Such entities are expected to
+have no edges unless another input source contributes a relationship.
 
 ## Graph elements never delete
 
@@ -82,8 +87,9 @@ kubectl get endpoints -n servicegraph-system \
   servicegraph-collector-backend-headless
 ```
 
-Both routers must have the same ordered two-host static resolver. Tail or head
-sampling upstream must keep client and server spans consistently.
+In single-writer mode, both routers must target the same backend Service. In
+horizontal mode, both routers must have the same ordered ordinal resolver.
+Tail or head sampling upstream must keep client and server spans consistently.
 
 ## Flink submitter failed
 
@@ -151,6 +157,11 @@ record through an appropriately secured tool.
 Only supported delta service-graph sums with finite, nonnegative values,
 timestamps, and required client/server fields affect state. Zero deltas and
 unrelated metrics are ignored.
+
+An increasing `rejected_root_spans` counter means a selected OTLP trace payload
+or modeled Resource/span attribute combination was invalid. Conflicting values
+for a modeled semantic field reject that root; unknown and non-scalar
+attributes are ignored.
 
 ## API reports ready but data is old
 

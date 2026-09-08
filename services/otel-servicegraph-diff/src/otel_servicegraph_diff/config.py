@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import cache
-from typing import Annotated
+from typing import Annotated, Final
 
-from pydantic import Field, SecretStr, StringConstraints, model_validator
+from pydantic import Field, SecretStr, StrictInt, StringConstraints, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from extended_otel_semconv import EDGE_MODELS, ENTITY_MODELS
+
 TopicName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, pattern=r"^[A-Za-z0-9._-]+$")]
+ElementType = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, pattern=r"^[a-z0-9._-]+$")]
+PositiveTtlSeconds = Annotated[StrictInt, Field(gt=0)]
+KNOWN_ELEMENT_TYPES: Final = frozenset(ENTITY_MODELS) | frozenset(
+    relationship_type for _, relationship_type, _ in EDGE_MODELS
+)
 
 
 class KafkaSecurityProtocol(StrEnum):
@@ -53,6 +60,10 @@ class GraphEngineConfig(BaseSettings):
         default=None,
         validation_alias="ENTITY_EVENTS_INPUT_TOPIC",
     )
+    root_span_input_topic: TopicName | None = Field(
+        default=None,
+        validation_alias="ROOT_SPANS_INPUT_TOPIC",
+    )
     output_topic: TopicName = Field(
         default="graph.elements.events",
         validation_alias="INTERACTION_DIFF_OUTPUT_TOPIC",
@@ -65,12 +76,20 @@ class GraphEngineConfig(BaseSettings):
         default="graph-element-engine-entities",
         validation_alias="ENTITY_EVENTS_GROUP_ID",
     )
+    root_span_group_id: TopicName = Field(
+        default="graph-element-engine-root-spans",
+        validation_alias="ROOT_SPANS_GROUP_ID",
+    )
     entity_report_interval_grace_seconds: int = Field(
         default=30,
         ge=0,
         validation_alias="ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS",
     )
     contributor_ttl_seconds: int = Field(default=300, gt=0, validation_alias="INTERACTION_DIFF_TTL_SECONDS")
+    element_ttl_seconds: dict[ElementType, PositiveTtlSeconds] = Field(
+        default_factory=dict,
+        validation_alias="GRAPH_ELEMENT_TTL_SECONDS",
+    )
     allowed_lateness_seconds: int = Field(
         default=60,
         ge=0,
@@ -83,11 +102,21 @@ class GraphEngineConfig(BaseSettings):
 
     @model_validator(mode="after")
     def validate_contract(self) -> GraphEngineConfig:
+        unknown_element_types = sorted(set(self.element_ttl_seconds) - KNOWN_ELEMENT_TYPES)
+        if unknown_element_types:
+            names = ", ".join(repr(name) for name in unknown_element_types)
+            raise ValueError(f"unknown graph element TTL types: {names}")
         if self.entity_input_topic is not None and self.entity_input_topic in {
             self.input_topic,
             self.output_topic,
         }:
             raise ValueError("entity-event input topic must differ from metrics input and graph output topics")
+        if self.root_span_input_topic is not None and self.root_span_input_topic in {
+            self.input_topic,
+            self.entity_input_topic,
+            self.output_topic,
+        }:
+            raise ValueError("root-span input topic must differ from every other stream-contract topic")
         if self.kafka_security_protocol is not KafkaSecurityProtocol.PLAINTEXT:
             if self.kafka_sasl_mechanism is None:
                 raise ValueError("SASL mechanism is required when Kafka uses authentication")

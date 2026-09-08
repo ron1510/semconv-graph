@@ -3,7 +3,7 @@
 Install the semantic SDK with typed GraphBinary support:
 
 ```console
-pip install "extended-opentelemetry-semconv[gremlin]==0.4.0"
+pip install "extended-opentelemetry-semconv[gremlin]==0.5.0"
 ```
 
 `SemanticGremlinClient` executes traversals whose final traversers are vertices

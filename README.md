@@ -4,8 +4,8 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**Turn existing OpenTelemetry traces into a live typed entity graph without
-changing app instrumentation.**
+**Turn OpenTelemetry traces into a live typed entity graph, with a zero-change
+servicegraph path and opt-in discovery for non-interacting executions.**
 
 Semconv Graph is the working product name for this repository. The published
 Python SDK keeps the name `extended-opentelemetry-semconv`; no package or import
@@ -33,36 +33,42 @@ Existing OTLP traces
   not need to emit a new signal.
 - Registry-generated Pydantic entity and relationship models.
 - Organization-specific entity extensions and Collector dimensions.
+- Optional ETL Pipeline, Run, and Part Run discovery when ETL instrumentation
+  marks meaningful root spans and supplies the generated model fields.
 - Contributor-aware attribute merging and expiry in Flink.
 - Equal lifecycle treatment for semantic nodes and edges.
 - Deterministic, compactable Kafka upsert/delete events.
 - Idempotent projection into ArangoDB and typed read-only Gremlin access.
 - Helm deployments built from standard Kubernetes resources without CRDs.
 
-OpenTelemetry Entity Events are also supported as an opt-in second input. The
+Selective root-span discovery and OpenTelemetry Entity Events are also
+supported as opt-in inputs. The root-span lane sends only explicitly marked
+completed roots to Kafka and creates nodes without inventing edges. The
 [OpenTelemetry Entity Data Model](https://opentelemetry.io/docs/specs/otel/entities/data-model/)
 and [Entity Events](https://opentelemetry.io/docs/specs/otel/entities/entity-events/)
 specifications are both in development. When enabled, filtered `entity.state`
 and `entity.delete` OTLP logs enter the same contributor lifecycle engine as
-the inferred service-graph source.
+the inferred service-graph and root-span sources.
 
-## Why the two sources matter
+## Why the inputs matter
 
 | Source | Role | Status |
 | --- | --- | --- |
 | Existing traces through the Collector `servicegraph` connector | Bootstrap a useful graph without changing application instrumentation | Implemented |
+| Marked root spans | Discover execution entities that do not appear in service interactions | Implemented, opt-in |
 | Standard OTel entity events | Add explicit inventory, complete descriptions, relationships, and deletion from conforming producers | Implemented, opt-in |
 
-Both inputs converge on one lifecycle engine. Explicit events and inferred
-telemetry retain independent contributor IDs, so one source cannot retract a
-fact still supported by another.
+All inputs converge on one lifecycle engine. Explicit events, servicegraph
+metrics, and root spans retain independent contributor IDs, so one source
+cannot retract a fact still supported by another.
 
 ## Try the focused environment
 
 The repository includes a persistent local demo that starts Redpanda, ArangoDB,
 the Kafka indexer, and Gremlin Server, then seeds representative Flink schema-2
 events for typed traversal. It also includes an opt-in Kind fixture that verifies
-projection, deletion, and restart persistence.
+projection, deletion, restart persistence, and selective root-span discovery
+through the complete Collector-to-Gremlin path.
 Docker, Kind, `kubectl`, Helm 3, and Python 3.12 are required.
 
 ```powershell
@@ -82,13 +88,14 @@ the exact follow-up commands.
 ## Evidence and limits
 
 The focused E2E proves the Kafka lifecycle contract through ArangoDB and typed
-Gremlin. Unit tests cover semantic generation, service-graph ingestion,
+Gremlin, plus the selective root-span path from Collector through Flink. Unit
+tests cover semantic generation, service-graph ingestion,
 contributor lifecycle behavior, Flink wiring, and indexer decisions. Helm and
 MkDocs have deterministic validation commands.
 
 The repository does **not** currently provide:
 
-- an automated full Collector-to-Flink Kind test;
+- an automated paired-servicegraph Collector-to-Flink Kind test;
 - distributed throughput, state-size, or infrastructure-cost benchmarks;
 - historical or bi-temporal graph queries;
 - standard OTel output events;
@@ -112,6 +119,7 @@ before evaluating production fit.
 | `services/servicegraph-indexer` | ArangoDB initializer and Kafka projection |
 | `services/servicegraph-gremlin` | Pinned read-only TinkerPop/ArangoDB runtime |
 | `services/servicegraph-demo` | Optional synthetic OTLP traffic |
+| `examples/auto-instrumentation` | Plain endpoint extraction and explicit ETL context examples |
 | `deploy/helm` | Collector, Flink, demo, ArangoDB, indexer, and Gremlin charts |
 
 Kafka, topic creation, and production ArangoDB remain platform concerns.
@@ -120,6 +128,7 @@ Kafka, topic creation, and production ArangoDB remain platform concerns.
 
 - [Product direction](docs/product.md)
 - [Local demo](docs/getting-started/quickstart.md)
+- [Auto-instrumented endpoint](docs/getting-started/auto-instrumentation.md)
 - [Runtime architecture](docs/architecture.md)
 - [OTel entity conformance](docs/reference/otel-entity-conformance.md)
 - [Community and launch guide](docs/community.md)

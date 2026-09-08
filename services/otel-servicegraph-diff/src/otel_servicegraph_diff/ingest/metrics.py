@@ -7,11 +7,11 @@ from typing import Annotated, Literal, cast
 
 from google.protobuf.json_format import ParseDict, ParseError  # type: ignore[import-untyped]
 from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
-from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 from opentelemetry.proto.metrics.v1.metrics_pb2 import AggregationTemporality, Metric, NumberDataPoint
 from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError
 
 from otel_servicegraph_diff.engine.elements import FrozenModel
+from otel_servicegraph_diff.ingest.attributes import TelemetryScalar, scalar_attributes
 
 SERVICE_GRAPH_REQUEST_TOTAL = "traces_service_graph_request_total"
 SERVICE_GRAPH_REQUEST_FAILED_TOTAL = "traces_service_graph_request_failed_total"
@@ -28,7 +28,6 @@ type NonNegativeFiniteFloat = Annotated[
     Field(strict=True, ge=0, allow_inf_nan=False),
 ]
 type MetricValue = NonNegativeStrictInt | NonNegativeFiniteFloat
-type TelemetryScalar = str | bool | int | float
 type JsonValue = None | str | bool | int | float | list[JsonValue] | dict[str, JsonValue]
 
 
@@ -93,36 +92,12 @@ def _metric_points(metric: Metric) -> Iterator[MetricPoint | IngestRejection]:
         try:
             yield MetricPoint(
                 name=metric_name,
-                attributes=_scalar_attributes(point),
+                attributes=scalar_attributes(point.attributes),
                 value=_number_value(point),
                 observed_at_unix_nano=point.time_unix_nano,
             )
         except (TypeError, ValidationError, ValueError) as exc:
             yield ingest_rejection("invalid_servicegraph_datapoint", exc)
-
-
-def _scalar_attributes(point: NumberDataPoint) -> dict[str, TelemetryScalar]:
-    attributes: dict[str, TelemetryScalar] = {}
-    for item in point.attributes:
-        value = _scalar_value(item.value)
-        if value is not None:
-            attributes[item.key] = value
-    return attributes
-
-
-def _scalar_value(value: AnyValue) -> TelemetryScalar | None:
-    match value.WhichOneof("value"):
-        case "string_value":
-            return value.string_value
-        case "bool_value":
-            return value.bool_value
-        case "int_value":
-            return value.int_value
-        case "double_value":
-            return value.double_value
-        case _:
-            return None
-
 
 def _number_value(point: NumberDataPoint) -> int | float:
     match point.WhichOneof("value"):

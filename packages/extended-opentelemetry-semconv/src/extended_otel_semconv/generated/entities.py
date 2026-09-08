@@ -11,6 +11,9 @@ from extended_otel_semconv.generated._models import CicdPipelineFields as _CicdP
 from extended_otel_semconv.generated._models import CicdPipelineRunFields as _CicdPipelineRunFields
 from extended_otel_semconv.generated._models import CicdWorkerFields as _CicdWorkerFields
 from extended_otel_semconv.generated._models import ContainerRuntimeFields as _ContainerRuntimeFields
+from extended_otel_semconv.generated._models import EtlPartRunFields as _EtlPartRunFields
+from extended_otel_semconv.generated._models import EtlPipelineFields as _EtlPipelineFields
+from extended_otel_semconv.generated._models import EtlRunFields as _EtlRunFields
 from extended_otel_semconv.generated._models import GcpGceInstanceGroupManagerFields as _GcpGceInstanceGroupManagerFields
 from extended_otel_semconv.generated._models import K8sClusterFields as _K8sClusterFields
 from extended_otel_semconv.generated._models import K8sContainerFields as _K8sContainerFields
@@ -81,6 +84,24 @@ class CicdWorker(_CicdWorkerFields):
 class ContainerRuntime(_ContainerRuntimeFields):
     entity_type: ClassVar[str] = "container.runtime"
     identity_fields: ClassVar[tuple[str, ...]] = ('container.runtime.name', 'container.runtime.version')
+    template_fields: ClassVar[tuple[str, ...]] = ()
+
+
+class EtlPartRun(_EtlPartRunFields):
+    entity_type: ClassVar[str] = "etl.part.run"
+    identity_fields: ClassVar[tuple[str, ...]] = ('etl.pipeline.id', 'etl.run.id', 'etl.part.run.id')
+    template_fields: ClassVar[tuple[str, ...]] = ()
+
+
+class EtlPipeline(_EtlPipelineFields):
+    entity_type: ClassVar[str] = "etl.pipeline"
+    identity_fields: ClassVar[tuple[str, ...]] = ('etl.pipeline.id',)
+    template_fields: ClassVar[tuple[str, ...]] = ()
+
+
+class EtlRun(_EtlRunFields):
+    entity_type: ClassVar[str] = "etl.run"
+    identity_fields: ClassVar[tuple[str, ...]] = ('etl.pipeline.id', 'etl.run.id')
     template_fields: ClassVar[tuple[str, ...]] = ()
 
 
@@ -272,6 +293,9 @@ ENTITY_MODELS = MappingProxyType({
     "cicd.pipeline.run": CicdPipelineRun,
     "cicd.worker": CicdWorker,
     "container.runtime": ContainerRuntime,
+    "etl.part.run": EtlPartRun,
+    "etl.pipeline": EtlPipeline,
+    "etl.run": EtlRun,
     "gcp.gce.instance_group_manager": GcpGceInstanceGroupManager,
     "k8s.cluster": K8sCluster,
     "k8s.container": K8sContainer,

@@ -1,0 +1,46 @@
+groups:
+  - id: entity.etl.pipeline
+    type: entity
+    stability: development
+    name: etl.pipeline
+    brief: A durable logical ETL definition across executions.
+    attributes:
+      - ref: etl.pipeline.id
+        requirement_level: required
+        role: identifying
+      - ref: etl.pipeline.name
+        role: descriptive
+
+  - id: entity.etl.run
+    type: entity
+    stability: development
+    name: etl.run
+    brief: One execution of an ETL pipeline.
+    attributes:
+      - ref: etl.pipeline.id
+        requirement_level: required
+        role: identifying
+      - ref: etl.run.id
+        requirement_level: required
+        role: identifying
+      - ref: etl.run.name
+        role: descriptive
+
+  - id: entity.etl.part.run
+    type: entity
+    stability: development
+    name: etl.part.run
+    brief: One logical part execution within an ETL pipeline run.
+    attributes:
+      - ref: etl.pipeline.id
+        requirement_level: required
+        role: identifying
+      - ref: etl.run.id
+        requirement_level: required
+        role: identifying
+      - ref: etl.part.run.id
+        requirement_level: required
+        role: identifying
+      - ref: etl.part.name
+        role: descriptive
+
