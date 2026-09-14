@@ -74,8 +74,7 @@
           "required": ["servicegraphMetrics"],
           "properties": {
             "servicegraphMetrics": {"type": "string", "minLength": 1},
-            "entityEvents": {"type": "string", "minLength": 1},
-            "rootSpans": {"type": "string", "minLength": 1}
+            "entityEvents": {"type": "string", "minLength": 1}
           }
         }
       }
@@ -91,10 +90,33 @@
     "rootSpanDiscovery": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "markerAttribute"],
+      "required": ["enabled", "backend"],
       "properties": {
         "enabled": {"type": "boolean"},
-        "markerAttribute": {"type": "string", "minLength": 1}
+        "backend": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "replicaCount",
+            "metricsFlushInterval",
+            "metricsExpiration",
+            "seriesExpiration",
+            "aggregationCardinalityLimit",
+            "metricBatchSize",
+            "resources",
+            "podAnnotations"
+          ],
+          "properties": {
+            "replicaCount": {"type": "integer", "minimum": 1},
+            "metricsFlushInterval": {"type": "string", "minLength": 2},
+            "metricsExpiration": {"type": "string", "minLength": 2},
+            "seriesExpiration": {"type": "string", "minLength": 2},
+            "aggregationCardinalityLimit": {"type": "integer", "minimum": 0},
+            "metricBatchSize": {"type": "integer", "minimum": 1},
+            "resources": {"type": "object"},
+            "podAnnotations": {"type": "object"}
+          }
+        }
       }
     },
     "podSecurityContext": {"type": "object"},
@@ -105,28 +127,6 @@
     "affinity": {"type": "object"}
   },
   "required": ["image", "router", "backend", "streamContract", "entityEvents", "rootSpanDiscovery"],
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "rootSpanDiscovery": {
-            "properties": {"enabled": {"const": true}},
-            "required": ["enabled"]
-          }
-        },
-        "required": ["rootSpanDiscovery"]
-      },
-      "then": {
-        "properties": {
-          "streamContract": {
-            "properties": {
-              "topics": {"required": ["rootSpans"]}
-            }
-          }
-        }
-      }
-    }
-  ],
   "$defs": {
     "image": {
       "type": "object",

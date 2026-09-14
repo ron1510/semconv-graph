@@ -1,7 +1,7 @@
 # Architecture
 
 This page describes the implemented input paths. Inferred service-graph
-telemetry is always present; selective root-span discovery and OpenTelemetry
+telemetry is always present; spanmetrics root discovery and OpenTelemetry
 `entity.state` and `entity.delete` ingestion are opt-in. See
 [Product Direction](product.md#three-source-runtime) and
 [OpenTelemetry Entity Conformance](reference/otel-entity-conformance.md).
@@ -11,9 +11,9 @@ telemetry is always present; selective root-span discovery and OpenTelemetry
 ```text
 OTLP clients or optional live demo
   -> two Collector routers
-       |-> direct OTLP -> single service_graph backend -> otel.servicegraph.metrics
-       |-> marked root spans -------------------------------> otel.root.spans (opt-in)
-       `-> filtered entity event logs -----------------------> otel.entity.events (opt-in)
+       |-> direct OTLP -> single service_graph backend --\
+       |-> root filter -> identity-sharded spanmetrics ----+-> otel.servicegraph.metrics
+       `-> filtered entity event logs ------------------------> otel.entity.events (opt-in)
   -> Flink graph-element engine
   -> graph.elements.events
   -> ArangoDB current-state graph
@@ -36,11 +36,12 @@ The entity-event source has its own Kafka topic and consumer group. It is
 created only when configured, then unioned with inferred graph contributions
 before the element-keyed lifecycle stage.
 
-The optional root-span source also has its own topic and group. The router keeps
-only completed root spans explicitly marked for discovery. Flink extracts nodes
-from their scalar Resource and span attributes, but emits no relationships from
-this source. This covers execution entities that do not appear in a paired
-service interaction without sending every span through Kafka.
+When root-span discovery is enabled, each router keeps completed root spans and
+routes them by generated semantic identity to a separate spanmetrics backend
+pool. The backends aggregate equivalent roots into positive delta datapoints and
+publish `semconv.graph.discovery.calls` to the existing metrics topic. Flink
+extracts nodes from those dimensions but emits no relationships from this
+source. Raw spans never enter Kafka.
 
 ## Semantic extraction
 
@@ -69,7 +70,7 @@ delete when the final contributor expires. Kafka uses `element_id` as its key.
 At-least-once sink delivery is safe because events have deterministic IDs and
 projection operations are idempotent.
 
-Root-span, servicegraph, and explicit entity-event contributors remain
+Spanmetrics, servicegraph, and explicit entity-event contributors remain
 independent. If several sources produce the same deterministic node ID, their
 attributes merge and the node survives until its final contributor expires.
 

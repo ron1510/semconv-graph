@@ -587,12 +587,7 @@ class DemoEnvironment:
             try:
                 topics = [NewTopic("graph.elements.events", 1, 1, topic_configs={"cleanup.policy": "compact"})]
                 if self.with_ingest_pipeline:
-                    topics.extend(
-                        (
-                            NewTopic("otel.servicegraph.metrics", 1, 1),
-                            NewTopic("otel.root.spans", 1, 1),
-                        )
-                    )
+                    topics.append(NewTopic("otel.servicegraph.metrics", 1, 1))
                 admin.create_topics(tuple(topics))
             finally:
                 admin.close()
@@ -711,6 +706,12 @@ class DemoEnvironment:
                 "streamContract.kafka.security.protocol=PLAINTEXT",
                 "--set",
                 "rootSpanDiscovery.enabled=true",
+                "--set",
+                "rootSpanDiscovery.backend.metricsFlushInterval=5s",
+                "--set",
+                "rootSpanDiscovery.backend.metricsExpiration=20s",
+                "--set",
+                "rootSpanDiscovery.backend.seriesExpiration=20s",
                 "--wait",
                 "--timeout",
                 "5m",
@@ -742,8 +743,6 @@ class DemoEnvironment:
                 "streamContract.kafka.brokers[0]=servicegraph-redpanda:9092",
                 "--set",
                 "streamContract.kafka.security.protocol=PLAINTEXT",
-                "--set",
-                "rootSpanDiscovery.enabled=true",
                 "--set",
                 "storage.storageClassName=standard",
                 "--set",

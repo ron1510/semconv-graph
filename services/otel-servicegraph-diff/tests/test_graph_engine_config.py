@@ -50,34 +50,10 @@ def test_entity_event_source_is_opt_in_with_independent_group_and_grace() -> Non
     assert enabled.entity_report_interval_grace_seconds == 15
 
 
-def test_root_span_source_is_opt_in_with_independent_group() -> None:
-    disabled = GraphEngineConfig()
-    enabled = GraphEngineConfig(
-        root_span_input_topic="otel.root.spans",
-        root_span_group_id="root-span-consumers",
-    )
-
-    assert disabled.root_span_input_topic is None
-    assert enabled.root_span_input_topic == "otel.root.spans"
-    assert enabled.root_span_group_id == "root-span-consumers"
-
-
 @pytest.mark.parametrize("topic", ["otel.servicegraph.metrics", "graph.elements.events"])
 def test_entity_event_topic_must_not_overlap_existing_contract(topic: str) -> None:
     with pytest.raises(ValidationError, match="must differ"):
         GraphEngineConfig(entity_input_topic=topic)
-
-
-@pytest.mark.parametrize(
-    "topic",
-    ["otel.servicegraph.metrics", "otel.entity.events", "graph.elements.events"],
-)
-def test_root_span_topic_must_not_overlap_existing_contract(topic: str) -> None:
-    with pytest.raises(ValidationError, match="must differ"):
-        GraphEngineConfig(
-            entity_input_topic="otel.entity.events",
-            root_span_input_topic=topic,
-        )
 
 
 def test_config_rejects_non_positive_parallelism() -> None:

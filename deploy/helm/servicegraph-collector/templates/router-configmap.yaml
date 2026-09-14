@@ -1,3 +1,4 @@
+{{- $discoveryModel := .Files.Get "files/root-span-discovery.yaml" | fromYaml -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -31,9 +32,13 @@ data:
         trace_conditions:
           - context: span
             conditions:
+              - not IsRootSpan()
+              {{- range $attribute := $discoveryModel.modeled_attributes }}
               - >-
-                not IsRootSpan() or
-                attributes[{{ .Values.rootSpanDiscovery.markerAttribute | quote }}] != true
+                resource.attributes[{{ $attribute | quote }}] != nil and
+                attributes[{{ $attribute | quote }}] != nil and
+                resource.attributes[{{ $attribute | quote }}] != attributes[{{ $attribute | quote }}]
+              {{- end }}
       batch/root_spans:
         timeout: 1s
         send_batch_size: 256
@@ -56,6 +61,45 @@ data:
         send_batch_size: 256
       {{- end }}
     exporters:
+      {{- if .Values.rootSpanDiscovery.enabled }}
+      load_balancing/root_span_discovery:
+        routing_key: attributes
+        routing_attributes:
+          {{- range $attribute := $discoveryModel.routing_attributes }}
+          - {{ $attribute | quote }}
+          {{- end }}
+        protocol:
+          otlp:
+            timeout: 5s
+            tls:
+              insecure: true
+            sending_queue:
+              enabled: true
+              sizer: items
+              queue_size: 10000
+            retry_on_failure:
+              enabled: true
+              initial_interval: 1s
+              max_interval: 30s
+              max_elapsed_time: 0s
+        resolver:
+          static:
+            hostnames:
+              {{- $root := . }}
+              {{- range $ordinal := until (int .Values.rootSpanDiscovery.backend.replicaCount) }}
+              - {{ include "servicegraph-collector.fullname" $root }}-discovery-backend-{{ $ordinal }}.{{ include "servicegraph-collector.fullname" $root }}-discovery-backend-headless.{{ $root.Release.Namespace }}.svc:4317
+              {{- end }}
+        timeout: 10s
+        sending_queue:
+          enabled: true
+          sizer: items
+          queue_size: {{ .Values.router.queueSize }}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 0s
+      {{- end }}
       {{- if eq .Values.backend.mode "singleWriter" }}
       otlp/servicegraph_backend:
         endpoint: {{ include "servicegraph-collector.fullname" . }}-backend-headless.{{ .Release.Namespace }}.svc:4317
@@ -142,42 +186,6 @@ data:
           max_interval: 30s
           max_elapsed_time: 0s
       {{- end }}
-      {{- if .Values.rootSpanDiscovery.enabled }}
-      kafka/root_spans:
-        brokers:
-          {{- range .Values.streamContract.kafka.brokers }}
-          - {{ . | quote }}
-          {{- end }}
-        traces:
-          topic: {{ .Values.streamContract.topics.rootSpans | quote }}
-          encoding: otlp_json
-        {{- if eq .Values.streamContract.kafka.security.protocol "SASL_SSL" }}
-        tls:
-          insecure: false
-          insecure_skip_verify: false
-        {{- end }}
-        {{- if ne .Values.streamContract.kafka.security.protocol "PLAINTEXT" }}
-        auth:
-          sasl:
-            username: ${env:KAFKA_SASL_USERNAME}
-            password: ${env:KAFKA_SASL_PASSWORD}
-            mechanism: {{ .Values.streamContract.kafka.security.saslMechanism }}
-        {{- end }}
-        producer:
-          compression: gzip
-          required_acks: -1
-          allow_auto_topic_creation: false
-        sending_queue:
-          enabled: true
-          sizer: items
-          num_consumers: 4
-          queue_size: 10000
-        retry_on_failure:
-          enabled: true
-          initial_interval: 1s
-          max_interval: 30s
-          max_elapsed_time: 0s
-      {{- end }}
     service:
       extensions: [health_check]
       pipelines:
@@ -199,5 +207,5 @@ data:
         traces/root_span_discovery:
           receivers: [otlp]
           processors: [memory_limiter, filter/root_span_discovery, batch/root_spans]
-          exporters: [kafka/root_spans]
+          exporters: [load_balancing/root_span_discovery]
         {{- end }}

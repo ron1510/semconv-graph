@@ -50,7 +50,6 @@ from otel_servicegraph_diff.ingest.entity_events import (
     reconcile_entity_event,
 )
 from otel_servicegraph_diff.ingest.metrics import IngestRejection
-from otel_servicegraph_diff.ingest.root_spans import iter_otlp_json_root_span_contributions
 
 OUTPUT_ROW_TYPE = Types.ROW_NAMED(["key", "value"], [Types.STRING(), Types.STRING()])
 LOGGER = logging.getLogger(__name__)
@@ -103,18 +102,9 @@ def run_flink_job(config: GraphEngineConfig) -> None:
         if config.entity_input_topic is not None
         else None
     )
-    root_span_source = (
-        _kafka_source(
-            config,
-            topic=config.root_span_input_topic,
-            group_id=config.root_span_group_id,
-        )
-        if config.root_span_input_topic is not None
-        else None
-    )
     event_sink = _kafka_sink(config, config.output_topic)
 
-    _configure_job_graph(env, config, source, event_sink, entity_source, root_span_source)
+    _configure_job_graph(env, config, source, event_sink, entity_source)
     env.execute("servicegraph-graph-element-engine")
 
 
@@ -124,7 +114,6 @@ def _configure_job_graph(
     source: KafkaSource,
     event_sink: KafkaSink,
     entity_source: KafkaSource | None = None,
-    root_span_source: KafkaSource | None = None,
 ) -> None:
     payloads = (
         env.from_source(source, WatermarkStrategy.no_watermarks(), "servicegraph-otlp-json")
@@ -155,21 +144,6 @@ def _configure_job_graph(
             .uid("graph-v3-reconcile-otel-entity-events")
         )
         contributions = metric_contributions.union(entity_contributions)
-    if root_span_source is not None:
-        root_span_contributions = (
-            env.from_source(
-                root_span_source,
-                WatermarkStrategy.no_watermarks(),
-                "otel-root-spans-json",
-            )
-            .name("root-spans-kafka-source")
-            .uid("graph-v3-root-spans-kafka-source")
-            .flat_map(_RootSpanPayloadParser())
-            .name("extract-root-span-node-contributions")
-            .uid("graph-v3-extract-root-span-nodes")
-        )
-        contributions = contributions.union(root_span_contributions)
-
     timestamped_contributions = (
         contributions.assign_timestamps_and_watermarks(
             WatermarkStrategy.for_bounded_out_of_orderness(Duration.of_seconds(config.allowed_lateness_seconds))
@@ -260,7 +234,7 @@ class _PayloadParser(FlatMapFunction):
                 case IngestRejection():
                     self._require_rejected_inputs().inc()
                     LOGGER.warning(
-                        "discarding rejected servicegraph input: reason=%s detail=%s",
+                        "discarding rejected graph metric input: reason=%s detail=%s",
                         parsed.reason,
                         (parsed.detail or "")[:512],
                     )
@@ -300,32 +274,6 @@ class _EntityPayloadParser(FlatMapFunction):
     def _require_rejected_inputs(self) -> Counter:
         if self._rejected_inputs is None:
             raise RuntimeError("entity parser metrics accessed before operator initialization")
-        return self._rejected_inputs
-
-
-class _RootSpanPayloadParser(FlatMapFunction):
-    def __init__(self) -> None:
-        self._rejected_inputs: Counter | None = None
-
-    def open(self, runtime_context: RuntimeContext) -> None:
-        self._rejected_inputs = cast(Counter, runtime_context.get_metrics_group().counter("rejected_root_spans"))
-
-    def flat_map(self, value: str) -> Iterable[GraphContribution]:
-        for parsed in iter_otlp_json_root_span_contributions(value):
-            match parsed:
-                case IngestRejection():
-                    self._require_rejected_inputs().inc()
-                    LOGGER.warning(
-                        "discarding rejected root-span input: reason=%s detail=%s",
-                        parsed.reason,
-                        (parsed.detail or "")[:512],
-                    )
-                case GraphContribution():
-                    yield parsed
-
-    def _require_rejected_inputs(self) -> Counter:
-        if self._rejected_inputs is None:
-            raise RuntimeError("root-span parser metrics accessed before operator initialization")
         return self._rejected_inputs
 
 

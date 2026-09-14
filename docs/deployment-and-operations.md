@@ -8,7 +8,7 @@ assumes Kafka is already available.
 - Kubernetes 1.25 or newer;
 - Helm 3;
 - Kafka-compatible brokers reachable from the namespace;
-- two pre-created topics, plus one for each enabled optional input;
+- two pre-created topics, plus one for optional entity-event input;
 - ArangoDB 3.12 reachable from the namespace;
 - an internal container registry;
 - shared persistent storage for Flink;
@@ -69,12 +69,6 @@ For opt-in OTel entity-event ingestion, also create:
 otel.entity.events
 ```
 
-For opt-in root-span discovery, also create:
-
-```text
-otel.root.spans
-```
-
 Choose partition counts for expected throughput and Flink parallelism. All
 created topics should use retention and replication appropriate for your recovery
 objectives. Disable automatic topic creation.
@@ -125,14 +119,17 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
-    rootSpans: otel.root.spans
 
 entityEvents:
   enabled: true
 
 rootSpanDiscovery:
   enabled: true
-  markerAttribute: semconv.graph.discovery
+  backend:
+    replicaCount: 2
+    metricsFlushInterval: 60s
+    metricsExpiration: 2m
+    seriesExpiration: 2m
 ```
 
 Create `internal-flink-values.yaml`:
@@ -159,17 +156,12 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
-    rootSpans: otel.root.spans
     interactionEvents: graph.elements.events
 
 entityEvents:
   enabled: true
   groupId: graph-element-engine-entities
   reportIntervalGraceSeconds: 30
-
-rootSpanDiscovery:
-  enabled: true
-  groupId: graph-element-engine-root-spans
 
 storage:
   createClaim: false
@@ -181,11 +173,11 @@ charts together and keep `streamContract.topics.entityEvents` identical. The
 Flink entity-event consumer group is independent from `job.groupId` used by
 service-graph metrics.
 
-The root-span discovery blocks are also optional and disabled by default.
-Enable them in both charts and keep `streamContract.topics.rootSpans`
-identical. Mark discovery-worthy roots with the boolean span attribute selected
-by `rootSpanDiscovery.markerAttribute`; Flink creates nodes only after those
-spans end.
+Root-span discovery is optional and configured only in the Collector chart.
+Its dedicated spanmetrics backends aggregate completed roots and write discovery
+datapoints to the existing `servicegraphMetrics` topic. Flink recognizes that
+metric without a separate source. Applications must export the roots they need;
+sampling can prevent a run from being observed.
 
 See [Collector configuration](configuration/collector.md), [Flink
 configuration](configuration/flink.md), and the [Helm values
@@ -258,6 +250,16 @@ It does not need Pod, Deployment, Service, CRD, or finalizer permissions.
 Subsequent `helm upgrade` operations stop the active job with a savepoint,
 roll the runtime image and configuration, and restore the same job ID from
 that savepoint. Keep the cluster ID, fixed job ID, and state claim stable.
+
+When replacing the former raw-root source, upgrade the Flink image and chart
+before enabling the Collector spanmetrics lane. If the removed source has run
+and therefore exists in a savepoint, set `job.allowNonRestoredState=true` for
+that one Flink upgrade. Then upgrade the Collector, verify
+`semconv.graph.discovery.calls`, Flink health, consumer lag, and Gremlin output,
+and return `job.allowNonRestoredState` to `false`. The obsolete
+`otel.root.spans` topic and `graph-element-engine-root-spans` group may be
+removed afterward. Existing lifecycle state and the shared metrics group remain
+unchanged.
 
 ## Install projection and traversal access
 

@@ -248,7 +248,7 @@ def test_payload_parser_counts_warns_and_discards_rejected_inputs(caplog: pytest
         assert tuple(parser.flat_map("{not-json")) == ()
 
     assert counter.value == 1
-    assert "discarding rejected servicegraph input" in caplog.text
+    assert "discarding rejected graph metric input" in caplog.text
     assert "{not-json" not in caplog.text
 
 

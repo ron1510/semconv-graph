@@ -13,7 +13,13 @@ from typing import NamedTuple
 
 import yaml
 
-from tools.semconv_codegen.dimensions import service_graph_dimensions, service_graph_entity_names
+from tools.semconv_codegen.dimensions import (
+    root_span_discovery_dimensions,
+    root_span_discovery_routing_attributes,
+    root_span_modeled_attributes,
+    service_graph_dimensions,
+    service_graph_entity_names,
+)
 from tools.semconv_codegen.registry.model import (
     EntityAttributeRef,
     EntityDefinition,
@@ -62,6 +68,7 @@ class GenerationPaths(NamedTuple):
     semantic_schema: Path
     relationship_metadata: Path
     collector_dimensions: Path
+    collector_discovery: Path
     arangodb_schema: Path
     gremlin_schema: Path
 
@@ -83,6 +90,9 @@ def default_generation_paths(root: Path = REPOSITORY_ROOT) -> GenerationPaths:
         semantic_schema=semantic_package / "metadata" / "semantic-entities.schema.json",
         relationship_metadata=semantic_package / "metadata" / "service-graph-relationships.json",
         collector_dimensions=root / "deploy" / "helm" / "servicegraph-collector" / "files" / "dimensions.yaml",
+        collector_discovery=(
+            root / "deploy" / "helm" / "servicegraph-collector" / "files" / "root-span-discovery.yaml"
+        ),
         arangodb_schema=(
             root
             / "services"
@@ -140,6 +150,7 @@ def generate_files(paths: GenerationPaths) -> dict[Path, str]:
         paths.semantic_schema: semantic_schema,
         paths.relationship_metadata: _render_relationship_metadata(relationships),
         paths.collector_dimensions: _render_collector_dimensions(registry),
+        paths.collector_discovery: _render_root_span_discovery(registry),
         paths.arangodb_schema: _render_arangodb_schema(registry, paths.upstream_lock),
     }
     files[paths.gremlin_schema] = files[paths.arangodb_schema]
@@ -341,6 +352,18 @@ def _render_relationship_metadata(relationships: dict[str, RelationshipDefinitio
 def _render_collector_dimensions(registry: RegistryDocument) -> str:
     return yaml.safe_dump(
         {"dimensions": service_graph_dimensions(registry)},
+        sort_keys=False,
+        default_flow_style=False,
+    )
+
+
+def _render_root_span_discovery(registry: RegistryDocument) -> str:
+    return yaml.safe_dump(
+        {
+            "dimensions": root_span_discovery_dimensions(registry),
+            "routing_attributes": root_span_discovery_routing_attributes(registry),
+            "modeled_attributes": root_span_modeled_attributes(registry),
+        },
         sort_keys=False,
         default_flow_style=False,
     )

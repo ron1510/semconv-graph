@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Literal
+from typing import Final, Literal, cast
 
 from pydantic import ValidationError
 
@@ -24,10 +24,11 @@ from otel_servicegraph_diff.engine.elements import (
 )
 from otel_servicegraph_diff.engine.relationships import relationship_allows, relationship_edges
 from otel_servicegraph_diff.ingest.metrics import (
+    ROOT_SPAN_DISCOVERY_CALLS,
     IngestRejection,
     MetricPoint,
     MetricValue,
-    SupportedMetricName,
+    ServiceGraphMetricName,
     ingest_rejection,
     iter_otlp_json_metric_points,
 )
@@ -39,6 +40,12 @@ type DependencyEdgeType = Literal["calls", "publishes_to", "queries"]
 type IngestResult = GraphContribution | IngestRejection
 type ElementContributionData = tuple[GraphElement, dict[str, MetricValue]]
 
+_GRAPH_ENTITY_TYPES: Final = frozenset(
+    entity_type
+    for relationship in service_graph_relationships()
+    for entity_type in (relationship.source_entity, relationship.target_entity)
+)
+
 
 def iter_otlp_json_contributions(payload: str) -> Iterator[IngestResult]:
     for parsed in iter_otlp_json_metric_points(payload):
@@ -47,10 +54,19 @@ def iter_otlp_json_contributions(payload: str) -> Iterator[IngestResult]:
                 yield parsed
             case MetricPoint(value=0):
                 continue
+            case MetricPoint(name="semconv.graph.discovery.calls"):
+                try:
+                    yield from contributions_from_discovery_datapoint(
+                        attributes=parsed.attributes,
+                        value=parsed.value,
+                        observed_at_unix_nano=parsed.observed_at_unix_nano,
+                    )
+                except (TypeError, ValidationError, ValueError) as exc:
+                    yield ingest_rejection("invalid_discovery_datapoint", exc)
             case MetricPoint():
                 try:
                     yield from contributions_from_servicegraph_datapoint(
-                        metric_name=parsed.name,
+                        metric_name=cast(ServiceGraphMetricName, parsed.name),
                         attributes=parsed.attributes,
                         value=parsed.value,
                         observed_at_unix_nano=parsed.observed_at_unix_nano,
@@ -60,7 +76,7 @@ def iter_otlp_json_contributions(payload: str) -> Iterator[IngestResult]:
 
 
 def contributions_from_servicegraph_datapoint(
-    metric_name: SupportedMetricName,
+    metric_name: ServiceGraphMetricName,
     attributes: Mapping[str, TelemetryScalar],
     value: MetricValue,
     observed_at_unix_nano: int,
@@ -98,6 +114,22 @@ def contributions_from_servicegraph_datapoint(
     )
 
 
+def contributions_from_discovery_datapoint(
+    attributes: Mapping[str, TelemetryScalar],
+    value: MetricValue,
+    observed_at_unix_nano: int,
+) -> tuple[GraphContribution, ...]:
+    _validate_positive_metric_value(value)
+    entities = entities_from_attributes(attributes)
+    if attributes.get("span.kind") != "SPAN_KIND_SERVER":
+        entities = [entity for entity in entities if not isinstance(entity, AppEndpoint)]
+    return tuple(
+        _node_contribution(entity, observed_at_unix_nano)
+        for entity in sorted(entities, key=lambda item: item.entity_id)
+        if entity.entity_type in _GRAPH_ENTITY_TYPES
+    )
+
+
 def _entities_from_side(
     attributes: Mapping[str, TelemetryScalar],
     side: ServiceGraphSide,
@@ -117,7 +149,7 @@ def _entities_from_side(
 
 
 def _elements_from_datapoint(
-    metric_name: SupportedMetricName,
+    metric_name: ServiceGraphMetricName,
     metric_value: MetricValue,
     client_name: str,
     server_name: str,
@@ -216,7 +248,7 @@ def _dependency_edge_type(attributes: Mapping[str, TelemetryScalar]) -> Dependen
             return "calls"
 
 
-def _dependency_metrics(metric_name: SupportedMetricName, value: MetricValue) -> dict[str, MetricValue]:
+def _dependency_metrics(metric_name: ServiceGraphMetricName, value: MetricValue) -> dict[str, MetricValue]:
     match metric_name:
         case "traces_service_graph_request_total":
             return {GRAPH_REQUEST_TOTAL: value}
@@ -248,9 +280,9 @@ def _canonical_json(value: object) -> str:
 
 def _validate_positive_metric_value(value: MetricValue) -> None:
     if isinstance(value, bool):
-        raise TypeError("servicegraph metric value must be an integer or float")
+        raise TypeError("graph metric value must be an integer or float")
     if not math.isfinite(value) or value <= 0:
-        raise ValueError("servicegraph metric value must be finite and greater than zero")
+        raise ValueError("graph metric value must be finite and greater than zero")
 
 
 def _required_string_attribute(attributes: Mapping[str, TelemetryScalar], key: str) -> str:
@@ -258,3 +290,24 @@ def _required_string_attribute(attributes: Mapping[str, TelemetryScalar], key: s
     if not isinstance(value, str) or not value:
         raise ValueError(f"servicegraph datapoint is missing nonempty {key!r}")
     return value
+
+
+def _node_contribution(entity: SemanticEntity, observed_at_unix_nano: int) -> GraphContribution:
+    node = GraphNode(
+        id=entity.entity_id,
+        type=entity.entity_type,
+        attributes=entity.semantic_attributes(),
+    )
+    serialized_attributes = cast(dict[str, object], node.model_dump(mode="json")["attributes"])
+    fingerprint = _canonical_json(
+        {
+            "source": ROOT_SPAN_DISCOVERY_CALLS,
+            "element_id": node.id,
+            "attributes": serialized_attributes,
+        }
+    )
+    return GraphContribution(
+        contributor_id=f"spanmetrics:{hashlib.sha256(fingerprint.encode('utf-8')).hexdigest()}",
+        observed_at_unix_nano=observed_at_unix_nano,
+        element=node,
+    )

@@ -1,30 +1,30 @@
+{{- if .Values.rootSpanDiscovery.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: {{ include "servicegraph-collector.fullname" . }}-router
+  name: {{ include "servicegraph-collector.fullname" . }}-discovery-backend
   labels:
     {{- include "servicegraph-collector.labels" . | nindent 4 }}
-    app.kubernetes.io/component: router
+    app.kubernetes.io/component: root-span-discovery-backend
 spec:
-  replicas: {{ .Values.router.replicaCount }}
-  revisionHistoryLimit: 3
-  strategy:
+  serviceName: {{ include "servicegraph-collector.fullname" . }}-discovery-backend-headless
+  replicas: {{ .Values.rootSpanDiscovery.backend.replicaCount }}
+  podManagementPolicy: Parallel
+  updateStrategy:
     type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 1
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       {{- include "servicegraph-collector.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: router
+      app.kubernetes.io/component: root-span-discovery-backend
   template:
     metadata:
       labels:
         {{- include "servicegraph-collector.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: router
+        app.kubernetes.io/component: root-span-discovery-backend
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/router-configmap.yaml") . | sha256sum }}
-        {{- with .Values.router.podAnnotations }}
+        checksum/config: {{ include (print $.Template.BasePath "/discovery-backend-configmap.yaml") . | sha256sum }}
+        {{- with .Values.rootSpanDiscovery.backend.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
@@ -32,7 +32,7 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 90
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -42,7 +42,7 @@ spec:
           image: {{ include "servicegraph-collector.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["--config=/etc/otelcol/config.yaml"]
-          {{- if and .Values.entityEvents.enabled (ne .Values.streamContract.kafka.security.protocol "PLAINTEXT") }}
+          {{- if ne .Values.streamContract.kafka.security.protocol "PLAINTEXT" }}
           env:
             - name: KAFKA_SASL_USERNAME
               valueFrom:
@@ -58,8 +58,6 @@ spec:
           ports:
             - name: otlp-grpc
               containerPort: 4317
-            - name: otlp-http
-              containerPort: 4318
           startupProbe:
             tcpSocket:
               port: otlp-grpc
@@ -76,7 +74,7 @@ spec:
             periodSeconds: 20
             failureThreshold: 6
           resources:
-            {{- toYaml .Values.router.resources | nindent 12 }}
+            {{- toYaml .Values.rootSpanDiscovery.backend.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           volumeMounts:
@@ -89,7 +87,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "servicegraph-collector.fullname" . }}-router
+            name: {{ include "servicegraph-collector.fullname" . }}-discovery-backend
         - name: tmp
           emptyDir:
             sizeLimit: 256Mi
@@ -109,3 +107,4 @@ spec:
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}

@@ -143,7 +143,6 @@ def test_etl_demo_keeps_pipeline_on_resource_and_execution_on_client_span() -> N
         name: client_attributes[name].string_value
         for name in expected_execution_attributes
     } == expected_execution_attributes
-    assert client_attributes["semconv.graph.discovery"].bool_value is True
     assert not set(client_attributes) & set(server_attributes) & {
         "etl.run.id",
         "etl.run.name",

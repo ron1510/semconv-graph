@@ -13,6 +13,8 @@ Watch:
 - router queue growth;
 - Kafka exporter queue failures and retry duration;
 - unmatched spans caused by incomplete traces.
+- discovery-backend load, series cardinality, and restarts when enabled;
+- root spans dropped by the discovery conflict filter;
 
 Useful commands:
 
@@ -58,7 +60,6 @@ Track:
 - JobManager leadership changes;
 - restart count;
 - `rejected_inputs`;
-- `rejected_root_spans` when selective discovery is enabled;
 - state volume capacity.
 
 Open the Flink UI:
@@ -109,7 +110,7 @@ Alert on:
 - repeated Collector export failures;
 - Collector or TaskManager restart loops;
 - `rejected_inputs` increasing;
-- `rejected_root_spans` increasing;
+- discovery conflict-filter drops increasing;
 - Flink state or ArangoDB storage nearing capacity;
 - Gremlin readiness failure;
 - indexer restarts or sustained consumer lag;

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 
 import pytest
@@ -113,33 +114,40 @@ def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvir
 
 
 @pytest.mark.e2e
-def test_marked_root_spans_discover_etl_nodes_then_expire(e2e_environment: DemoEnvironment) -> None:
-    unmarked = ExportTraceServiceRequest(
+def test_spanmetrics_root_discovery_normalizes_etl_nodes_then_expires(
+    e2e_environment: DemoEnvironment,
+) -> None:
+    children = ExportTraceServiceRequest(
         resource_spans=(
-            *(_root_resource(f"ignored-{index}") for index in range(128)),
-            _root_resource("string-marker", marker="true"),
-            _root_resource("marked-child", marker=True, parent_span_id=b"parent01"),
+            *(
+                _root_resource(
+                    "etl-worker",
+                    token=f"child-{index}",
+                    parent_span_id=b"parent01",
+                )
+                for index in range(32)
+            ),
         )
     )
-    e2e_environment.send_otlp_traces(unmarked.SerializeToString())
-    time.sleep(3)
-    assert e2e_environment.topic_values("otel.root.spans", timeout_ms=5_000) == []
+    e2e_environment.send_otlp_traces(children.SerializeToString())
+    time.sleep(7)
+    assert _etl_counts(e2e_environment) == (0, 0, 0)
 
-    marked = ExportTraceServiceRequest(
+    roots = ExportTraceServiceRequest(
         resource_spans=(
-            _root_resource("etl-worker", marker=True, part_run_id="extract"),
-            _root_resource("etl-worker", marker=True, part_run_id="load"),
+            *(
+                _root_resource("etl-worker", token=f"extract-{index}", part_run_id="extract")
+                for index in range(8)
+            ),
+            _root_resource("etl-worker", token="load", part_run_id="load"),
         )
     )
-    e2e_environment.send_otlp_traces(marked.SerializeToString())
+    e2e_environment.send_otlp_traces(roots.SerializeToString())
 
     assert wait_for(
-        "filtered root-span Kafka record",
-        30,
-        lambda: any(
-            "etl.pipeline.id" in value and "ignored-" not in value
-            for value in e2e_environment.topic_values("otel.root.spans")
-        ),
+        "normalized discovery metric",
+        45,
+        lambda: sorted(_discovery_counts(e2e_environment)) == [1, 8],
     )
     assert wait_for(
         "ETL roots projected through Flink",
@@ -165,9 +173,9 @@ def test_marked_root_spans_discover_etl_nodes_then_expire(e2e_environment: DemoE
     )
     assert submitter.stdout.strip() == "1"
     assert wait_for(
-        "root-span source checkpoint",
+        "shared metrics source checkpoint",
         30,
-        lambda: e2e_environment.committed_offset("graph-element-engine-root-spans") >= 1,
+        lambda: e2e_environment.committed_offset("graph-element-engine") >= 1,
     )
     assert wait_for(
         "root-span contributor expiry",
@@ -221,7 +229,7 @@ def _delete(element_id: str, observed_at_unix_nano: int, event_id: str) -> dict[
 def _root_resource(
     service_name: str,
     *,
-    marker: bool | str | None = None,
+    token: str,
     parent_span_id: bytes = b"",
     part_run_id: str = "extract",
 ) -> ResourceSpans:
@@ -231,12 +239,10 @@ def _root_resource(
         _attribute("etl.part.run.id", part_run_id),
         _attribute("etl.part.name", part_run_id.title()),
     ]
-    if marker is not None:
-        span_attributes.append(_attribute("semconv.graph.discovery", marker))
     now = time.time_ns()
     span = Span(
-        trace_id=service_name.encode().ljust(16, b"0")[:16],
-        span_id=service_name.encode().ljust(8, b"0")[:8],
+        trace_id=token.encode().ljust(16, b"0")[:16],
+        span_id=token.encode().ljust(8, b"0")[:8],
         parent_span_id=parent_span_id,
         name="customers",
         kind=Span.SPAN_KIND_INTERNAL,
@@ -297,3 +303,19 @@ def _etl_counts(environment: DemoEnvironment) -> tuple[int, int, int]:
             int(graph.V().has_label("etl_run").has("etl_run_id", "run-42").count().next()),
             int(graph.V().has_label("etl_part_run").has("etl_run_id", "run-42").count().next()),
         )
+
+
+def _discovery_counts(environment: DemoEnvironment) -> list[int]:
+    counts: list[int] = []
+    for value in environment.topic_values("otel.servicegraph.metrics"):
+        document = json.loads(value)
+        for resource_metrics in document.get("resourceMetrics", []):
+            for scope_metrics in resource_metrics.get("scopeMetrics", []):
+                for metric in scope_metrics.get("metrics", []):
+                    if metric.get("name") != "semconv.graph.discovery.calls":
+                        continue
+                    for point in metric.get("sum", {}).get("dataPoints", []):
+                        count = point.get("asInt")
+                        if count is not None:
+                            counts.append(int(count))
+    return counts

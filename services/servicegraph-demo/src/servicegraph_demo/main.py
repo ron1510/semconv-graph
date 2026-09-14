@@ -272,7 +272,6 @@ def _etl_span_attributes(execution: EtlExecution | None) -> tuple[KeyValue, ...]
     if execution is None:
         return ()
     return (
-        _attribute("semconv.graph.discovery", True),
         _attribute("etl.run.id", execution.run_id),
         _attribute("etl.run.name", execution.run_name),
         _attribute("etl.part.run.id", execution.part_run_id),

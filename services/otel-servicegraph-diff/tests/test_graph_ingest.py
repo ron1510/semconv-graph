@@ -14,12 +14,16 @@ from otel_servicegraph_diff.engine.elements import (
     GraphContribution,
     GraphEdge,
     GraphNode,
+    apply_contribution,
+    expire_contributors,
 )
 from otel_servicegraph_diff.ingest.contributions import (
+    contributions_from_discovery_datapoint,
     contributions_from_servicegraph_datapoint,
     iter_otlp_json_contributions,
 )
 from otel_servicegraph_diff.ingest.metrics import (
+    ROOT_SPAN_DISCOVERY_CALLS,
     SERVICE_GRAPH_REQUEST_FAILED_TOTAL,
     SERVICE_GRAPH_REQUEST_TOTAL,
     IngestRejection,
@@ -107,6 +111,161 @@ def test_unrelated_metrics_and_zero_deltas_are_ignored() -> None:
     )
 
     assert tuple(iter_otlp_json_contributions(payload)) == ()
+
+
+def test_discovery_metric_extracts_etl_hierarchy_as_nodes_only() -> None:
+    payload = _payload(
+        _sum_metric(
+            name=ROOT_SPAN_DISCOVERY_CALLS,
+            data_points=[
+                _point(
+                    value=8,
+                    attributes={
+                        "service.name": "etl-worker",
+                        "span.kind": "SPAN_KIND_INTERNAL",
+                        "etl.pipeline.id": "customers",
+                        "etl.pipeline.name": "Extract Customers",
+                        "etl.run.id": "run-42",
+                        "etl.run.name": "Nightly customer load",
+                        "etl.part.run.id": "batch-7",
+                        "etl.part.name": "Load customers",
+                    },
+                )
+            ],
+        )
+    )
+
+    contributions = _valid_contributions(iter_otlp_json_contributions(payload))
+    etl_nodes = {
+        item.element.type: item.element.id
+        for item in contributions
+        if item.element.type.startswith("etl.")
+    }
+
+    assert etl_nodes == {
+        "etl.pipeline": "etl.pipeline:customers",
+        "etl.run": "etl.run:customers:run-42",
+        "etl.part.run": "etl.part.run:customers:run-42:batch-7",
+    }
+    assert all(isinstance(item.element, GraphNode) for item in contributions)
+    assert all(item.metric_deltas == {} for item in contributions)
+
+
+def test_discovery_metric_without_identifiable_entities_produces_nothing() -> None:
+    assert contributions_from_discovery_datapoint(
+        {"span.kind": "SPAN_KIND_INTERNAL"},
+        1,
+        1_234_567_890,
+    ) == ()
+
+
+def test_discovery_metric_allows_app_endpoint_for_server_kind_only() -> None:
+    attributes = {
+        "service.name": "etl-api",
+        "service.namespace": "data",
+        "http.request.method": "POST",
+        "http.route": "/imports/{id}",
+    }
+
+    server = contributions_from_discovery_datapoint(
+        {**attributes, "span.kind": "SPAN_KIND_SERVER"},
+        1,
+        1_234_567_890,
+    )
+    client = contributions_from_discovery_datapoint(
+        {**attributes, "span.kind": "SPAN_KIND_CLIENT"},
+        1,
+        1_234_567_890,
+    )
+
+    assert [item.element.type for item in server].count("app.endpoint") == 1
+    assert all(item.element.type != "app.endpoint" for item in client)
+
+
+def test_discovery_contributor_identity_ignores_count_and_flush_timestamp() -> None:
+    attributes = {"service.name": "checkout", "service.version": "1.0"}
+    first = contributions_from_discovery_datapoint(attributes, 1, 10)
+    repeated = contributions_from_discovery_datapoint(attributes, 200, 20)
+    changed = contributions_from_discovery_datapoint(
+        {"service.name": "checkout", "service.version": "2.0"},
+        1,
+        30,
+    )
+
+    assert first[0].contributor_id == repeated[0].contributor_id
+    assert first[0].observed_at_unix_nano != repeated[0].observed_at_unix_nano
+    assert first[0].contributor_id != changed[0].contributor_id
+
+
+def test_discovery_and_servicegraph_contributors_merge_and_expire_independently() -> None:
+    servicegraph = next(
+        contribution
+        for contribution in contributions_from_servicegraph_datapoint(
+            SERVICE_GRAPH_REQUEST_TOTAL,
+            {"client": "checkout", "server": "payments"},
+            1,
+            10,
+        )
+        if contribution.element.id == "service:checkout"
+    )
+    discovery = contributions_from_discovery_datapoint(
+        {"service.name": "checkout", "service.version": "2.0"},
+        1,
+        20,
+    )[0].model_copy(update={"ttl_seconds": 5})
+
+    first = apply_contribution(
+        None,
+        servicegraph,
+        ttl_seconds=100,
+        processing_time_unix_ms=1,
+        emitted_at_unix_ms=1,
+    )
+    assert first.state is not None
+    merged = apply_contribution(
+        first.state,
+        discovery,
+        ttl_seconds=100,
+        processing_time_unix_ms=2,
+        emitted_at_unix_ms=2,
+    )
+
+    assert merged.state is not None
+    assert len(merged.state.contributors) == 2
+    assert merged.event is not None and merged.event.element is not None
+    assert merged.event.element.attributes["service.version"] == "2.0"
+
+    expired = expire_contributors(
+        merged.state,
+        clock="event_time",
+        timestamp=5_000_000_020,
+        emitted_at_unix_ms=3,
+    )
+    assert expired.state is not None
+    assert len(expired.state.contributors) == 1
+    assert expired.event is not None and expired.event.element is not None
+    assert "service.version" not in expired.event.element.attributes
+
+
+def test_discovery_semantic_extraction_runs_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    from otel_servicegraph_diff.ingest import contributions as extraction
+
+    original = extraction.entities_from_attributes
+    calls: list[dict[str, object]] = []
+
+    def recording_extraction(attributes: dict[str, object]):
+        calls.append(attributes)
+        return original(attributes)
+
+    monkeypatch.setattr(extraction, "entities_from_attributes", recording_extraction)
+
+    contributions_from_discovery_datapoint(
+        {"service.name": "checkout", "etl.pipeline.id": "orders"},
+        1,
+        1_234_567_890,
+    )
+
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("temporality", [None, 2])

@@ -61,14 +61,27 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
-    rootSpans: otel.root.spans
 
 entityEvents:
   enabled: false
 
 rootSpanDiscovery:
   enabled: false
-  markerAttribute: semconv.graph.discovery
+  backend:
+    replicaCount: 2
+    metricsFlushInterval: 60s
+    metricsExpiration: 2m
+    seriesExpiration: 2m
+    aggregationCardinalityLimit: 0
+    metricBatchSize: 256
+    resources:
+      requests:
+        cpu: 250m
+        memory: 384Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
 
 podSecurityContext:
   runAsNonRoot: true

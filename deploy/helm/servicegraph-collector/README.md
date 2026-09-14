@@ -3,8 +3,8 @@
 This chart deploys two stateless OTLP routers and a stateful service-graph
 backend. The default `singleWriter` mode sends both routers directly to one
 backend, so each service-graph metric series has one writer. The backend exports
-OTLP JSON metrics to the configured Kafka topic. An optional router pipeline can
-also select marked root spans for node-only discovery.
+OTLP JSON metrics to the configured Kafka topic. An optional router pipeline
+also aggregates root spans for node-only discovery.
 
 The backend converts connector-local cumulative counters to deltas, removes
 zero datapoints, and keeps only the request and failed-request counters consumed
@@ -21,19 +21,20 @@ Values must provide the internal image, Kafka brokers, topic names, and an
 existing Secret for `SASL_PLAINTEXT` or `SASL_SSL`. The chart creates neither topics nor
 credentials. Router replicas remain fixed at two.
 
-Enable selective root-span discovery in both the Collector and Flink charts:
+Enable spanmetrics root discovery in the Collector chart:
 
 ```yaml
 rootSpanDiscovery:
   enabled: true
-streamContract:
-  topics:
-    rootSpans: otel.root.spans
+  backend:
+    replicaCount: 2
+    metricsFlushInterval: 60s
 ```
 
-The router retains only root spans whose `semconv.graph.discovery` attribute is
-the boolean `true`. It exports them as gzip-compressed OTLP JSON after the span
-ends; it does not alter the servicegraph pipeline.
+The router keeps exported root spans, routes each semantic identity to one of
+the dedicated backends, and publishes positive delta
+`semconv.graph.discovery.calls` metrics to the existing metrics topic. Raw spans
+do not enter Kafka, and the servicegraph pipeline remains unchanged.
 
 Set `backend.mode=horizontal` with `backend.replicaCount` of at least two only
 when one backend cannot hold the trace-pairing workload. Horizontal mode uses

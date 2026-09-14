@@ -32,17 +32,12 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
-    rootSpans: otel.root.spans
     interactionEvents: graph.elements.events
 
 entityEvents:
   enabled: false
   groupId: graph-element-engine-entities
   reportIntervalGraceSeconds: 30
-
-rootSpanDiscovery:
-  enabled: false
-  groupId: graph-element-engine-root-spans
 
 job:
   fixedJobId: "00000000000000000000000000000001"

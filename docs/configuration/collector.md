@@ -76,45 +76,50 @@ Root-span discovery is disabled by default. Enable it for execution entities
 that do not necessarily participate in a service interaction:
 
 ```yaml
-streamContract:
-  topics:
-    rootSpans: otel.root.spans
-
 rootSpanDiscovery:
   enabled: true
-  markerAttribute: semconv.graph.discovery
+  backend:
+    replicaCount: 2
+    metricsFlushInterval: 60s
+    metricsExpiration: 2m
+    seriesExpiration: 2m
+    aggregationCardinalityLimit: 0
 ```
 
-The router fans traces into a dedicated filter before batching and Kafka export.
-It retains a span only when both conditions hold:
+The router fans all traces to the servicegraph path and, independently, keeps
+only spans for which `IsRootSpan()` is true. It routes those roots across a
+separate spanmetrics backend pool by generated identifying attributes plus
+`service.name`, `service.namespace`, and `span.kind`. Equivalent semantic
+identities therefore have one aggregate writer even when they enter through
+different routers.
 
-- `IsRootSpan()` is true;
-- the configured span attribute is the boolean `true`.
+Each discovery backend converts completed roots into delta
+`semconv.graph.discovery.calls` datapoints. Histograms, events, exemplars,
+default span-name/status/Collector-instance dimensions, zero datapoints, and
+overflow datapoints are omitted. Positive datapoints are gzip-compressed OTLP
+JSON on the existing `otel.servicegraph.metrics` topic. Raw spans never enter
+Kafka.
 
-Children, unmarked roots, and string values such as `"true"` are dropped from
-this pipeline. Matching spans are exported as gzip-compressed OTLP JSON to
-`streamContract.topics.rootSpans` using the existing Kafka security, retry,
-queue, and acknowledgement settings. The servicegraph trace path is unchanged.
+If a modeled attribute appears at both Resource and span level with different
+values, the router drops that root from discovery. This avoids assigning the
+span to one backend by the Resource value and aggregating it under the span
+value. Collector filter telemetry exposes these drops.
 
-Set the marker when starting the span so a marker-aware sampler can retain it:
+Recurring equivalent roots collapse into one datapoint per flush. Unique IDs,
+such as distinct ETL run IDs, intentionally remain separate series and Kafka
+datapoints because they represent separate graph entities. A single hot identity
+always has one writer and must scale vertically. Sampling still applies before
+the Collector; an unexported root cannot be discovered.
 
-```python
-with tracer.start_as_current_span(
-    "customers-import",
-    attributes={"semconv.graph.discovery": True},
-):
-    run_import()
-```
-
-The application SDK must retain and export marked spans. Discovery occurs after
-the root span ends, so one Kafka observation per distinct visible execution is
-unavoidable. Restrict the marker to meaningful operations rather than ordinary
-request roots.
+The Collector 0.156 `span_metrics` connector is
+[alpha](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.156.0/connector/spanmetricsconnector/README.md).
+Pin and validate the Collector version before upgrading it.
 
 ## Generated dimensions
 
-`deploy/helm/servicegraph-collector/files/dimensions.yaml` is generated from
-entities participating in `service_graph` relationships:
+`deploy/helm/servicegraph-collector/files/dimensions.yaml` and
+`files/root-span-discovery.yaml` are generated from entities participating in
+`service_graph` relationships:
 
 ```console
 python -m tools.semconv_codegen
@@ -160,14 +165,18 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
-    rootSpans: otel.root.spans
 
 entityEvents:
   enabled: false
 
 rootSpanDiscovery:
   enabled: false
-  markerAttribute: semconv.graph.discovery
+  backend:
+    replicaCount: 2
+    metricsFlushInterval: 60s
+    metricsExpiration: 2m
+    seriesExpiration: 2m
+    aggregationCardinalityLimit: 0
 ```
 
 `storeTtl` is the span-pairing retention inside the connector. It is separate
@@ -217,9 +226,11 @@ The optional entity-event logs pipeline also uses an in-memory queue. A
 prolonged Kafka outage can therefore reject matching entity events, and queue
 contents do not survive router replacement.
 
-The optional root-span pipeline has the same in-memory delivery boundary. Its
-Kafka volume scales with marked roots, not total trace volume; an unmarked trace
-batch produces no records on the discovery topic.
+The optional discovery path also has an in-memory router-to-backend queue and a
+backend-to-Kafka queue. All exported roots consume in-cluster Collector work,
+while Kafka volume scales with distinct positive semantic aggregates per flush.
+Set finite cardinality limits only with an explicit policy because overflow
+would otherwise collapse valid graph identities.
 
 ## Validate
 
@@ -235,5 +246,6 @@ After deployment:
 ```console
 kubectl get pods -n servicegraph-system
 kubectl logs -n servicegraph-system statefulset/servicegraph-collector-backend
+kubectl logs -n servicegraph-system statefulset/servicegraph-collector-discovery-backend
 kubectl get endpoints -n servicegraph-system servicegraph-collector-backend-headless
 ```

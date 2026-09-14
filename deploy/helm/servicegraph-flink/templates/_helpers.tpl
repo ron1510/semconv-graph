@@ -76,12 +76,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - name: ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS
   value: {{ .Values.entityEvents.reportIntervalGraceSeconds | quote }}
 {{- end }}
-{{- if .Values.rootSpanDiscovery.enabled }}
-- name: ROOT_SPANS_INPUT_TOPIC
-  value: {{ required "streamContract.topics.rootSpans is required when rootSpanDiscovery.enabled=true" .Values.streamContract.topics.rootSpans | quote }}
-- name: ROOT_SPANS_GROUP_ID
-  value: {{ .Values.rootSpanDiscovery.groupId | quote }}
-{{- end }}
 - name: INTERACTION_DIFF_TTL_SECONDS
   value: {{ .Values.job.interactionTtlSeconds | quote }}
 - name: GRAPH_ELEMENT_TTL_SECONDS

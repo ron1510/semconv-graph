@@ -1,0 +1,106 @@
+{{- if .Values.rootSpanDiscovery.enabled }}
+{{- $discoveryModel := .Files.Get "files/root-span-discovery.yaml" | fromYaml -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "servicegraph-collector.fullname" . }}-discovery-backend
+  labels:
+    {{- include "servicegraph-collector.labels" . | nindent 4 }}
+    app.kubernetes.io/component: root-span-discovery-backend
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: localhost:13133
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 20
+      filter/root_span_discovery_output:
+        error_mode: ignore
+        metric_conditions:
+          - metric.name != "semconv.graph.discovery.calls"
+          - datapoint.value_int == 0
+          - datapoint.attributes["otel.metric.overflow"] == true
+      batch/root_span_discovery_metrics:
+        timeout: 1s
+        send_batch_size: {{ .Values.rootSpanDiscovery.backend.metricBatchSize }}
+        send_batch_max_size: {{ .Values.rootSpanDiscovery.backend.metricBatchSize }}
+    connectors:
+      span_metrics/root_span_discovery:
+        namespace: semconv.graph.discovery
+        dimensions:
+          {{- range $attribute := $discoveryModel.dimensions }}
+          - name: {{ $attribute | quote }}
+          {{- end }}
+        exclude_dimensions:
+          - span.name
+          - status.code
+          - collector.instance.id
+        histogram:
+          disable: true
+        exemplars:
+          enabled: false
+        events:
+          enabled: false
+        aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+        metrics_flush_interval: {{ .Values.rootSpanDiscovery.backend.metricsFlushInterval }}
+        metrics_expiration: {{ .Values.rootSpanDiscovery.backend.metricsExpiration }}
+        series_expiration: {{ .Values.rootSpanDiscovery.backend.seriesExpiration }}
+        aggregation_cardinality_limit: {{ .Values.rootSpanDiscovery.backend.aggregationCardinalityLimit }}
+        resource_metrics_key_attributes:
+          - service.namespace
+          - service.name
+    exporters:
+      kafka/root_span_discovery_metrics:
+        brokers:
+          {{- range .Values.streamContract.kafka.brokers }}
+          - {{ . | quote }}
+          {{- end }}
+        metrics:
+          topic: {{ .Values.streamContract.topics.servicegraphMetrics | quote }}
+          encoding: otlp_json
+        {{- if eq .Values.streamContract.kafka.security.protocol "SASL_SSL" }}
+        tls:
+          insecure: false
+          insecure_skip_verify: false
+        {{- end }}
+        {{- if ne .Values.streamContract.kafka.security.protocol "PLAINTEXT" }}
+        auth:
+          sasl:
+            username: ${env:KAFKA_SASL_USERNAME}
+            password: ${env:KAFKA_SASL_PASSWORD}
+            mechanism: {{ .Values.streamContract.kafka.security.saslMechanism }}
+        {{- end }}
+        producer:
+          compression: gzip
+          required_acks: -1
+          allow_auto_topic_creation: false
+        sending_queue:
+          enabled: true
+          sizer: items
+          num_consumers: 4
+          queue_size: 10000
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 0s
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces/root_span_discovery:
+          receivers: [otlp]
+          processors: [memory_limiter]
+          exporters: [span_metrics/root_span_discovery]
+        metrics/root_span_discovery:
+          receivers: [span_metrics/root_span_discovery]
+          processors: [memory_limiter, filter/root_span_discovery_output, batch/root_span_discovery_metrics]
+          exporters: [kafka/root_span_discovery_metrics]
+{{- end }}

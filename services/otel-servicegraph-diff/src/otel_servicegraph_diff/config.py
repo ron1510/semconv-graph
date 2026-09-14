@@ -60,10 +60,6 @@ class GraphEngineConfig(BaseSettings):
         default=None,
         validation_alias="ENTITY_EVENTS_INPUT_TOPIC",
     )
-    root_span_input_topic: TopicName | None = Field(
-        default=None,
-        validation_alias="ROOT_SPANS_INPUT_TOPIC",
-    )
     output_topic: TopicName = Field(
         default="graph.elements.events",
         validation_alias="INTERACTION_DIFF_OUTPUT_TOPIC",
@@ -75,10 +71,6 @@ class GraphEngineConfig(BaseSettings):
     entity_group_id: TopicName = Field(
         default="graph-element-engine-entities",
         validation_alias="ENTITY_EVENTS_GROUP_ID",
-    )
-    root_span_group_id: TopicName = Field(
-        default="graph-element-engine-root-spans",
-        validation_alias="ROOT_SPANS_GROUP_ID",
     )
     entity_report_interval_grace_seconds: int = Field(
         default=30,
@@ -111,12 +103,6 @@ class GraphEngineConfig(BaseSettings):
             self.output_topic,
         }:
             raise ValueError("entity-event input topic must differ from metrics input and graph output topics")
-        if self.root_span_input_topic is not None and self.root_span_input_topic in {
-            self.input_topic,
-            self.entity_input_topic,
-            self.output_topic,
-        }:
-            raise ValueError("root-span input topic must differ from every other stream-contract topic")
         if self.kafka_security_protocol is not KafkaSecurityProtocol.PLAINTEXT:
             if self.kafka_sasl_mechanism is None:
                 raise ValueError("SASL mechanism is required when Kafka uses authentication")

@@ -41,7 +41,7 @@ available.
 
 Semconv Graph addresses estates that already emit traces and environments with
 standard entity-event producers. It can infer a graph from service-graph
-telemetry, selectively discover non-interacting executions from marked roots,
+telemetry, discover non-interacting executions from aggregated roots,
 consume explicit entity state, or merge those sources centrally.
 
 ## Differentiation
@@ -51,8 +51,8 @@ same problem:
 
 | Capability | Generic OTel entity-event consumer | Semconv Graph today |
 | --- | --- | --- |
-| Primary input | Explicit structured entity events | Servicegraph metrics by default; marked roots and explicit entity events are opt-in |
-| Producer requirement | A producer must emit entity events | Existing trace instrumentation is reused; root-only discovery requires a boolean marker |
+| Primary input | Explicit structured entity events | Servicegraph metrics by default; aggregated roots and explicit entity events are opt-in |
+| Producer requirement | A producer must emit entity events | Existing exported traces are reused; root-only discovery requires identifying semantic attributes |
 | Entity descriptions | Can carry complete and complex descriptions | Scalar dimensions from inferred telemetry; complete descriptions from explicit events |
 | Relationships | Explicitly supplied by the producer | Inferred relationships plus registry-validated explicit relationships |
 | Lifecycle | Explicit state/delete plus report-interval expiry | Contributor-aware inactivity expiry and entity-scoped explicit reconciliation |
@@ -65,9 +65,9 @@ events wherever producers already emit them.
 ## Three-source runtime
 
 ```text
-OTLP traces                    marked root spans              OTel entity events
+OTLP traces                   completed root spans             OTel entity events
     |                                  |                              |
-Collector servicegraph metrics    root-span ingest             entity-event ingest
+Collector servicegraph metrics  spanmetrics discovery          entity-event ingest
     |                                  |                              |
     +------------------------- graph contributions ------------------+
                               |
@@ -78,9 +78,10 @@ Collector servicegraph metrics    root-span ingest             entity-event inge
                     ArangoDB current graph
 ```
 
-The marked-root source extracts nodes only. It is intended for executions such
-as ETL runs that may not participate in any paired service interaction. The
-router drops every unmarked or non-root span before Kafka, and Flink never
+The discovery source extracts nodes only. It is intended for executions such as
+ETL runs that may not participate in any paired service interaction. The router
+drops child spans, semantic-identity sharding assigns equivalent roots to one
+spanmetrics writer, and only aggregated delta metrics reach Kafka. Flink never
 infers edges from this lane.
 
 The optional entity-event source translates standard entity events into the

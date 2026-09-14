@@ -10,6 +10,15 @@ from tools.semconv_codegen.registry.model import (
 )
 
 TEMPLATE_SUFFIXES = (".label", ".annotation", ".selector")
+SPAN_METRICS_BUILTIN_DIMENSIONS = frozenset(
+    {
+        "collector.instance.id",
+        "service.name",
+        "span.kind",
+        "span.name",
+        "status.code",
+    }
+)
 
 
 def service_graph_dimensions(registry: RegistryDocument) -> tuple[str, ...]:
@@ -49,6 +58,48 @@ def include_dimension_ref(attribute_ref: str, attribute: AttributeDefinition | N
 
 def entity_dimensions(entity: EntityDefinition) -> tuple[str, ...]:
     return tuple(sorted(ref.ref for ref in entity.attributes if include_dimension_ref(ref.ref)))
+
+
+def root_span_discovery_dimensions(registry: RegistryDocument) -> tuple[str, ...]:
+    """Return dimensions needed to reconstruct every graph-supported entity."""
+
+    dimensions = _scalar_entity_attributes(registry)
+    return tuple(sorted(dimensions - SPAN_METRICS_BUILTIN_DIMENSIONS))
+
+
+def root_span_discovery_routing_attributes(registry: RegistryDocument) -> tuple[str, ...]:
+    """Return stable attributes that shard complete semantic identities to one writer."""
+
+    attributes = registry.attributes_by_id
+    entity_names = service_graph_entity_names(registry)
+    routing = {
+        ref.ref
+        for entity_name, entity in registry.entities_by_name.items()
+        if entity_name in entity_names
+        for ref in entity.attributes
+        if ref.role == "identifying"
+        and include_dimension_ref(ref.ref, attributes.get(ref.ref))
+    }
+    routing.update({"service.name", "service.namespace", "span.kind"})
+    return tuple(sorted(routing))
+
+
+def root_span_modeled_attributes(registry: RegistryDocument) -> tuple[str, ...]:
+    """Return graph-supported fields whose resource/span conflicts are ambiguous."""
+
+    return tuple(sorted(_scalar_entity_attributes(registry)))
+
+
+def _scalar_entity_attributes(registry: RegistryDocument) -> set[str]:
+    attributes = registry.attributes_by_id
+    entity_names = service_graph_entity_names(registry)
+    return {
+        ref.ref
+        for entity_name, entity in registry.entities_by_name.items()
+        if entity_name in entity_names
+        for ref in entity.attributes
+        if include_dimension_ref(ref.ref, attributes.get(ref.ref))
+    }
 
 
 def is_scalar_attribute(attribute: AttributeDefinition) -> bool:

@@ -1,4 +1,4 @@
-"""OTLP JSON parsing for Collector service-graph metrics."""
+"""OTLP JSON parsing for supported graph-discovery metrics."""
 
 from __future__ import annotations
 
@@ -15,13 +15,19 @@ from otel_servicegraph_diff.ingest.attributes import TelemetryScalar, scalar_att
 
 SERVICE_GRAPH_REQUEST_TOTAL = "traces_service_graph_request_total"
 SERVICE_GRAPH_REQUEST_FAILED_TOTAL = "traces_service_graph_request_failed_total"
-SUPPORTED_SERVICE_GRAPH_METRICS = frozenset(
-    {SERVICE_GRAPH_REQUEST_TOTAL, SERVICE_GRAPH_REQUEST_FAILED_TOTAL}
+ROOT_SPAN_DISCOVERY_CALLS = "semconv.graph.discovery.calls"
+SUPPORTED_GRAPH_METRICS = frozenset(
+    {
+        SERVICE_GRAPH_REQUEST_TOTAL,
+        SERVICE_GRAPH_REQUEST_FAILED_TOTAL,
+        ROOT_SPAN_DISCOVERY_CALLS,
+    }
 )
-type SupportedMetricName = Literal[
+type ServiceGraphMetricName = Literal[
     "traces_service_graph_request_total",
     "traces_service_graph_request_failed_total",
 ]
+type SupportedMetricName = ServiceGraphMetricName | Literal["semconv.graph.discovery.calls"]
 type NonNegativeStrictInt = Annotated[int, Field(strict=True, ge=0)]
 type NonNegativeFiniteFloat = Annotated[
     float,
@@ -72,7 +78,7 @@ def _metric_inputs(request: ExportMetricsServiceRequest) -> Iterator[MetricPoint
 
 
 def _metric_points(metric: Metric) -> Iterator[MetricPoint | IngestRejection]:
-    if metric.name not in SUPPORTED_SERVICE_GRAPH_METRICS:
+    if metric.name not in SUPPORTED_GRAPH_METRICS:
         return
     if metric.WhichOneof("data") != "sum":
         yield IngestRejection(

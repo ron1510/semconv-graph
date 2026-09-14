@@ -24,9 +24,13 @@ the executable defaults.
 | `streamContract.topics.servicegraphMetrics` | `otel.servicegraph.metrics` | Metrics topic |
 | `streamContract.topics.entityEvents` | `otel.entity.events` | Optional filtered OTLP entity-event logs topic |
 | `entityEvents.enabled` | `false` | Add the router entity-event logs pipeline |
-| `streamContract.topics.rootSpans` | `otel.root.spans` | Filtered OTLP root-span trace topic |
-| `rootSpanDiscovery.enabled` | `false` | Add the selective root-span router pipeline |
-| `rootSpanDiscovery.markerAttribute` | `semconv.graph.discovery` | Boolean span marker used by the router filter |
+| `rootSpanDiscovery.enabled` | `false` | Add root filtering and the spanmetrics discovery pool |
+| `rootSpanDiscovery.backend.replicaCount` | `2` | Identity-sharded spanmetrics backends |
+| `rootSpanDiscovery.backend.metricsFlushInterval` | `60s` | Discovery delta flush period |
+| `rootSpanDiscovery.backend.metricsExpiration` | `2m` | Inactive metric resource expiration |
+| `rootSpanDiscovery.backend.seriesExpiration` | `2m` | Inactive series expiration |
+| `rootSpanDiscovery.backend.aggregationCardinalityLimit` | `0` | Unlimited identities; avoids overflow collapse |
+| `rootSpanDiscovery.backend.metricBatchSize` | `256` | Maximum discovery datapoints per Kafka-bound batch |
 
 Resource, scheduling, ServiceAccount, image-pull, and security-context values are
 also available in the chart.
@@ -48,9 +52,6 @@ also available in the chart.
 | `entityEvents.enabled` | `false` | Add the independent entity-event Kafka source |
 | `entityEvents.groupId` | `graph-element-engine-entities` | Entity-event source consumer group |
 | `entityEvents.reportIntervalGraceSeconds` | `30` | Grace added to positive report intervals |
-| `streamContract.topics.rootSpans` | `otel.root.spans` | Optional root-span input topic |
-| `rootSpanDiscovery.enabled` | `false` | Add the independent root-span Kafka source |
-| `rootSpanDiscovery.groupId` | `graph-element-engine-root-spans` | Root-span source consumer group |
 | `job.interactionTtlSeconds` | `300` | Delete inactivity threshold |
 | `job.elementTtlSeconds` | `{}` | Optional inactivity thresholds by semantic element type |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |

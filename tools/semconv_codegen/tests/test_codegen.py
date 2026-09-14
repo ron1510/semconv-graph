@@ -28,6 +28,7 @@ from tools.semconv_codegen.generator import (
     _render_entity_module,
     _render_package_init,
     _render_relationship_metadata,
+    _render_root_span_discovery,
     _safe_arangodb_name,
     _schema_hash,
     _unique_sanitized_names,
@@ -135,6 +136,9 @@ def test_default_paths_cover_every_generated_artifact(tmp_path: Path) -> None:
     )
     assert paths.collector_dimensions == (
         tmp_path / "deploy" / "helm" / "servicegraph-collector" / "files" / "dimensions.yaml"
+    )
+    assert paths.collector_discovery == (
+        tmp_path / "deploy" / "helm" / "servicegraph-collector" / "files" / "root-span-discovery.yaml"
     )
     assert paths.arangodb_schema == (
         tmp_path
@@ -329,9 +333,15 @@ def test_metadata_renderers_filter_relationships_and_dimensions() -> None:
 
     relationships = json.loads(_render_relationship_metadata(registry.relationships_by_id))
     dimensions = yaml.safe_load(_render_collector_dimensions(registry))
+    discovery = yaml.safe_load(_render_root_span_discovery(registry))
 
     assert [item["id"] for item in relationships] == ["relationship.service_app"]
     assert dimensions == {"dimensions": ["service.name"]}
+    assert discovery == {
+        "dimensions": [],
+        "routing_attributes": ["service.name", "service.namespace", "span.kind"],
+        "modeled_attributes": ["service.name"],
+    }
 
 
 def test_arangodb_schema_uses_registry_topology_aliases_and_identity_fields(tmp_path: Path) -> None:
@@ -449,6 +459,7 @@ def test_main_writes_and_checks_all_artifacts(
     assert paths.semantic_schema.exists()
     assert paths.relationship_metadata.exists()
     assert paths.collector_dimensions.exists()
+    assert paths.collector_discovery.exists()
     assert paths.arangodb_schema.exists()
     assert paths.gremlin_schema.read_text(encoding="utf-8") == paths.arangodb_schema.read_text(encoding="utf-8")
     assert codegen.main(["--check"]) == 0
@@ -457,6 +468,12 @@ def test_main_writes_and_checks_all_artifacts(
 
     assert codegen.main(["--check"]) == 1
     assert "dimensions.yaml is not up to date" in capsys.readouterr().out
+
+    codegen.main([])
+    paths.collector_discovery.write_text("stale\n", encoding="utf-8")
+
+    assert codegen.main(["--check"]) == 1
+    assert "root-span-discovery.yaml is not up to date" in capsys.readouterr().out
 
     codegen.main([])
     paths.arangodb_schema.write_text("{}\n", encoding="utf-8")
@@ -494,6 +511,29 @@ def test_yaml_to_importable_models_and_all_generated_artifacts(tmp_path: Path) -
             "service.name",
         ]
     }
+    discovery = yaml.safe_load(paths.collector_discovery.read_text(encoding="utf-8"))
+    assert discovery["dimensions"] == [
+        "custom.rank",
+        "endpoint.enabled",
+        "endpoint.retry_count",
+        "http.request.method",
+        "http.route",
+    ]
+    assert discovery["routing_attributes"] == [
+        "http.request.method",
+        "http.route",
+        "service.name",
+        "service.namespace",
+        "span.kind",
+    ]
+    assert discovery["modeled_attributes"] == [
+        "custom.rank",
+        "endpoint.enabled",
+        "endpoint.retry_count",
+        "http.request.method",
+        "http.route",
+        "service.name",
+    ]
     schema = json.loads(paths.arangodb_schema.read_text(encoding="utf-8"))
     assert schema["_meta"]["schema_version"] == "1"
 
@@ -629,6 +669,7 @@ groups:
             semantic_schema=package_dir / "metadata" / "semantic-entities.schema.json",
             relationship_metadata=package_dir / "metadata" / "relationships.json",
             collector_dimensions=tmp_path / "collector" / "dimensions.yaml",
+            collector_discovery=tmp_path / "collector" / "root-span-discovery.yaml",
             arangodb_schema=package_dir / "metadata" / "arangodb-graph-schema.json",
             gremlin_schema=tmp_path / "gremlin" / "arangodb-graph-schema.json",
         ),

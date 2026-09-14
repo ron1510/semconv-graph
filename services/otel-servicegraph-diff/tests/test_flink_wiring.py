@@ -73,7 +73,7 @@ def test_run_flink_job_configures_runtime_and_executes_once(monkeypatch: pytest.
     env.enable_checkpointing.assert_called_once_with(5_000)
     flink_job._kafka_source.assert_called_once_with(config)  # pyright: ignore[reportFunctionMemberAccess]
     flink_job._kafka_sink.assert_called_once_with(config, config.output_topic)  # pyright: ignore[reportFunctionMemberAccess]
-    configure_graph.assert_called_once_with(env, config, source, sink, None, None)
+    configure_graph.assert_called_once_with(env, config, source, sink, None)
     env.execute.assert_called_once_with("servicegraph-graph-element-engine")
 
 
@@ -106,39 +106,7 @@ def test_run_flink_job_builds_independent_optional_entity_source(monkeypatch: py
             group_id="graph-element-engine-entities",
         ),
     ]
-    configure_graph.assert_called_once_with(env, config, metrics_source, sink, entity_source, None)
-
-
-def test_run_flink_job_builds_independent_optional_root_span_source(monkeypatch: pytest.MonkeyPatch) -> None:
-    config = GraphEngineConfig(root_span_input_topic="otel.root.spans")
-    env = MagicMock()
-    metrics_source = object()
-    root_span_source = object()
-    sink = object()
-    source_builder = MagicMock(side_effect=[metrics_source, root_span_source])
-    configure_graph = MagicMock()
-
-    monkeypatch.setattr(flink_job, "Configuration", _FakeConfiguration)
-    monkeypatch.setattr(
-        flink_job,
-        "StreamExecutionEnvironment",
-        SimpleNamespace(get_execution_environment=MagicMock(return_value=env)),
-    )
-    monkeypatch.setattr(flink_job, "_kafka_source", source_builder)
-    monkeypatch.setattr(flink_job, "_kafka_sink", MagicMock(return_value=sink))
-    monkeypatch.setattr(flink_job, "_configure_job_graph", configure_graph)
-
-    flink_job.run_flink_job(config)
-
-    assert source_builder.call_args_list == [
-        call(config),
-        call(
-            config,
-            topic="otel.root.spans",
-            group_id="graph-element-engine-root-spans",
-        ),
-    ]
-    configure_graph.assert_called_once_with(env, config, metrics_source, sink, None, root_span_source)
+    configure_graph.assert_called_once_with(env, config, metrics_source, sink, entity_source)
 
 
 def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -276,60 +244,6 @@ def test_configure_job_graph_unions_checkpointed_entity_reconciliation(monkeypat
     metric_contributions.union.assert_called_once_with(entity_mutations)
 
 
-def test_configure_job_graph_unions_root_span_node_contributions(monkeypatch: pytest.MonkeyPatch) -> None:
-    env = MagicMock()
-    metric_source = object()
-    root_span_source = object()
-    sink = object()
-    metric_source_operator = MagicMock()
-    root_source_operator = MagicMock()
-    env.from_source.side_effect = [metric_source_operator, root_source_operator]
-    metric_contributions = (
-        metric_source_operator.name.return_value.uid.return_value.flat_map.return_value.name.return_value.uid.return_value
-    )
-    root_payloads = root_source_operator.name.return_value.uid.return_value
-    root_contributions = root_payloads.flat_map.return_value.name.return_value.uid.return_value
-    merged = metric_contributions.union.return_value
-    timestamped = merged.assign_timestamps_and_watermarks.return_value.name.return_value.uid.return_value
-    events = timestamped.key_by.return_value.process.return_value.name.return_value.uid.return_value
-    rows = events.map.return_value.name.return_value.uid.return_value
-    rows.sink_to.return_value.name.return_value.uid.return_value = None
-    watermark = MagicMock()
-    watermark.with_idleness.return_value = watermark
-    watermark.with_timestamp_assigner.return_value = watermark
-    monkeypatch.setattr(
-        flink_job,
-        "WatermarkStrategy",
-        SimpleNamespace(
-            no_watermarks=MagicMock(return_value="no-watermarks"),
-            for_bounded_out_of_orderness=MagicMock(return_value=watermark),
-        ),
-    )
-    monkeypatch.setattr(flink_job, "Duration", SimpleNamespace(of_seconds=MagicMock(side_effect=_duration)))
-    monkeypatch.setattr(flink_job, "Types", SimpleNamespace(STRING=MagicMock(return_value="string")))
-
-    flink_job._configure_job_graph(
-        cast(Any, env),
-        GraphEngineConfig(root_span_input_topic="otel.root.spans"),
-        cast(Any, metric_source),
-        cast(Any, sink),
-        root_span_source=cast(Any, root_span_source),
-    )
-
-    assert env.from_source.call_args_list == [
-        call(metric_source, "no-watermarks", "servicegraph-otlp-json"),
-        call(root_span_source, "no-watermarks", "otel-root-spans-json"),
-    ]
-    root_source_operator.name.assert_called_once_with("root-spans-kafka-source")
-    root_source_operator.name.return_value.uid.assert_called_once_with("graph-v3-root-spans-kafka-source")
-    root_payloads.flat_map.assert_called_once_with(ANY)
-    root_payloads.flat_map.return_value.name.assert_called_once_with("extract-root-span-node-contributions")
-    root_payloads.flat_map.return_value.name.return_value.uid.assert_called_once_with(
-        "graph-v3-extract-root-span-nodes"
-    )
-    metric_contributions.union.assert_called_once_with(root_contributions)
-
-
 def test_kafka_source_maps_all_contract_properties(monkeypatch: pytest.MonkeyPatch) -> None:
     builder = _fluent_builder(
         "set_bootstrap_servers",
@@ -458,38 +372,6 @@ def test_payload_parser_yields_multiple_points_and_ignores_unknown_metrics() -> 
 
     assert [next(iter(item.metric_deltas.values())) for item in contributions if item.metric_deltas] == [1, 2]
     counter.inc.assert_not_called()
-
-
-def test_root_span_payload_parser_counts_rejections_and_yields_nodes(
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    contribution = GraphContribution(
-        contributor_id="root-span:one",
-        observed_at_unix_nano=1_234_567_890,
-        element=GraphNode(id="service:etl", type="service"),
-    )
-    rejection = flink_job.IngestRejection(reason="invalid_root_span", detail="bad timestamp")
-    monkeypatch.setattr(
-        flink_job,
-        "iter_otlp_json_root_span_contributions",
-        MagicMock(return_value=iter((rejection, contribution))),
-    )
-    counter = MagicMock()
-    runtime = MagicMock()
-    runtime.get_metrics_group.return_value.counter.return_value = counter
-    parser = flink_job._RootSpanPayloadParser()
-
-    with pytest.raises(RuntimeError, match="before operator initialization"):
-        parser._require_rejected_inputs()
-
-    parser.open(runtime)
-    with caplog.at_level("WARNING"):
-        assert tuple(parser.flat_map("payload")) == (contribution,)
-
-    runtime.get_metrics_group.return_value.counter.assert_called_once_with("rejected_root_spans")
-    counter.inc.assert_called_once_with()
-    assert "discarding rejected root-span input" in caplog.text
 
 
 def test_process_open_registers_versioned_state_without_framework_ttl(

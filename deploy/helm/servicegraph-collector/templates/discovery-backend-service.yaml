@@ -1,0 +1,19 @@
+{{- if .Values.rootSpanDiscovery.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "servicegraph-collector.fullname" . }}-discovery-backend-headless
+  labels:
+    {{- include "servicegraph-collector.labels" . | nindent 4 }}
+    app.kubernetes.io/component: root-span-discovery-backend
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "servicegraph-collector.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: root-span-discovery-backend
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+{{- end }}

@@ -2,10 +2,23 @@ OTLP entry point:
   gRPC: {{ include "servicegraph-collector.fullname" . }}-router.{{ .Release.Namespace }}.svc:4317
   HTTP:  http://{{ include "servicegraph-collector.fullname" . }}-router.{{ .Release.Namespace }}.svc:4318
 
-Two routers share a fixed hash ring containing these stateful backends:
+{{- if eq .Values.backend.mode "singleWriter" }}
+Both routers send traces directly to the single servicegraph backend:
+  {{ include "servicegraph-collector.fullname" . }}-backend-headless.{{ .Release.Namespace }}.svc:4317
+{{- else }}
+Both routers share a trace-ID hash ring containing these servicegraph backends:
 {{- $root := . }}
 {{- range $ordinal := until (int .Values.backend.replicaCount) }}
   - {{ include "servicegraph-collector.fullname" $root }}-backend-{{ $ordinal }}.{{ include "servicegraph-collector.fullname" $root }}-backend-headless.{{ $root.Release.Namespace }}.svc:4317
+{{- end }}
+{{- end }}
+{{- if .Values.rootSpanDiscovery.enabled }}
+
+Root spans are identity-sharded across these spanmetrics backends:
+{{- $root := . }}
+{{- range $ordinal := until (int .Values.rootSpanDiscovery.backend.replicaCount) }}
+  - {{ include "servicegraph-collector.fullname" $root }}-discovery-backend-{{ $ordinal }}.{{ include "servicegraph-collector.fullname" $root }}-discovery-backend-headless.{{ $root.Release.Namespace }}.svc:4317
+{{- end }}
 {{- end }}
 
 The Collector writes OTLP JSON metrics to:

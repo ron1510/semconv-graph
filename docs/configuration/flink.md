@@ -147,36 +147,26 @@ merged under an incomplete identity. Output remains project schema `2.0` on
 `graph.elements.events`; Flink does not emit standard OTel entity events or
 historical state.
 
-## Optional root-span discovery source
+## Spanmetrics discovery dispatch
 
-Enable the independent OTLP trace source with:
+Flink requires no separate discovery source or setting. The Collector writes
+positive delta `semconv.graph.discovery.calls` datapoints to the existing
+`streamContract.topics.servicegraphMetrics` topic. The stable metrics source and
+consumer group read all three supported metric names and dispatch each point by
+name.
 
-```yaml
-streamContract:
-  topics:
-    rootSpans: otel.root.spans
+For a discovery datapoint, Flink calls the generated entity extractor once and
+emits every identifiable graph-supported entity as a node contribution.
+`AppEndpoint` is permitted only when `span.kind=SPAN_KIND_SERVER`. The aggregated
+call count does not become a graph metric, and discovery datapoints never create
+edges. A point without enough semantic identity produces nothing.
 
-rootSpanDiscovery:
-  enabled: true
-  groupId: graph-element-engine-root-spans
-```
-
-The source starts from committed offsets or `earliest` and uses the same Kafka
-security settings as the metrics source. For each root span, Flink combines
-scalar Resource and span attributes, rejects conflicting values for modeled
-semantic fields, and calls the generated entity extractor once. The span end
-timestamp becomes the observation timestamp.
-
-Every identifiable semantic entity becomes a node contribution. `AppEndpoint`
-is permitted only for server-kind roots. A valid root with no identifiable
-entity produces nothing, and this lane never emits edges or metric deltas.
-
-Contributor identity excludes trace IDs, span IDs, and timestamps. Repeated
-equivalent executions therefore refresh one contributor, while changed
+Contributor identity excludes the count and flush timestamp. Repeated
+equivalent aggregates therefore refresh one contributor, while changed
 canonical semantic attributes create distinct contributors. Nodes inferred by
-servicegraph metrics and root spans merge under the same deterministic element
-ID and expire only after their final contributor disappears. A node discovered
-only from a root span remains disconnected until servicegraph or an explicit
+servicegraph and spanmetrics merge under the same deterministic element ID and
+expire only after their final contributor disappears. A node discovered only
+from a root aggregate remains disconnected until servicegraph or an explicit
 entity event supplies a relationship.
 
 ## Kafka contract
@@ -197,7 +187,6 @@ streamContract:
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
     entityEvents: otel.entity.events
-    rootSpans: otel.root.spans
     interactionEvents: graph.elements.events
 ```
 
@@ -207,8 +196,6 @@ at-least-once.
 
 When enabled, the entity-event source follows the same offset and security
 rules but uses `entityEvents.groupId` independently.
-
-The root-span source likewise uses `rootSpanDiscovery.groupId` independently.
 
 Supported protocols are `PLAINTEXT`, `SASL_PLAINTEXT`, and `SASL_SSL`.
 Both SASL modes use the configured SCRAM credentials. `SASL_SSL` validates
@@ -303,8 +290,6 @@ The chart maps values to these application variables:
 | `ENTITY_EVENTS_INPUT_TOPIC` | `streamContract.topics.entityEvents` when `entityEvents.enabled=true` |
 | `ENTITY_EVENTS_GROUP_ID` | `entityEvents.groupId` when enabled |
 | `ENTITY_EVENTS_REPORT_INTERVAL_GRACE_SECONDS` | `entityEvents.reportIntervalGraceSeconds` when enabled |
-| `ROOT_SPANS_INPUT_TOPIC` | `streamContract.topics.rootSpans` when `rootSpanDiscovery.enabled=true` |
-| `ROOT_SPANS_GROUP_ID` | `rootSpanDiscovery.groupId` when enabled |
 | `INTERACTION_DIFF_TTL_SECONDS` | `job.interactionTtlSeconds` |
 | `INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS` | `job.allowedLatenessSeconds` |
 | `FLINK_CHECKPOINT_INTERVAL_MS` | `job.checkpointIntervalMs` |

@@ -36,8 +36,8 @@ producers yet. Inference from traces provides a lower-friction starting point:
 deploy infrastructure around the telemetry pipeline, then obtain a useful graph
 without changing every instrumented application.
 
-Marked root spans and standard OTel entity events are opt-in sources. Root spans
-cover node-only executions absent from service interactions; explicit entities
+Aggregated root spans and standard OTel entity events are opt-in sources. The
+Collector's spanmetrics lane covers node-only executions absent from service interactions; explicit entities
 can provide complete state and relationships. All sources enter the same
 contributor lifecycle without replacing the default servicegraph path. Read the
 [product direction](product.md) and the [conformance
@@ -69,9 +69,9 @@ consumers apply events idempotently.
 
 The semantic SDK, inferred service-graph source, Flink lifecycle path, Kafka
 contract, ArangoDB projection, Gremlin runtime, and Helm charts are implemented.
-Opt-in root-span and standard entity-event ingestion are implemented.
+Opt-in spanmetrics root discovery and standard entity-event ingestion are implemented.
 Historical queries, standard OTel output, incoming-relationship implicit
 deletion, and published distributed scale benchmarks are not yet implemented. A focused automated
-Collector-to-Flink-to-Gremlin E2E covers selective root discovery. A
+Collector-to-Flink-to-Gremlin E2E covers spanmetrics root discovery. A
 reproducible in-process benchmark covers parsing, extraction,
 and lifecycle functions without making distributed-scale claims.

@@ -44,10 +44,12 @@ python -m tools.semconv_codegen --check
 Existing upserts do not gain new entities until new activity produces an
 updated payload.
 
-For root-span-only entities, also verify that root-span discovery is enabled in
-both charts, the marker is the boolean `true` on a completed root span, the SDK
-retains that span, and `otel.root.spans` advances. Such entities are expected to
-have no edges unless another input source contributes a relationship.
+For root-span-only entities, verify discovery is enabled in the Collector chart,
+the application exports the completed root, the discovery backends are ready,
+and `semconv.graph.discovery.calls` appears on `otel.servicegraph.metrics`.
+Check Collector filter telemetry for roots dropped by conflicting modeled
+Resource/span attributes. Such entities have no edges unless another input
+source contributes a relationship.
 
 ## Graph elements never delete
 
@@ -154,14 +156,11 @@ service-graph datapoint failed parsing or semantic normalization. Inspect the
 bounded reason and detail in TaskManager logs, then inspect a sample Kafka
 record through an appropriately secured tool.
 
-Only supported delta service-graph sums with finite, nonnegative values,
-timestamps, and required client/server fields affect state. Zero deltas and
-unrelated metrics are ignored.
-
-An increasing `rejected_root_spans` counter means a selected OTLP trace payload
-or modeled Resource/span attribute combination was invalid. Conflicting values
-for a modeled semantic field reject that root; unknown and non-scalar
-attributes are ignored.
+Only the two servicegraph counters and `semconv.graph.discovery.calls` are
+supported. They must be delta sums with finite, nonnegative values and
+timestamps. Servicegraph points additionally require client and server fields.
+Zero deltas and unrelated metrics are ignored. Root attribute conflicts are
+dropped in the Collector before aggregation, not rejected in Flink.
 
 ## API reports ready but data is old
 
