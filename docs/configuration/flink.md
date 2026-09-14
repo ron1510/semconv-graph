@@ -40,8 +40,18 @@ job:
     calls: 300
   allowedLatenessSeconds: 60
   checkpointIntervalMs: 30000
+  checkpointTimeoutMs: 600000
+  checkpointMinPauseMs: 5000
+  tolerableFailedCheckpoints: 1
   restartAttempts: 3
   restartDelaySeconds: 10
+
+state:
+  backend: rocksdb
+  incrementalCheckpoints: true
+  rocksdb:
+    localDirectory: /flink-rocksdb
+    localStorageSize: 10Gi
 ```
 
 | Value | Meaning |
@@ -52,6 +62,9 @@ job:
 | `elementTtlSeconds` | Optional inactivity thresholds keyed by semantic node or relationship type |
 | `allowedLatenessSeconds` | Out-of-order bound used to generate watermarks |
 | `checkpointIntervalMs` | Source-offset and state checkpoint interval |
+| `checkpointTimeoutMs` | Maximum duration of one checkpoint |
+| `checkpointMinPauseMs` | Minimum pause between completed checkpoints |
+| `tolerableFailedCheckpoints` | Consecutive asynchronous checkpoint failures tolerated before job failure |
 | `restartAttempts` | Fixed-delay job restart attempts |
 | `restartDelaySeconds` | Delay between restart attempts |
 
@@ -205,7 +218,10 @@ without TLS and is appropriate only on a trusted internal network.
 
 ## Persistent state
 
-The default chart uses one shared claim for:
+The default state backend is RocksDB with incremental checkpoints. Each
+TaskManager mounts a dedicated 10 GiB `emptyDir` at `/flink-rocksdb`; these
+local database files are disposable working state and are rebuilt after pod
+replacement. The shared claim remains authoritative for:
 
 - Kubernetes HA metadata;
 - checkpoints;
@@ -222,8 +238,23 @@ storage:
 
 Use `storage.existingClaim` to reference a pre-provisioned claim. A multi-node
 cluster requires storage that all eligible JobManager and TaskManager nodes can
-mount. The default file-based design is intentionally simple for internal
-clusters; validate the storage system's availability guarantees separately.
+mount. Validate the storage system's availability guarantees separately.
+
+The TaskManager requests 1 GiB and limits 12 GiB of ephemeral storage by
+default. Size the node and `state.rocksdb.localStorageSize` together, and alert
+before `/flink-rocksdb` reaches 70% utilization. Use HashMap only as an explicit
+fallback:
+
+```yaml
+state:
+  backend: hashmap
+  incrementalCheckpoints: false
+```
+
+The chart rejects incremental checkpoints with HashMap and omits the RocksDB
+volume in that mode. Checkpoints remain aligned and only one checkpoint runs at
+a time. One asynchronous checkpoint failure is tolerated; a second consecutive
+failure fails the job and invokes its restart strategy.
 
 With `retainClaim: true`, Helm annotates a created claim with
 `helm.sh/resource-policy: keep`. Uninstalling the release does not delete it.

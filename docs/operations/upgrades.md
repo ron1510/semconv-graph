@@ -64,15 +64,35 @@ intentionally removes an operator and its state. This setting does not make
 incompatible serializers or changed keys safe.
 
 The current lifecycle implementation uses operator UID
-`graph-v3-element-lifecycle` and keyed state descriptor
-`graph-element-lifecycle-state-v3`. These identifiers support compatible
-restoration within the direct-contribution implementation. Renaming operators,
-changing key definitions, or changing serialized state models can make a
-savepoint incompatible.
+`graph-v4-element-lifecycle`, contributor `MapState` descriptor
+`graph-element-contributors-v4`, and compact aggregate and timer descriptors
+with the same `v4` suffix. These identifiers support compatible restoration
+within version 4. Renaming operators, changing key definitions, or changing
+serialized state models can make a savepoint incompatible.
 
-Version 3 deliberately cannot restore version 2 interaction and aggregate
-state. Its first rollout requires fresh Flink state and a rebuilt output
-projection; do not provide an old savepoint to the submitter.
+Version 4 deliberately cannot restore the monolithic v3 lifecycle state. Its
+first rollout requires fresh Flink state, a recreated output topic, and a
+rebuilt ArangoDB projection. Do not provide an old checkpoint or savepoint to
+the submitter.
+
+### Destructive v4 rollout
+
+1. Record both graph-topic partition counts and topic configurations.
+2. Stop Collector ingestion and scale the ArangoDB indexer to zero.
+3. Uninstall Flink and delete its retained state claim.
+4. Delete and recreate `graph.elements.events` with the recorded partition and
+   compaction settings.
+5. Truncate only the generated servicegraph vertex and edge collections.
+6. Reset `servicegraph-arangodb-indexer` to the beginning of the recreated
+   output topic.
+7. Install chart `0.8.0` with the existing input groups, topics, fixed job ID,
+   and production claim settings. Keep `job.allowNonRestoredState=false`.
+8. Resume Collector ingestion, verify fresh lifecycle upserts, and restart the
+   indexer.
+9. Confirm Gremlin returns only elements rebuilt from new observations.
+
+This procedure is intentionally manual. The chart never deletes Kafka topics,
+claims, offsets, or ArangoDB data.
 
 Inspect the lifecycle Jobs after an upgrade:
 

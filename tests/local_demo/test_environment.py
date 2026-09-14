@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
-from collections.abc import Sequence
+import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -103,6 +107,75 @@ def test_helm_commands_use_the_built_local_image_tag(monkeypatch: pytest.MonkeyP
     assert "image.tag=local-demo" in commands[1]
     assert commands[0][:4] == ["helm", "upgrade", "--install", "indexer"]
     assert commands[1][:4] == ["helm", "upgrade", "--install", "gremlin"]
+
+
+def test_completed_checkpoints_uses_the_cluster_id_rest_service(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    commands: list[tuple[str, ...]] = []
+    responses = iter(
+        (
+            {"jobs": [{"jid": "fixed-job", "state": "RUNNING"}]},
+            {"counts": {"completed": 4}},
+        )
+    )
+    environment = DemoEnvironment(root=tmp_path, work_dir=tmp_path / "state")
+
+    def kubectl(*args: str, **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(args)
+        return _completed(args, stdout=json.dumps(next(responses)))
+
+    monkeypatch.setattr(environment, "kubectl", kubectl)
+
+    assert environment.completed_checkpoints() == 4
+    assert commands == [
+        (
+            "get",
+            "--raw",
+            "/api/v1/namespaces/servicegraph-e2e/services/"
+            "http:servicegraph-diff-rest:8081/proxy/jobs/overview",
+        ),
+        (
+            "get",
+            "--raw",
+            "/api/v1/namespaces/servicegraph-e2e/services/"
+            "http:servicegraph-diff-rest:8081/proxy/jobs/fixed-job/checkpoints",
+        ),
+    ]
+
+
+def test_produce_metrics_sends_keyless_kafka_records(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    sent: list[tuple[str, bytes | None, bytes]] = []
+
+    class _Future:
+        def get(self, *, timeout: int) -> None:
+            assert timeout == 30
+
+    class _Producer:
+        def __init__(self, **kwargs: object) -> None:
+            self.value_serializer = cast(Callable[[object], bytes], kwargs["value_serializer"])
+
+        def send(self, topic: str, *, key: object, value: object) -> _Future:
+            sent.append((topic, cast(bytes | None, key), self.value_serializer(value)))
+            return _Future()
+
+        def flush(self, *, timeout: int) -> None:
+            assert timeout == 30
+
+        def close(self, *, timeout: int) -> None:
+            assert timeout == 10
+
+    monkeypatch.setitem(sys.modules, "kafka", SimpleNamespace(KafkaProducer=_Producer))
+    environment = DemoEnvironment(root=tmp_path, work_dir=tmp_path / "state")
+    environment.kafka_host_address = "127.0.0.1:9092"
+
+    environment.produce_metrics(({"resourceMetrics": []},))
+
+    assert sent == [("otel.servicegraph.metrics", None, b'{"resourceMetrics":[]}')]
 
 
 def test_prerequisite_error_names_missing_commands(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

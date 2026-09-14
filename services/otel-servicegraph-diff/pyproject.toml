@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "otel-servicegraph-diff"
-version = "0.3.0"
+version = "0.4.0"
 license = "Apache-2.0"
 description = "PyFlink servicegraph graph-element lifecycle application."
 readme = "README.md"

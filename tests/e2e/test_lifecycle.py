@@ -184,6 +184,72 @@ def test_spanmetrics_root_discovery_normalizes_etl_nodes_then_expires(
     )
 
 
+@pytest.mark.e2e
+def test_incremental_checkpoints_restore_granular_lifecycle_state(
+    e2e_environment: DemoEnvironment,
+) -> None:
+    service_name = "checkpoint-stress"
+    checkpoint_baseline = e2e_environment.completed_checkpoints()
+    e2e_environment.produce_metrics((_discovery_metric(service_name, time.time_ns()),))
+
+    assert wait_for(
+        "high-cardinality service projection",
+        90,
+        lambda: _service_count(e2e_environment, service_name) == 1,
+    )
+    assert wait_for(
+        "three incremental checkpoints",
+        60,
+        lambda: e2e_environment.completed_checkpoints() >= checkpoint_baseline + 3,
+    )
+
+    before_refresh = e2e_environment.completed_checkpoints()
+    e2e_environment.produce_metrics((_discovery_metric(service_name, time.time_ns()),))
+    assert wait_for(
+        "post-refresh checkpoint",
+        45,
+        lambda: e2e_environment.completed_checkpoints() > before_refresh,
+    )
+
+    e2e_environment.restart_taskmanager()
+    assert wait_for(
+        "Flink recovery",
+        90,
+        lambda: _flink_job_running(e2e_environment),
+    )
+    assert _service_count(e2e_environment, service_name) == 1
+    after_recovery = e2e_environment.completed_checkpoints()
+    assert wait_for(
+        "checkpoint after TaskManager recovery",
+        45,
+        lambda: e2e_environment.completed_checkpoints() > after_recovery,
+    )
+
+    e2e_environment.produce_metrics((_discovery_metric(service_name, time.time_ns()),))
+    assert wait_for(
+        "post-recovery refresh consumption",
+        30,
+        lambda: e2e_environment.committed_offset("graph-element-engine") >= 3,
+    )
+    after_refresh = e2e_environment.completed_checkpoints()
+    assert wait_for(
+        "post-recovery refresh checkpoint",
+        45,
+        lambda: e2e_environment.completed_checkpoints() > after_refresh,
+    )
+    assert wait_for(
+        "high-cardinality contributor expiry",
+        120,
+        lambda: _service_count(e2e_environment, service_name) == 0,
+    )
+    after_expiry = e2e_environment.completed_checkpoints()
+    assert wait_for(
+        "checkpoint after lifecycle deletion",
+        45,
+        lambda: e2e_environment.completed_checkpoints() > after_expiry,
+    )
+
+
 def _service(element_id: str, name: str, version: str) -> dict[str, object]:
     return {
         "id": element_id,
@@ -267,6 +333,50 @@ def _root_resource(
     )
 
 
+def _discovery_metric(service_name: str, observed_at_unix_nano: int) -> dict[str, object]:
+    return {
+        "resourceMetrics": [
+            {
+                "scopeMetrics": [
+                    {
+                        "scope": {"name": "checkpoint-state-e2e"},
+                        "metrics": [
+                            {
+                                "name": "semconv.graph.discovery.calls",
+                                "sum": {
+                                    "aggregationTemporality": 1,
+                                    "isMonotonic": True,
+                                    "dataPoints": [
+                                        {
+                                            "attributes": [
+                                                {
+                                                    "key": "service.name",
+                                                    "value": {"stringValue": service_name},
+                                                },
+                                                {
+                                                    "key": "service.version",
+                                                    "value": {"stringValue": f"version-{index}"},
+                                                },
+                                                {
+                                                    "key": "span.kind",
+                                                    "value": {"stringValue": "SPAN_KIND_INTERNAL"},
+                                                }
+                                            ],
+                                            "asInt": "1",
+                                            "timeUnixNano": str(observed_at_unix_nano + index),
+                                        }
+                                    ],
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+            for index in range(256)
+        ]
+    }
+
+
 def _attribute(key: str, value: str | bool) -> KeyValue:
     match value:
         case bool():
@@ -289,6 +399,17 @@ def _edge_count(environment: DemoEnvironment, label: str) -> int:
 def _service_versions(environment: DemoEnvironment, name: str) -> list[str]:
     with environment.graph() as graph:
         return [str(value) for value in graph.V().has("service_name", name).values("service_version").to_list()]
+
+
+def _service_count(environment: DemoEnvironment, name: str) -> int:
+    with environment.graph() as graph:
+        return int(graph.V().has_label("service").has("service_name", name).count().next())
+
+
+def _flink_job_running(environment: DemoEnvironment) -> bool:
+    overview = environment.flink_job_overview()
+    jobs = overview.get("jobs", [])
+    return isinstance(jobs, list) and len(jobs) == 1 and jobs[0].get("state") == "RUNNING"
 
 
 def _all_counts(environment: DemoEnvironment) -> tuple[int, int]:

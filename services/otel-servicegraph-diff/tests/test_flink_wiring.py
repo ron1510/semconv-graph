@@ -174,7 +174,7 @@ def test_configure_job_graph_builds_named_stable_operator_chain(monkeypatch: pyt
     assert lifecycle._ttl_seconds == 10
     assert lifecycle._element_ttl_seconds == {"service": 30}
     process_operator.name.assert_called_once_with("graph-element-lifecycle")
-    process_named.uid.assert_called_once_with("graph-v3-element-lifecycle")
+    process_named.uid.assert_called_once_with("graph-v4-element-lifecycle")
     events.map.assert_called_once_with(flink_job._event_row, output_type=flink_job.OUTPUT_ROW_TYPE)
     map_operator.name.assert_called_once_with("serialize-graph-element-events")
     map_named.uid.assert_called_once_with("graph-v3-serialize-events")
@@ -380,19 +380,31 @@ def test_process_open_registers_versioned_state_without_framework_ttl(
     monkeypatch.setattr(
         flink_job,
         "Types",
-        SimpleNamespace(STRING=MagicMock(return_value="string")),
+        SimpleNamespace(
+            STRING=MagicMock(return_value="string"),
+            LONG=MagicMock(return_value="long"),
+        ),
     )
     descriptors: list[_FakeDescriptor] = []
+    map_descriptors: list[_FakeMapDescriptor] = []
 
     def descriptor(name: str, value_type: object) -> _FakeDescriptor:
         result = _FakeDescriptor(name, value_type)
         descriptors.append(result)
         return result
 
+    def map_descriptor(name: str, key_type: object, value_type: object) -> _FakeMapDescriptor:
+        result = _FakeMapDescriptor(name, key_type, value_type)
+        map_descriptors.append(result)
+        return result
+
     monkeypatch.setattr(flink_job, "ValueStateDescriptor", descriptor)
-    states = [object(), object()]
+    monkeypatch.setattr(flink_job, "MapStateDescriptor", map_descriptor)
+    states = [object(), object(), object(), object()]
+    map_state = object()
     runtime = MagicMock()
     runtime.get_state.side_effect = states
+    runtime.get_map_state.return_value = map_state
     entity_operator = flink_job._EntityEventContributionsProcess()
     lifecycle_operator = flink_job._GraphElementLifecycleProcess(ttl_seconds=5)
 
@@ -401,10 +413,18 @@ def test_process_open_registers_versioned_state_without_framework_ttl(
 
     assert [(item.name, item.value_type, item.ttl) for item in descriptors] == [
         ("otel-entity-source-state-v1", "string", None),
-        ("graph-element-lifecycle-state-v3", "string", None),
+        ("graph-element-aggregate-v4", "string", None),
+        ("graph-element-next-event-timer-v4", "long", None),
+        ("graph-element-next-processing-timer-v4", "long", None),
+    ]
+    assert [(item.name, item.key_type, item.value_type) for item in map_descriptors] == [
+        ("graph-element-contributors-v4", "string", "string")
     ]
     assert entity_operator._state is states[0]  # pyright: ignore[reportPrivateUsage]
-    assert lifecycle_operator._state is states[1]  # pyright: ignore[reportPrivateUsage]
+    assert lifecycle_operator._contributors is map_state  # pyright: ignore[reportPrivateUsage]
+    assert lifecycle_operator._aggregate is states[1]  # pyright: ignore[reportPrivateUsage]
+    assert lifecycle_operator._next_event_timer is states[2]  # pyright: ignore[reportPrivateUsage]
+    assert lifecycle_operator._next_processing_timer is states[3]  # pyright: ignore[reportPrivateUsage]
 
 
 def test_small_stream_adapters_preserve_identity_and_time() -> None:
@@ -413,6 +433,8 @@ def test_small_stream_adapters_preserve_identity_and_time() -> None:
     assert assigner.extract_timestamp(parsed, record_timestamp=999) == 1_234
     assert flink_job._timer_millis(1_000_000_000) == 1_000
     assert flink_job._timer_millis(1_000_000_001) == 1_001
+    assert flink_job._coalesced_timer_millis(1_000) == 1_000
+    assert flink_job._coalesced_timer_millis(1_001) == 2_000
 
     contribution = GraphContribution(
         contributor_id="contributor-a",
@@ -492,6 +514,13 @@ class _FakeDescriptor:
 
     def enable_time_to_live(self, ttl: object) -> None:
         self.ttl = ttl
+
+
+class _FakeMapDescriptor:
+    def __init__(self, name: str, key_type: object, value_type: object) -> None:
+        self.name = name
+        self.key_type = key_type
+        self.value_type = value_type
 
 
 def _fluent_builder(*method_names: str) -> MagicMock:

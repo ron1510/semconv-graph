@@ -117,6 +117,12 @@ class GraphElementState(FrozenModel):
     last_payload_hash: NonEmptyString
 
 
+class GraphElementAggregateState(FrozenModel):
+    element_id: NonEmptyString
+    metrics: dict[str, MetricValue] = Field(default_factory=dict)
+    last_payload_hash: NonEmptyString
+
+
 class GraphElementLifecycleResult(FrozenModel):
     state: GraphElementState | None
     event: GraphElementEvent | None = None

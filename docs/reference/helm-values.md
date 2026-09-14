@@ -56,7 +56,16 @@ also available in the chart.
 | `job.elementTtlSeconds` | `{}` | Optional inactivity thresholds by semantic element type |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |
 | `job.checkpointIntervalMs` | `30000` | Checkpoint interval |
+| `job.checkpointTimeoutMs` | `600000` | Checkpoint timeout in milliseconds |
+| `job.checkpointMinPauseMs` | `5000` | Pause between completed checkpoints |
+| `job.tolerableFailedCheckpoints` | `1` | Consecutive asynchronous failures tolerated |
 | `job.restartAttempts` | `3` | Fixed-delay attempts |
+| `state.backend` | `rocksdb` | `rocksdb` or explicit `hashmap` fallback |
+| `state.incrementalCheckpoints` | `true` | Incremental RocksDB checkpoints |
+| `state.rocksdb.localDirectory` | `/flink-rocksdb` | TaskManager-local RocksDB working directory |
+| `state.rocksdb.localStorageSize` | `10Gi` | RocksDB `emptyDir` size limit |
+| `resources.taskManager.requests.ephemeral-storage` | `1Gi` | TaskManager ephemeral-storage request |
+| `resources.taskManager.limits.ephemeral-storage` | `12Gi` | TaskManager ephemeral-storage limit |
 | `logging.rootLevel` | `INFO` | Flink console log level |
 | `rbac.create` | `true` | Create ConfigMap-only runtime RBAC |
 | `storage.createClaim` | `true` | Create state claim |

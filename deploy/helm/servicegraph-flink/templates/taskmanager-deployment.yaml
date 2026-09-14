@@ -97,6 +97,10 @@ spec:
               mountPath: /opt/flink/log
             - name: tmp
               mountPath: /tmp
+            {{- if eq .Values.state.backend "rocksdb" }}
+            - name: rocksdb
+              mountPath: {{ .Values.state.rocksdb.localDirectory }}
+            {{- end }}
       volumes:
         - name: flink-config
           configMap:
@@ -110,3 +114,8 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: {{ .Values.emptyDir.tmpSizeLimit }}
+        {{- if eq .Values.state.backend "rocksdb" }}
+        - name: rocksdb
+          emptyDir:
+            sizeLimit: {{ .Values.state.rocksdb.localStorageSize }}
+        {{- end }}

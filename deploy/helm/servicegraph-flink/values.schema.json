@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "job": {
+      "type": "object",
+      "properties": {
+        "checkpointIntervalMs": {"type": "integer", "minimum": 1000},
+        "checkpointTimeoutMs": {"type": "integer", "minimum": 1000},
+        "checkpointMinPauseMs": {"type": "integer", "minimum": 0},
+        "tolerableFailedCheckpoints": {"type": "integer", "minimum": 0}
+      },
+      "required": [
+        "checkpointIntervalMs",
+        "checkpointTimeoutMs",
+        "checkpointMinPauseMs",
+        "tolerableFailedCheckpoints"
+      ]
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backend": {"type": "string", "enum": ["rocksdb", "hashmap"]},
+        "incrementalCheckpoints": {"type": "boolean"},
+        "rocksdb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "localDirectory": {"type": "string", "pattern": "^/[^\\s]*$"},
+            "localStorageSize": {"type": "string", "pattern": "^[1-9][0-9]*(Ei|Pi|Ti|Gi|Mi|Ki)$"}
+          },
+          "required": ["localDirectory", "localStorageSize"]
+        }
+      },
+      "required": ["backend", "incrementalCheckpoints", "rocksdb"]
+    }
+  },
+  "required": ["job", "state"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "properties": {"backend": {"const": "hashmap"}},
+            "required": ["backend"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "state": {
+            "properties": {"incrementalCheckpoints": {"const": false}}
+          }
+        }
+      }
+    }
+  ]
+}

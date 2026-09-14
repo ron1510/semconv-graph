@@ -10,6 +10,13 @@ The default uses one JobManager, two TaskManagers, and one RWX claim for HA
 metadata, checkpoints, and savepoints. Recovery has brief downtime and resumes
 from the latest successful checkpoint.
 
+TaskManagers use RocksDB keyed state with incremental checkpoints by default.
+RocksDB working files live on a dedicated, disposable `/flink-rocksdb`
+`emptyDir`; completed checkpoints remain authoritative on the shared claim.
+The lifecycle operator stores contributor snapshots as individual `MapState`
+entries and maintains at most one event-time and one processing-time timer per
+graph element.
+
 The existing metrics source also recognizes Collector-produced
 `semconv.graph.discovery.calls` datapoints. It extracts semantic nodes only and
 merges them into the same contributor lifecycle state; no separate Flink topic,
@@ -63,6 +70,10 @@ The upgrade causes brief processing downtime.
 Keep `application.clusterId`, `job.fixedJobId`, and the state claim unchanged
 across automatic upgrades. Set `job.allowNonRestoredState=true` only for an
 intentional topology change that removes state which may be discarded.
+
+Chart `0.8.0` introduces incompatible v4 lifecycle state and requires the
+destructive reset documented in the operations guide. Do not restore a v3
+checkpoint or savepoint into this version.
 
 Flink writes to container stdout:
 

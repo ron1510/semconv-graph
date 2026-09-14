@@ -47,8 +47,18 @@ job:
   elementTtlSeconds: {}
   allowedLatenessSeconds: 60
   checkpointIntervalMs: 30000
+  checkpointTimeoutMs: 600000
+  checkpointMinPauseMs: 5000
+  tolerableFailedCheckpoints: 1
   restartAttempts: 3
   restartDelaySeconds: 10
+
+state:
+  backend: rocksdb
+  incrementalCheckpoints: true
+  rocksdb:
+    localDirectory: /flink-rocksdb
+    localStorageSize: 10Gi
 
 logging:
   rootLevel: INFO
@@ -87,8 +97,10 @@ resources:
     requests:
       cpu: "1"
       memory: 1920Mi
+      ephemeral-storage: 1Gi
     limits:
       memory: 2304Mi
+      ephemeral-storage: 12Gi
 
 emptyDir:
   logSizeLimit: 256Mi

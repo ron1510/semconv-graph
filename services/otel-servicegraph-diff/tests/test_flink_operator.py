@@ -11,11 +11,13 @@ import pytest
 pytest.importorskip("pyflink")
 
 from pyflink.datastream.functions import KeyedProcessFunction, TimeDomain
-from pyflink.datastream.state import ValueState
+from pyflink.datastream.state import MapState, ValueState
 
 from otel_servicegraph_diff.engine.elements import (
+    ContributorSnapshot,
     GraphContribution,
     GraphContributionRetraction,
+    GraphElementAggregateState,
     GraphElementState,
     GraphElementUpsertEvent,
     GraphNode,
@@ -36,15 +38,50 @@ from otel_servicegraph_diff.ingest.metrics import SERVICE_GRAPH_REQUEST_TOTAL
 class FakeValueState[T]:
     def __init__(self) -> None:
         self.serialized: T | None = None
+        self.updates: list[T] = []
+        self.clear_count = 0
 
     def value(self) -> T | None:
         return self.serialized
 
     def update(self, value: T) -> None:
         self.serialized = value
+        self.updates.append(value)
 
     def clear(self) -> None:
         self.serialized = None
+        self.clear_count += 1
+
+
+class FakeMapState[K, V]:
+    def __init__(self) -> None:
+        self.entries: dict[K, V] = {}
+        self.puts: list[tuple[K, V]] = []
+        self.removals: list[K] = []
+        self.clear_count = 0
+
+    def items(self) -> list[tuple[K, V]]:
+        return list(self.entries.items())
+
+    def put(self, key: K, value: V) -> None:
+        self.entries[key] = value
+        self.puts.append((key, value))
+
+    def remove(self, key: K) -> None:
+        self.entries.pop(key, None)
+        self.removals.append(key)
+
+    def clear(self) -> None:
+        self.entries.clear()
+        self.clear_count += 1
+
+
+class FakeLifecycleState:
+    def __init__(self) -> None:
+        self.contributors = FakeMapState[str, str]()
+        self.aggregate = FakeValueState[str]()
+        self.event_timer = FakeValueState[int]()
+        self.processing_timer = FakeValueState[int]()
 
 
 class FakeCounter:
@@ -61,6 +98,10 @@ class FakeTimerService:
         self.processing_time = processing_time
         self.registered_event: list[int] = []
         self.registered_processing: list[int] = []
+        self.deleted_event: list[int] = []
+        self.deleted_processing: list[int] = []
+        self.active_event: set[int] = set()
+        self.active_processing: set[int] = set()
 
     def current_processing_time(self) -> int:
         return self.processing_time
@@ -70,9 +111,19 @@ class FakeTimerService:
 
     def register_event_time_timer(self, timestamp: int) -> None:
         self.registered_event.append(timestamp)
+        self.active_event.add(timestamp)
 
     def register_processing_time_timer(self, timestamp: int) -> None:
         self.registered_processing.append(timestamp)
+        self.active_processing.add(timestamp)
+
+    def delete_event_time_timer(self, timestamp: int) -> None:
+        self.deleted_event.append(timestamp)
+        self.active_event.discard(timestamp)
+
+    def delete_processing_time_timer(self, timestamp: int) -> None:
+        self.deleted_processing.append(timestamp)
+        self.active_processing.discard(timestamp)
 
 
 class FakeProcessContext:
@@ -93,7 +144,7 @@ class FakeOnTimerContext(FakeProcessContext):
 
 
 def test_lifecycle_operator_persists_contribution_and_registers_both_timers() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService()
     operator = _operator(state)
     contribution = _service_contribution(1_000_000_001)
@@ -102,16 +153,15 @@ def test_lifecycle_operator_persists_contribution_and_registers_both_timers() ->
 
     assert len(events) == 1
     assert isinstance(events[0], GraphElementUpsertEvent)
-    assert timers.registered_event == [6_001]
+    assert timers.registered_event == [7_000]
     assert timers.registered_processing == [15_000]
-    assert state.serialized is not None
-    persisted = GraphElementState.model_validate_json(state.serialized)
+    persisted = _persisted_state(state)
     assert persisted.element_id == contribution.element.id
     assert set(persisted.contributors) == {contribution.contributor_id}
 
 
 def test_refresh_registers_new_timers_and_old_timer_is_ignored() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService()
     operator = _operator(state)
     context = _process_context(timers)
@@ -119,32 +169,36 @@ def test_refresh_registers_new_timers_and_old_timer_is_ignored() -> None:
 
     timers.processing_time = 11_000
     tuple(operator.process_element(_service_contribution(2_000_000_001, version="2"), context))
-    stale = tuple(operator.on_timer(6_001, _timer_context(timers, TimeDomain.EVENT_TIME)))
+    stale = tuple(operator.on_timer(7_000, _timer_context(timers, TimeDomain.EVENT_TIME)))
 
-    assert timers.registered_event == [6_001, 7_001]
+    assert timers.registered_event == [7_000, 8_000]
     assert timers.registered_processing == [15_000, 16_000]
+    assert timers.deleted_event == [7_000]
+    assert timers.deleted_processing == [15_000]
     assert stale == ()
-    assert state.serialized is not None
-    persisted = GraphElementState.model_validate_json(state.serialized)
+    persisted = _persisted_state(state)
     snapshot = next(iter(persisted.contributors.values()))
     assert snapshot.observed_at_unix_nano == 2_000_000_001
 
 
 def test_event_timer_deletes_final_contributor_and_clears_state() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService()
     operator = _operator(state)
     tuple(operator.process_element(_service_contribution(1_000_000_001), _process_context(timers)))
 
-    events = tuple(operator.on_timer(6_001, _timer_context(timers, TimeDomain.EVENT_TIME)))
+    events = tuple(operator.on_timer(7_000, _timer_context(timers, TimeDomain.EVENT_TIME)))
 
     assert len(events) == 1
     assert events[0].operation == "delete"
-    assert state.serialized is None
+    assert state.contributors.entries == {}
+    assert state.aggregate.serialized is None
+    assert state.event_timer.serialized is None
+    assert state.processing_timer.serialized is None
 
 
 def test_explicit_retraction_deletes_final_contributor_and_clears_state() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService()
     operator = _operator(state)
     contribution = _service_contribution(1_000_000_001)
@@ -163,11 +217,12 @@ def test_explicit_retraction_deletes_final_contributor_and_clears_state() -> Non
 
     assert len(events) == 1
     assert events[0].operation == "delete"
-    assert state.serialized is None
+    assert state.contributors.entries == {}
+    assert state.aggregate.serialized is None
 
 
 def test_non_expiring_contribution_registers_no_timers_and_survives_timer_callbacks() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService()
     operator = _operator(state)
     contribution = _service_contribution(1_000_000_001).model_copy(update={"ttl_seconds": 0})
@@ -179,7 +234,7 @@ def test_non_expiring_contribution_registers_no_timers_and_survives_timer_callba
     assert timers.registered_processing == []
     assert tuple(operator.on_timer(10**12, _timer_context(timers, TimeDomain.EVENT_TIME))) == ()
     assert tuple(operator.on_timer(10**12, _timer_context(timers, TimeDomain.PROCESSING_TIME))) == ()
-    assert state.serialized is not None
+    assert _persisted_state(state).contributors
 
 
 def test_entity_source_operator_checkpoints_snapshot_reconciliation() -> None:
@@ -205,7 +260,7 @@ def test_entity_source_operator_checkpoints_snapshot_reconciliation() -> None:
 
 
 def test_processing_timer_expires_when_event_time_is_idle() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService(processing_time=20_000)
     operator = _operator(state)
     tuple(operator.process_element(_service_contribution(1_000_000_001), _process_context(timers)))
@@ -214,11 +269,12 @@ def test_processing_timer_expires_when_event_time_is_idle() -> None:
 
     assert len(events) == 1
     assert events[0].operation == "delete"
-    assert state.serialized is None
+    assert state.contributors.entries == {}
+    assert state.aggregate.serialized is None
 
 
 def test_watermark_extends_event_expiry_without_changing_processing_expiry() -> None:
-    state = FakeValueState[str]()
+    state = FakeLifecycleState()
     timers = FakeTimerService(watermark=4_000, processing_time=10_000)
     operator = _operator(state)
 
@@ -228,8 +284,88 @@ def test_watermark_extends_event_expiry_without_changing_processing_expiry() -> 
     assert timers.registered_processing == [15_000]
 
 
+def test_partial_expiry_replaces_both_element_timers() -> None:
+    state = FakeLifecycleState()
+    timers = FakeTimerService(processing_time=10_000)
+    operator = _operator(state)
+    first = _service_contribution(1_000_000_001).model_copy(update={"contributor_id": "first"})
+    second = _service_contribution(2_000_000_001).model_copy(update={"contributor_id": "second"})
+    tuple(operator.process_element(first, _process_context(timers)))
+    timers.processing_time = 11_000
+    tuple(operator.process_element(second, _process_context(timers)))
+
+    events = tuple(operator.on_timer(15_000, _timer_context(timers, TimeDomain.PROCESSING_TIME)))
+
+    assert events == ()
+    assert set(_persisted_state(state).contributors) == {"second"}
+    assert timers.active_event == {8_000}
+    assert timers.active_processing == {16_000}
+
+
+def test_granular_state_updates_one_of_two_thousand_contributors() -> None:
+    state = FakeLifecycleState()
+    timers = FakeTimerService()
+    operator = _operator(state)
+    node = GraphNode(id="service:frontend", type="service", attributes={"service.name": "frontend"})
+    snapshots = {
+        f"contributor-{index}": ContributorSnapshot(
+            observed_at_unix_nano=index + 1,
+            event_expires_at_unix_nano=10_000_000_000 + index,
+            processing_expires_at_unix_ms=20_000 + index,
+            element=node,
+        )
+        for index in range(2_000)
+    }
+    previous = GraphElementState(
+        element_id=node.id,
+        contributors=snapshots,
+        last_payload_hash="payload-hash",
+    )
+    operator._persist_state(None, previous)
+    state.contributors.puts.clear()
+    changed = snapshots["contributor-1000"].model_copy(update={"observed_at_unix_nano": 50_000})
+    current = previous.model_copy(
+        update={"contributors": {**snapshots, "contributor-1000": changed}}
+    )
+
+    operator._persist_state(previous, current)
+    operator._schedule_timers(current, timers)
+
+    assert [key for key, _ in state.contributors.puts] == ["contributor-1000"]
+    assert len(state.aggregate.updates) == 1
+    assert len(timers.active_event) == 1
+    assert len(timers.active_processing) == 1
+
+
+def test_dense_contributor_deadlines_share_timer_buckets() -> None:
+    state = FakeLifecycleState()
+    timers = FakeTimerService()
+    operator = _operator(state)
+    node = GraphNode(id="service:frontend", type="service")
+    snapshots = {
+        f"contributor-{index}": ContributorSnapshot(
+            observed_at_unix_nano=index + 1,
+            event_expires_at_unix_nano=10_000_000_001 + index * 1_000_000,
+            processing_expires_at_unix_ms=20_001 + index,
+            element=node,
+        )
+        for index in range(500)
+    }
+    current = GraphElementState(
+        element_id=node.id,
+        contributors=snapshots,
+        last_payload_hash="payload-hash",
+    )
+
+    operator._persist_state(None, current)
+    operator._schedule_timers(current, timers)
+
+    assert timers.active_event == {11_000}
+    assert timers.active_processing == {21_000}
+
+
 def test_empty_state_timer_emits_nothing() -> None:
-    operator = _operator(FakeValueState[str]())
+    operator = _operator(FakeLifecycleState())
 
     assert tuple(
         operator.on_timer(
@@ -259,10 +395,27 @@ def test_operator_requires_runtime_initialization() -> None:
         operator._require_state()
 
 
-def _operator(state: FakeValueState[str]) -> _GraphElementLifecycleProcess:
+def _operator(state: FakeLifecycleState) -> _GraphElementLifecycleProcess:
     operator = _GraphElementLifecycleProcess(ttl_seconds=5)
-    operator._state = cast(ValueState[str], state)
+    operator._contributors = cast(MapState[str, str], state.contributors)
+    operator._aggregate = cast(ValueState[str], state.aggregate)
+    operator._next_event_timer = cast(ValueState[int], state.event_timer)
+    operator._next_processing_timer = cast(ValueState[int], state.processing_timer)
     return operator
+
+
+def _persisted_state(state: FakeLifecycleState) -> GraphElementState:
+    assert state.aggregate.serialized is not None
+    aggregate = GraphElementAggregateState.model_validate_json(state.aggregate.serialized)
+    return GraphElementState(
+        element_id=aggregate.element_id,
+        contributors={
+            contributor_id: ContributorSnapshot.model_validate_json(snapshot)
+            for contributor_id, snapshot in state.contributors.entries.items()
+        },
+        metrics=aggregate.metrics,
+        last_payload_hash=aggregate.last_payload_hash,
+    )
 
 
 def _process_context(timers: FakeTimerService) -> KeyedProcessFunction.Context:

@@ -241,6 +241,18 @@ class DemoEnvironment:
         return "\n\n".join(sections)
 
     def produce_events(self, events: Sequence[dict[str, object]]) -> None:
+        self._produce_json("graph.elements.events", events, key_field="element_id")
+
+    def produce_metrics(self, payloads: Sequence[dict[str, object]]) -> None:
+        self._produce_json("otel.servicegraph.metrics", payloads)
+
+    def _produce_json(
+        self,
+        topic: str,
+        values: Sequence[dict[str, object]],
+        *,
+        key_field: str | None = None,
+    ) -> None:
         from kafka import KafkaProducer
 
         address = self.kafka_host_address
@@ -248,12 +260,12 @@ class DemoEnvironment:
             raise RuntimeError("Redpanda host address is not initialized")
         producer = KafkaProducer(
             bootstrap_servers=address,
-            key_serializer=lambda value: cast(str, value).encode(),
             value_serializer=lambda value: json.dumps(cast(dict[str, object], value), separators=(",", ":")).encode(),
         )
         try:
-            for event in events:
-                producer.send("graph.elements.events", key=cast(str, event["element_id"]), value=event).get(timeout=30)
+            for value in values:
+                key = cast(str, value[key_field]).encode() if key_field is not None else None
+                producer.send(topic, key=key, value=value).get(timeout=30)
             producer.flush(timeout=30)
         finally:
             producer.close(timeout=10)
@@ -339,6 +351,45 @@ class DemoEnvironment:
         self.kubectl("rollout", "status", "deployment/servicegraph-indexer", "--timeout=180s")
         self.kubectl("rollout", "status", "deployment/servicegraph-gremlin", "--timeout=180s")
         self._start_gremlin_forward()
+
+    def flink_job_overview(self) -> dict[str, object]:
+        response = self.kubectl(
+            "get",
+            "--raw",
+            f"/api/v1/namespaces/{self.namespace}/services/"
+            "http:servicegraph-diff-rest:8081/proxy/jobs/overview",
+        )
+        return cast(dict[str, object], json.loads(response.stdout))
+
+    def completed_checkpoints(self) -> int:
+        overview = self.flink_job_overview()
+        jobs = cast(list[dict[str, object]], overview.get("jobs", []))
+        if len(jobs) != 1:
+            raise RuntimeError(f"expected one Flink job, found {len(jobs)}")
+        job_id = cast(str, jobs[0]["jid"])
+        response = self.kubectl(
+            "get",
+            "--raw",
+            f"/api/v1/namespaces/{self.namespace}/services/"
+            f"http:servicegraph-diff-rest:8081/proxy/jobs/{job_id}/checkpoints",
+        )
+        payload = cast(dict[str, object], json.loads(response.stdout))
+        counts = cast(dict[str, object], payload["counts"])
+        return int(cast(int, counts["completed"]))
+
+    def restart_taskmanager(self) -> None:
+        self.kubectl(
+            "delete",
+            "pod",
+            "-l",
+            "app.kubernetes.io/instance=processing,app.kubernetes.io/component=taskmanager",
+        )
+        self.kubectl(
+            "rollout",
+            "status",
+            "deployment/processing-servicegraph-flink-taskmanager",
+            "--timeout=180s",
+        )
 
     def start_query_access(self) -> None:
         if self.gremlin_forward is None:
@@ -758,7 +809,7 @@ class DemoEnvironment:
                 "--set",
                 "podSecurityContext.fsGroup=9999",
                 "--set",
-                "job.interactionTtlSeconds=15",
+                "job.interactionTtlSeconds=45",
                 "--set",
                 "job.allowedLatenessSeconds=1",
                 "--set",

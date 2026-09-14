@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Protocol, cast
 
 from pyflink.common import Configuration, Duration, Row, Types, WatermarkStrategy
@@ -26,15 +26,17 @@ from pyflink.datastream.connectors.kafka import (
     KafkaSource,
 )
 from pyflink.datastream.functions import FlatMapFunction, KeyedProcessFunction, RuntimeContext, TimeDomain
-from pyflink.datastream.state import ValueState, ValueStateDescriptor
+from pyflink.datastream.state import MapState, MapStateDescriptor, ValueState, ValueStateDescriptor
 from pyflink.java_gateway import get_gateway
 
 from otel_servicegraph_diff.config import GraphEngineConfig, graph_engine_config_from_env
 from otel_servicegraph_diff.engine.elements import (
+    ContributorSnapshot,
     GraphContribution,
     GraphContributionRetraction,
     GraphEdge,
     GraphElement,
+    GraphElementAggregateState,
     GraphElementEvent,
     GraphElementMutation,
     GraphElementState,
@@ -60,6 +62,8 @@ class TimerService(Protocol):
     def current_watermark(self) -> int: ...
     def register_processing_time_timer(self, timestamp: int) -> None: ...
     def register_event_time_timer(self, timestamp: int) -> None: ...
+    def delete_processing_time_timer(self, timestamp: int) -> None: ...
+    def delete_event_time_timer(self, timestamp: int) -> None: ...
 
 
 class ProcessContext(Protocol):
@@ -162,7 +166,7 @@ def _configure_job_graph(
             )
         )
         .name("graph-element-lifecycle")
-        .uid("graph-v3-element-lifecycle")
+        .uid("graph-v4-element-lifecycle")
     )
     event_rows = (
         events.map(_event_row, output_type=OUTPUT_ROW_TYPE)
@@ -313,20 +317,35 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
     ) -> None:
         self._ttl_seconds = ttl_seconds
         self._element_ttl_seconds = dict(element_ttl_seconds or {})
-        self._state: ValueState[str] | None = None
+        self._contributors: MapState[str, str] | None = None
+        self._aggregate: ValueState[str] | None = None
+        self._next_event_timer: ValueState[int] | None = None
+        self._next_processing_timer: ValueState[int] | None = None
 
     def open(self, runtime_context: RuntimeContext) -> None:
-        descriptor = ValueStateDescriptor("graph-element-lifecycle-state-v3", Types.STRING())
-        self._state = runtime_context.get_state(descriptor)
+        self._contributors = runtime_context.get_map_state(
+            MapStateDescriptor(
+                "graph-element-contributors-v4",
+                Types.STRING(),
+                Types.STRING(),
+            )
+        )
+        self._aggregate = runtime_context.get_state(
+            ValueStateDescriptor("graph-element-aggregate-v4", Types.STRING())
+        )
+        self._next_event_timer = runtime_context.get_state(
+            ValueStateDescriptor("graph-element-next-event-timer-v4", Types.LONG())
+        )
+        self._next_processing_timer = runtime_context.get_state(
+            ValueStateDescriptor("graph-element-next-processing-timer-v4", Types.LONG())
+        )
 
     def process_element(
         self,
         value: GraphElementMutation,
         ctx: KeyedProcessFunction.Context,
     ) -> Iterable[GraphElementEvent]:
-        state_handle = self._require_state()
-        previous_json = state_handle.value()
-        previous = GraphElementState.model_validate_json(previous_json) if previous_json else None
+        previous = self._load_state()
         timer_service = cast(ProcessContext, ctx).timer_service()
         watermark_nano = max(timer_service.current_watermark(), 0) * 1_000_000
         processing_time = timer_service.current_processing_time()
@@ -347,16 +366,8 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
                 result = retract_contribution(previous, value)
         if result.state is previous:
             return ()
-        if result.state is None:
-            state_handle.clear()
-            return (result.event,) if result.event is not None else ()
-        state_handle.update(result.state.model_dump_json())
-        if isinstance(value, GraphContribution):
-            snapshot = result.state.contributors[value.contributor_id]
-            if snapshot.event_expires_at_unix_nano is not None:
-                timer_service.register_event_time_timer(_timer_millis(snapshot.event_expires_at_unix_nano))
-            if snapshot.processing_expires_at_unix_ms is not None:
-                timer_service.register_processing_time_timer(snapshot.processing_expires_at_unix_ms)
+        self._persist_state(previous, result.state)
+        self._schedule_timers(result.state, timer_service)
         return (result.event,) if result.event is not None else ()
 
     def on_timer(
@@ -364,26 +375,123 @@ class _GraphElementLifecycleProcess(KeyedProcessFunction):
         timestamp: int,
         ctx: KeyedProcessFunction.OnTimerContext,
     ) -> Iterable[GraphElementEvent]:
-        state_handle = self._require_state()
-        state_json = state_handle.value()
-        if not state_json:
+        state = self._load_state()
+        if state is None:
             return ()
-        state = GraphElementState.model_validate_json(state_json)
+        timer_service = cast(ProcessContext, ctx).timer_service()
         time_domain = cast(OnTimerProcessContext, ctx).time_domain()
         if time_domain is TimeDomain.PROCESSING_TIME:
             result = expire_contributors(state, clock="processing_time", timestamp=timestamp)
         else:
             result = expire_contributors(state, clock="event_time", timestamp=timestamp * 1_000_000)
-        if result.state is None:
-            state_handle.clear()
-        elif result.state != state:
-            state_handle.update(result.state.model_dump_json())
+        if result.state is not state:
+            self._persist_state(state, result.state)
+            self._schedule_timers(result.state, timer_service)
         return (result.event,) if result.event is not None else ()
 
-    def _require_state(self) -> ValueState[str]:
-        if self._state is None:
+    def _load_state(self) -> GraphElementState | None:
+        contributors, aggregate, _, _ = self._require_state()
+        aggregate_json = cast(str | None, aggregate.value())
+        snapshots = {
+            contributor_id: ContributorSnapshot.model_validate_json(snapshot_json)
+            for contributor_id, snapshot_json in contributors.items()
+        }
+        if aggregate_json is None:
+            if snapshots:
+                raise RuntimeError("graph element contributors exist without aggregate state")
+            return None
+        if not snapshots:
+            raise RuntimeError("graph element aggregate exists without contributors")
+        compact = GraphElementAggregateState.model_validate_json(aggregate_json)
+        return GraphElementState(
+            element_id=compact.element_id,
+            contributors=snapshots,
+            metrics=compact.metrics,
+            last_payload_hash=compact.last_payload_hash,
+        )
+
+    def _persist_state(
+        self,
+        previous: GraphElementState | None,
+        current: GraphElementState | None,
+    ) -> None:
+        contributors, aggregate, _, _ = self._require_state()
+        if current is None:
+            contributors.clear()
+            aggregate.clear()
+            return
+        previous_snapshots = previous.contributors if previous is not None else {}
+        current_snapshots = current.contributors
+        for contributor_id in previous_snapshots.keys() - current_snapshots.keys():
+            contributors.remove(contributor_id)
+        for contributor_id, snapshot in current_snapshots.items():
+            if previous_snapshots.get(contributor_id) != snapshot:
+                contributors.put(contributor_id, snapshot.model_dump_json())
+        compact = GraphElementAggregateState(
+            element_id=current.element_id,
+            metrics=current.metrics,
+            last_payload_hash=current.last_payload_hash,
+        )
+        if previous is None or compact != GraphElementAggregateState(
+            element_id=previous.element_id,
+            metrics=previous.metrics,
+            last_payload_hash=previous.last_payload_hash,
+        ):
+            aggregate.update(compact.model_dump_json())
+
+    def _schedule_timers(
+        self,
+        state: GraphElementState | None,
+        timer_service: TimerService,
+    ) -> None:
+        _, _, event_timer, processing_timer = self._require_state()
+        event_expirations = (
+            snapshot.event_expires_at_unix_nano
+            for snapshot in state.contributors.values()
+            if snapshot.event_expires_at_unix_nano is not None
+        ) if state is not None else ()
+        processing_expirations = (
+            snapshot.processing_expires_at_unix_ms
+            for snapshot in state.contributors.values()
+            if snapshot.processing_expires_at_unix_ms is not None
+        ) if state is not None else ()
+        next_event = min(
+            (_coalesced_timer_millis(_timer_millis(value)) for value in event_expirations),
+            default=None,
+        )
+        next_processing = min(
+            (_coalesced_timer_millis(value) for value in processing_expirations),
+            default=None,
+        )
+        _replace_timer(
+            event_timer,
+            next_event,
+            timer_service.register_event_time_timer,
+            timer_service.delete_event_time_timer,
+        )
+        _replace_timer(
+            processing_timer,
+            next_processing,
+            timer_service.register_processing_time_timer,
+            timer_service.delete_processing_time_timer,
+        )
+
+    def _require_state(
+        self,
+    ) -> tuple[MapState[str, str], ValueState[str], ValueState[int], ValueState[int]]:
+        if (
+            self._contributors is None
+            or self._aggregate is None
+            or self._next_event_timer is None
+            or self._next_processing_timer is None
+        ):
             raise RuntimeError("graph element state accessed before operator initialization")
-        return self._state
+        return (
+            self._contributors,
+            self._aggregate,
+            self._next_event_timer,
+            self._next_processing_timer,
+        )
 
 
 class _ObservationTimestampAssigner(TimestampAssigner):
@@ -410,6 +518,28 @@ def _event_row(event: GraphElementEvent) -> Row:
 
 def _timer_millis(unix_nano: int) -> int:
     return (unix_nano + 999_999) // 1_000_000
+
+
+def _coalesced_timer_millis(unix_milli: int) -> int:
+    return ((unix_milli + 999) // 1_000) * 1_000
+
+
+def _replace_timer(
+    state: ValueState[int],
+    timestamp: int | None,
+    register: Callable[[int], None],
+    delete: Callable[[int], None],
+) -> None:
+    previous = cast(int | None, state.value())
+    if previous == timestamp:
+        return
+    if previous is not None:
+        delete(previous)
+    if timestamp is None:
+        state.clear()
+        return
+    register(timestamp)
+    state.update(timestamp)
 
 
 def _element_ttl_seconds(

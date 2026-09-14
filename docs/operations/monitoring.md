@@ -60,7 +60,8 @@ Track:
 - JobManager leadership changes;
 - restart count;
 - `rejected_inputs`;
-- state volume capacity.
+- shared checkpoint volume capacity;
+- TaskManager `/flink-rocksdb` ephemeral-storage utilization.
 
 Open the Flink UI:
 
@@ -70,7 +71,9 @@ kubectl port-forward -n servicegraph-system \
 ```
 
 The job must remain `RUNNING`, and completed checkpoints must continue to
-increase while traffic is present.
+increase while traffic is present. Alert before `/flink-rocksdb` reaches 70%,
+on two consecutive checkpoint failures, or when checkpoint duration and size
+continue growing after the contributor TTL window instead of stabilizing.
 
 ## ArangoDB and Gremlin access
 
