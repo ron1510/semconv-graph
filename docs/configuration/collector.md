@@ -1,161 +1,34 @@
-# Collector Configuration
+# Collector configuration
 
-The Collector chart deploys a two-layer topology:
+The Collector turns traces into two forms of graph evidence. The service-graph connector pairs client and server spans and emits `traces_service_graph_request_total`. The optional root-discovery lane sends only root spans whose kind is neither client nor server through the spanmetrics connector, which emits `semconv.graph.discovery.calls`. Both lanes publish gzip-compressed OTLP Protobuf to `otel.servicegraph.metrics` with retries, queues, required acknowledgements, and automatic topic creation disabled.
 
-- two stateless OTLP routers;
-- one stateful service-graph backend by default.
+## Trace routing
 
-Router replicas are fixed at two. `backend.mode=singleWriter` requires exactly
-one backend. `backend.mode=horizontal` requires at least two.
+Two stateless routers receive OTLP/gRPC and OTLP/HTTP. Interaction traces are sent to the service-graph backend. In horizontal mode the load-balancing exporter routes by trace ID so both halves of a distributed trace reach the same connector instance. Single-writer mode sends all traces to one backend and avoids duplicate series.
 
-## Trace-affine routing
+When root-span discovery is enabled, the router keeps roots whose modeled resource and span attributes do not conflict, then routes by generated semantic identity attributes to a separate spanmetrics backend pool. Raw spans never enter Kafka.
 
-In default `singleWriter` mode, both routers use a queued OTLP exporter targeting
-the one backend Service. All spans therefore reach the same connector without
-hashing, and each service-graph metric series has one writer.
+## Evidence metrics
 
-Horizontal mode renders the stable ordinal backend ring and hashes `traceID`.
-This is required because the connector pairs client and server spans in memory;
-sending parts of a trace to different backends creates unpaired spans and
-missing edges.
+The interaction backend runs:
 
-Changing modes or the horizontal backend count can split in-flight traces.
-Treat either operation as a planned topology migration, not routine autoscaling.
-
-## OTLP endpoints
-
-The router Service exposes:
-
-| Protocol | Port | Endpoint |
-| --- | ---: | --- |
-| OTLP gRPC | 4317 | `<release>-router:4317` |
-| OTLP HTTP | 4318 | `http://<release>-router:4318/v1/traces` |
-
-Backends receive OTLP gRPC only through their headless Service.
-
-When entity-event forwarding is enabled, producers send OTLP logs to the same
-router endpoint: gRPC on `4317` or HTTP at
-`http://<release>-router:4318/v1/logs`.
-
-## Optional entity-event forwarding
-
-Entity-event forwarding is disabled by default. Enable it and select the
-externally created Kafka topic with:
-
-```yaml
-streamContract:
-  topics:
-    servicegraphMetrics: otel.servicegraph.metrics
-    entityEvents: otel.entity.events
-
-entityEvents:
-  enabled: true
+```text
+otlp → memory_limiter → batch/traces → service_graph
+service_graph → memory_limiter → cumulativetodelta → filter → batch → kafka
 ```
 
-The router adds a logs pipeline only when `entityEvents.enabled=true`. Its
-filter keeps log records with:
+The filter retains only positive `traces_service_graph_request_total` datapoints. Failure totals are omitted because failures already contribute to the request total and the graph consumes only the existence and freshness of an interaction.
 
-- `event_name` equal to `entity.state` or `entity.delete`; or
-- the compatibility attribute `otel.entity.event.type` equal to
-  `entity_state`, `entity_delete`, or `entity_deleted`.
+The discovery backend retains only positive, non-overflow `semconv.graph.discovery.calls` delta sums. Generated files `dimensions.yaml` and `root-span-discovery.yaml` keep Collector dimensions aligned with Java extraction and the Python SDK.
 
-All other logs are discarded from this dedicated pipeline. Matching records
-are batched and exported as OTLP JSON to
-`streamContract.topics.entityEvents`. They are not sent through the trace
-load-balancing exporter or the stateful service-graph backends.
-
-The entity-event topic uses the same brokers, security protocol, SASL Secret,
-bounded sending queue, retries, compression, and disabled automatic topic
-creation as the metrics topic. Enabling Collector forwarding does not enable
-the Flink consumer automatically; enable the matching Flink setting and use the
-same topic name.
-
-## Optional root-span discovery
-
-Root-span discovery is disabled by default. Enable it for execution entities
-that do not necessarily participate in a service interaction:
-
-```yaml
-rootSpanDiscovery:
-  enabled: true
-  backend:
-    replicaCount: 2
-    metricsFlushInterval: 60s
-    metricsExpiration: 2m
-    seriesExpiration: 2m
-    aggregationCardinalityLimit: 0
-```
-
-The router fans all traces to the servicegraph path and, independently, keeps
-only spans for which `IsRootSpan()` is true. It routes those roots across a
-separate spanmetrics backend pool by generated identifying attributes plus
-`service.name`, `service.namespace`, and `span.kind`. Equivalent semantic
-identities therefore have one aggregate writer even when they enter through
-different routers.
-
-Each discovery backend converts completed roots into delta
-`semconv.graph.discovery.calls` datapoints. Histograms, events, exemplars,
-default span-name/status/Collector-instance dimensions, zero datapoints, and
-overflow datapoints are omitted. Positive datapoints are gzip-compressed OTLP
-JSON on the existing `otel.servicegraph.metrics` topic. Raw spans never enter
-Kafka.
-
-If a modeled attribute appears at both Resource and span level with different
-values, the router drops that root from discovery. This avoids assigning the
-span to one backend by the Resource value and aggregating it under the span
-value. Collector filter telemetry exposes these drops.
-
-Recurring equivalent roots collapse into one datapoint per flush. Unique IDs,
-such as distinct ETL run IDs, intentionally remain separate series and Kafka
-datapoints because they represent separate graph entities. A single hot identity
-always has one writer and must scale vertically. Sampling still applies before
-the Collector; an unexported root cannot be discovered.
-
-The Collector 0.156 `span_metrics` connector is
-[alpha](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.156.0/connector/spanmetricsconnector/README.md).
-Pin and validate the Collector version before upgrading it.
-
-## Generated dimensions
-
-`deploy/helm/servicegraph-collector/files/dimensions.yaml` and
-`files/root-span-discovery.yaml` are generated from entities participating in
-`service_graph` relationships:
-
-```console
-python -m tools.semconv_codegen
-```
-
-Do not edit this file manually. Add or change registry definitions, regenerate
-it, and review the resulting cardinality.
-
-## Metric temporality
-
-The backend pipeline converts connector-local cumulative metrics to delta before
-Kafka. It then keeps only `traces_service_graph_request_total` and
-`traces_service_graph_request_failed_total`, the two counters Flink consumes,
-and drops zero deltas that Flink would ignore. Horizontal backends still own
-independent cumulative streams, so conversion happens separately on each shard.
+Both Kafka exporters use `encoding: otlp_proto`, gzip compression, `required_acks: -1`, bounded batches, unbounded retry duration, and the configured Kafka security contract.
 
 ## Main values
 
 ```yaml
-image:
-  repository: registry.internal.example/otelcol-contrib
-  tag: "0.156.0"
-
-backend:
-  mode: singleWriter
-  replicaCount: 1
-  serviceGraph:
-    storeTtl: 10s
-    storeMaxItems: 10000
-    metricsFlushInterval: 30s
-    metricBatchSize: 256
-
 streamContract:
   kafka:
-    brokers:
-      - kafka.internal.example:9093
+    brokers: [kafka.internal.example:9092]
     security:
       protocol: SASL_SSL
       saslMechanism: SCRAM-SHA-256
@@ -164,88 +37,9 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
-    entityEvents: otel.entity.events
-
-entityEvents:
-  enabled: false
 
 rootSpanDiscovery:
   enabled: false
-  backend:
-    replicaCount: 2
-    metricsFlushInterval: 60s
-    metricsExpiration: 2m
-    seriesExpiration: 2m
-    aggregationCardinalityLimit: 0
 ```
 
-`storeTtl` is the span-pairing retention inside the connector. It is separate
-from Flink's contributor TTL. Keep Flink's contributor TTL comfortably above
-the flush interval and expected backend restart time; the default 300 seconds
-provides that margin for a 30-second flush.
-
-## Kafka security
-
-Supported modes are:
-
-- `PLAINTEXT` for a trusted local environment;
-- `SASL_PLAINTEXT` with `SCRAM-SHA-256` for authentication without
-  encryption on a trusted internal network;
-- `SASL_SSL` with `SCRAM-SHA-256`.
-
-The named Secret must already exist in the release namespace. It contains the
-username and password keys selected in values. `SASL_SSL` validates broker
-certificates through the Collector image's default trust store. The chart does
-not mount a Kafka CA file, create credentials, or create Kafka topics.
-
-## Reliability and limits
-
-Both pipelines put `memory_limiter` first. Exporters use bounded in-memory
-queues and unlimited retry duration. A prolonged Kafka outage can fill the
-queue, at which point new telemetry may be rejected; the queue is not
-persistent across pod replacement.
-
-Size these together:
-
-- backend memory limit;
-- connector `storeMaxItems`;
-- generated dimension cardinality;
-- router and backend queue sizes;
-- Kafka outage tolerance.
-
-Single-writer mode has a short observation gap while its backend restarts.
-In-flight pairs and unflushed request totals can be lost, but existing graph
-elements remain until Flink's contributor TTL expires. Horizontal mode adds
-pairing capacity but can multiply Kafka writes for series observed by several
-backends.
-
-Traffic between routers and backends is plaintext inside the cluster. Apply
-platform network isolation when this crosses a trust boundary.
-
-The optional entity-event logs pipeline also uses an in-memory queue. A
-prolonged Kafka outage can therefore reject matching entity events, and queue
-contents do not survive router replacement.
-
-The optional discovery path also has an in-memory router-to-backend queue and a
-backend-to-Kafka queue. All exported roots consume in-cluster Collector work,
-while Kafka volume scales with distinct positive semantic aggregates per flush.
-Set finite cardinality limits only with an explicit policy because overflow
-would otherwise collapse valid graph identities.
-
-## Validate
-
-```console
-helm lint deploy/helm/servicegraph-collector
-helm template collection deploy/helm/servicegraph-collector \
-  --namespace servicegraph-system \
-  --values internal-collector-values.yaml
-```
-
-After deployment:
-
-```console
-kubectl get pods -n servicegraph-system
-kubectl logs -n servicegraph-system statefulset/servicegraph-collector-backend
-kubectl logs -n servicegraph-system statefulset/servicegraph-collector-discovery-backend
-kubectl get endpoints -n servicegraph-system servicegraph-collector-backend-headless
-```
+The charts contain no logs pipeline or entity-event topic. Collector configuration is rendered and validated with `helm lint` and restricted-security template values.

@@ -3,7 +3,7 @@
 The persistent local demo is the shortest supported path to a queryable graph:
 
 ```text
-seeded schema-2 lifecycle events
+seeded schema-3 lifecycle events
   -> Redpanda
   -> servicegraph-indexer
   -> ArangoDB

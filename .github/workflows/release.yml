@@ -58,7 +58,6 @@ jobs:
             packages/extended-opentelemetry-semconv
           cp dist/all/extended_opentelemetry_semconv-* dist/pypi/
           for package in \
-            services/otel-servicegraph-diff \
             services/servicegraph-demo \
             services/servicegraph-indexer; do
             python -m build --sdist --wheel --outdir dist/all "$package"

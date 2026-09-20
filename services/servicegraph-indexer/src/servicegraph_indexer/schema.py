@@ -62,7 +62,6 @@ class PropertyAliases(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     attributes: FrozenStringMapping
-    metrics: FrozenStringMapping
 
 
 class SchemaMetadata(BaseModel):

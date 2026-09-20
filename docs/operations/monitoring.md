@@ -14,7 +14,7 @@ Watch:
 - Kafka exporter queue failures and retry duration;
 - unmatched spans caused by incomplete traces.
 - discovery-backend load, series cardinality, and restarts when enabled;
-- root spans dropped by the discovery conflict filter;
+- root spans dropped by the discovery conflict or client/server-kind filters;
 
 Useful commands:
 
@@ -59,7 +59,7 @@ Track:
 - TaskManager availability;
 - JobManager leadership changes;
 - restart count;
-- `rejected_inputs`;
+- `rejected_inputs` and its reason-specific ingest counters;
 - shared checkpoint volume capacity;
 - TaskManager `/flink-rocksdb` ephemeral-storage utilization.
 
@@ -74,6 +74,27 @@ The job must remain `RUNNING`, and completed checkpoints must continue to
 increase while traffic is present. Alert before `/flink-rocksdb` reaches 70%,
 on two consecutive checkpoint failures, or when checkpoint duration and size
 continue growing after the contributor TTL window instead of stabilizing.
+
+For a Java migration canary, compare the recorded Python baseline with the
+native Java image using identical traffic, contributor cardinality, CPU/memory
+requests and limits, parallelism, checkpoint configuration, and storage. Record
+correct input/output counts, throughput, CPU, RSS/heap, event latency,
+checkpoint duration and incremental size, and both Kafka group lags after the
+same warmup. Record storage latency separately; a language change does not
+prove checkpoint-volume reliability or remove contributor merge scans.
+
+Run the private-network canary for at least six hours and longer than the
+previous failure window. Check for stable checkpoint sizes after the TTL
+window, no sustained lag or restart loop, and expiry after recovery with no
+new input. Local integration tests do not replace this operational canary.
+
+The previous private-network failure followed several hours of lifecycle
+processing that delayed checkpoints until repeated failures stopped the job.
+Include many contributors sharing one element in the canary, rather than only
+many independent elements. Track lifecycle busy time, checkpoint alignment
+and end-to-end duration, failed checkpoint reasons, and input lag throughout
+the run. Keep the existing checkpoint timeout and failure tolerance for the
+comparison; increasing them would conceal the failure being investigated.
 
 ## ArangoDB and Gremlin access
 

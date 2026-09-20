@@ -1,29 +1,19 @@
 # Benchmarking
 
-The repository includes a deterministic in-process benchmark for the two
-framework-independent hot paths owned by this project:
+The native Java Flink workload harness runs a disposable Kind stack and sends
+deterministic servicegraph OTLP Protobuf through Kafka:
 
-1. parsing Collector service-graph OTLP JSON and extracting contributions;
-2. applying contributions to graph-element lifecycle state.
-
-Run it from the Python 3.12 development environment:
-
-```powershell
-.\.venv\Scripts\python.exe -m benchmarks `
-  --warmup 5 `
-  --iterations 30 `
-  --entities 1000 `
-  --contributors 4 `
-  --seed 20260823
+```console
+python -m benchmarks.flink --warmup 3 --iterations 20 --entities 2 --contributors 256 --output .tmp/flink-benchmark
 ```
 
-Add `--json .tmp\benchmark.json` for a machine-readable report. The report
-records the deterministic payload digest, runtime and platform metadata,
-throughput, latency percentiles, emitted events, graph elements, and contributor
-snapshots. Compare runs only when the workload and host conditions match.
+The report checks complete service/calls payloads and request totals, then
+records observed rate, batch latency, CPU, memory, checkpoint duration/size and
+committed-offset lag. The harness uses Python for provisioning and measurement;
+the Flink job itself is Java only.
 
-This is a regression and profiling tool, not a distributed capacity claim. It
-does not run Flink, Kafka, Collector networking, checkpoints, ArangoDB, Gremlin,
-or Kubernetes. See [`benchmarks/README.md`](https://github.com/ron1510/semconv-graph/blob/main/benchmarks/README.md)
-for the measurement boundaries and the required shape of a future distributed
-benchmark.
+These controlled Kafka-to-Kafka measurements do not establish saturating
+capacity, Collector-to-Gremlin latency, horizontal scaling or infrastructure
+cost. See the [benchmark guide](https://github.com/ron1510/semconv-graph/blob/main/benchmarks/README.md)
+for boundaries and the archived matched Python/Java migration report. The old
+Python in-process benchmark is available in Git history at `15124a6`.

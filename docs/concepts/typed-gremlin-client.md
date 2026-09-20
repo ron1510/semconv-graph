@@ -28,7 +28,7 @@ assert all(isinstance(edge, ServiceCallsServiceEdge) for edge in calls)
 ```
 
 Entity models contain canonical semantic fields. Concrete edge models contain
-deterministic endpoint IDs, structural attributes, metrics, and a computed
+deterministic endpoint IDs, structural attributes, and a computed
 edge ID. The client does not perform follow-up endpoint queries and does not
 return Kafka or ArangoDB projection metadata.
 

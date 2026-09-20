@@ -1,115 +1,28 @@
-# Kubernetes Deployment
-
-This guide installs the service graph into an existing Kubernetes cluster. It
-assumes Kafka is already available.
+# Kubernetes deployment and operations
 
 ## Requirements
 
-- Kubernetes 1.25 or newer;
-- Helm 3;
-- Kafka-compatible brokers reachable from the namespace;
-- two pre-created topics, plus one for optional entity-event input;
-- ArangoDB 3.12 reachable from the namespace;
-- an internal container registry;
-- shared persistent storage for Flink;
-- existing Kafka and ArangoDB writer/reader credential Secrets when authentication is
-  enabled.
+Provide Kubernetes, Helm 3, Kafka, ArangoDB, an image registry, and Secrets for Kafka and Arango credentials. Production Kafka and Arango operations remain platform responsibilities.
 
-The charts create standard Kubernetes resources and no CRDs. Workloads run as
-non-root users with privilege escalation disabled, all capabilities dropped,
-read-only root filesystems, and `RuntimeDefault` seccomp.
+## Topics
 
-## Build and publish images
-
-Build the Flink runtime from the repository root:
-
-```console
-docker build \
-  --file services/otel-servicegraph-diff/Dockerfile \
-  --target runtime \
-  --build-arg PIP_INDEX_URL=https://pypi.internal.example/simple \
-  --secret id=maven_settings,src=$HOME/.m2/settings.xml \
-  --tag registry.internal.example/extended-otel-flink-runtime:2.2.1-java11 \
-  .
-```
-
-Build the indexer, Gremlin, and optional demo images:
-
-```console
-docker build --file services/servicegraph-indexer/Dockerfile \
-  --tag registry.internal.example/extended-otel-servicegraph-indexer:0.1.0 .
-
-docker build --file services/servicegraph-gremlin/Dockerfile \
-  --tag registry.internal.example/extended-otel-servicegraph-gremlin:0.1.0 \
-  services/servicegraph-gremlin
-
-docker build --file services/servicegraph-demo/Dockerfile \
-  --tag registry.internal.example/extended-otel-servicegraph-demo:0.1.1 .
-```
-
-Publish immutable tags or digests. The Flink image contains Python 3.12, the
-application packages, Java serializers, and the Flink Kafka connector. No
-runtime wheel side-loading is required.
-
-Mirror the Collector image declared by the Collector chart when the cluster
-cannot access public registries.
-
-## Create Kafka topics
-
-Create:
+Create these topics before enabling producers:
 
 ```text
-otel.servicegraph.metrics
-graph.elements.events
+otel.servicegraph.metrics   OTLP Protobuf only
+graph.elements.events       schema-3 JSON only, cleanup.policy=compact
 ```
 
-For opt-in OTel entity-event ingestion, also create:
+Choose partition counts for expected parallelism and keep them stable through the clean cutover. Automatic topic creation is disabled.
 
-```text
-otel.entity.events
-```
+## Values
 
-Choose partition counts for expected throughput and Flink parallelism. All
-created topics should use retention and replication appropriate for your recovery
-objectives. Disable automatic topic creation.
-
-All installed components must use the same broker list, security configuration,
-and topic names.
-
-## Create the credentials Secret
-
-For `SASL_PLAINTEXT` or `SASL_SSL`, create one Secret in the target
-namespace containing:
+Collector and Flink must share the Kafka security block and metrics topic. Flink and the indexer must share the graph-event topic.
 
 ```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: servicegraph-kafka-auth
-type: Opaque
-stringData:
-  username: servicegraph
-  password: replace-me
-```
-
-Use your secret-management system rather than committing this manifest.
-`PLAINTEXT` requires no Secret. `SASL_PLAINTEXT` authenticates but does not
-encrypt credentials or traffic and must be limited to a trusted internal
-network. `SASL_SSL` uses the runtime image's default trust store; add private
-certificate authorities to that trust store when building the image.
-
-## Prepare values
-
-Create `internal-collector-values.yaml`:
-
-```yaml
-image:
-  repository: registry.internal.example/otelcol-contrib
-  tag: "0.156.0"
-
 streamContract:
   kafka:
-    brokers: [kafka.internal.example:9093]
+    brokers: [kafka.internal.example:9092]
     security:
       protocol: SASL_SSL
       saslMechanism: SCRAM-SHA-256
@@ -118,209 +31,38 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
-    entityEvents: otel.entity.events
-
-entityEvents:
-  enabled: true
-
-rootSpanDiscovery:
-  enabled: true
-  backend:
-    replicaCount: 2
-    metricsFlushInterval: 60s
-    metricsExpiration: 2m
-    seriesExpiration: 2m
 ```
 
-Create `internal-flink-values.yaml`:
+Flink also configures `interactionEvents: graph.elements.events`. The indexer reads that topic with its own consumer group.
 
-```yaml
-image:
-  ref: registry.internal.example/extended-otel-flink-runtime:2.2.1-java11
+## Install order
 
-serviceAccount:
-  create: false
-  name: servicegraph-flink
-rbac:
-  create: false
+For a fresh installation or required clean cutover:
 
-streamContract:
-  kafka:
-    brokers: [kafka.internal.example:9093]
-    security:
-      protocol: SASL_SSL
-      saslMechanism: SCRAM-SHA-256
-      existingSecret: servicegraph-kafka-auth
-      usernameKey: username
-      passwordKey: password
-  topics:
-    servicegraphMetrics: otel.servicegraph.metrics
-    entityEvents: otel.entity.events
-    interactionEvents: graph.elements.events
+1. Deploy the generated Arango schema and indexer, then the read-only Gremlin service.
+2. Deploy Flink and wait for its fixed job to reach `RUNNING` and complete checkpoints.
+3. Deploy the Collector backends and routers.
+4. Resume trace traffic.
 
-entityEvents:
-  enabled: true
-  groupId: graph-element-engine-entities
-  reportIntervalGraceSeconds: 30
+This order ensures consumers validate the new contracts before producers publish them.
 
-storage:
-  createClaim: false
-  existingClaim: servicegraph-flink-state
-```
+## Validation
 
-The entity-event blocks are optional and default to disabled. Enable both
-charts together and keep `streamContract.topics.entityEvents` identical. The
-Flink entity-event consumer group is independent from `job.groupId` used by
-service-graph metrics.
-
-Root-span discovery is optional and configured only in the Collector chart.
-Its dedicated spanmetrics backends aggregate completed roots and write discovery
-datapoints to the existing `servicegraphMetrics` topic. Flink recognizes that
-metric without a separate source. Applications must export the roots they need;
-sampling can prevent a run from being observed.
-
-See [Collector configuration](configuration/collector.md), [Flink
-configuration](configuration/flink.md), and the [Helm values
-reference](reference/helm-values.md) before changing topology or state values.
-
-Create `internal-indexer-values.yaml` and `internal-gremlin-values.yaml` for the
-same Kafka contract and your existing ArangoDB service. See [ArangoDB and
-Gremlin](deployment/arangodb-gremlin.md) for credentials, privileges, topology,
-and traversal examples.
-
-## Validate before installation
-
-```console
+```powershell
 helm lint deploy/helm/servicegraph-collector
 helm lint deploy/helm/servicegraph-flink
-helm lint deploy/helm/servicegraph-indexer
-helm lint deploy/helm/servicegraph-gremlin
-
-helm template collection deploy/helm/servicegraph-collector \
-  --namespace servicegraph-system \
-  --values internal-collector-values.yaml
-
-helm template processing deploy/helm/servicegraph-flink \
-  --namespace servicegraph-system \
-  --values internal-flink-values.yaml
-
-helm template indexer deploy/helm/servicegraph-indexer \
-  --namespace servicegraph-system \
-  --values internal-indexer-values.yaml
-
-helm template gremlin deploy/helm/servicegraph-gremlin \
-  --namespace servicegraph-system \
-  --values internal-gremlin-values.yaml
+helm template collection deploy/helm/servicegraph-collector --set streamContract.kafka.security.protocol=PLAINTEXT
+helm template processing deploy/helm/servicegraph-flink --set streamContract.kafka.security.protocol=PLAINTEXT
+python -m tools.semconv_codegen --check
+python -m pytest -m "not e2e and not arangodb"
 ```
 
-Review rendered Secrets references, images, storage classes, RBAC, resource
-limits, and namespace policy compatibility.
+Rendered Collector backends must contain `encoding: otlp_proto`, request-total/discovery filters, gzip, retries, and no logs pipeline. Rendered Flink resources must contain no entity-event topic or environment variables.
 
-## Install collection and processing
+## End-to-end verification
 
-```console
-helm upgrade --install collection deploy/helm/servicegraph-collector \
-  --namespace servicegraph-system \
-  --create-namespace \
-  --values internal-collector-values.yaml \
-  --wait --timeout 5m
-
-helm upgrade --install processing deploy/helm/servicegraph-flink \
-  --namespace servicegraph-system \
-  --values internal-flink-values.yaml \
-  --wait \
-  --timeout 10m
-```
-
-Helm creates the standalone JobManager and TaskManager Deployments before its
-post-install submitter runs. Confirm both workloads are ready:
-
-```console
-kubectl rollout status deployment/processing-servicegraph-flink-jobmanager \
-  --namespace servicegraph-system \
-  --timeout=10m
-kubectl rollout status deployment/processing-servicegraph-flink-taskmanager \
-  --namespace servicegraph-system \
-  --timeout=10m
-```
-
-The existing ServiceAccount needs ConfigMap CRUD/list/watch for Kubernetes HA.
-It does not need Pod, Deployment, Service, CRD, or finalizer permissions.
-
-Subsequent `helm upgrade` operations stop the active job with a savepoint,
-roll the runtime image and configuration, and restore the same job ID from
-that savepoint. Keep the cluster ID, fixed job ID, and state claim stable.
-
-When replacing the former raw-root source, upgrade the Flink image and chart
-before enabling the Collector spanmetrics lane. If the removed source has run
-and therefore exists in a savepoint, set `job.allowNonRestoredState=true` for
-that one Flink upgrade. Then upgrade the Collector, verify
-`semconv.graph.discovery.calls`, Flink health, consumer lag, and Gremlin output,
-and return `job.allowNonRestoredState` to `false`. The obsolete
-`otel.root.spans` topic and `graph-element-engine-root-spans` group may be
-removed afterward. Existing lifecycle state and the shared metrics group remain
-unchanged.
-
-## Install projection and traversal access
-
-The pre-install initializer creates or verifies the graph topology before the
-indexer starts. Gremlin uses separate credentials with read-only database
-access and `rw` limited to the provider's `TINKERPOP-GRAPH-VARIABLES`
-collection:
-
-```console
-helm upgrade --install indexer deploy/helm/servicegraph-indexer \
-  --namespace servicegraph-system \
-  --values internal-indexer-values.yaml \
-  --wait --timeout 5m
-
-helm upgrade --install gremlin deploy/helm/servicegraph-gremlin \
-  --namespace servicegraph-system \
-  --values internal-gremlin-values.yaml \
-  --wait --timeout 5m
-```
-
-Keep Gremlin internal to the cluster or use a local port-forward:
-
-```console
-kubectl port-forward --namespace servicegraph-system \
-  service/gremlin-servicegraph-gremlin 8182:8182
-```
-
-Trusted clients use GraphBinary and traversal source `g`. There is no product
-HTTP API or custom query language.
-
-## Install optional demo traffic
-
-```console
-helm upgrade --install demo deploy/helm/servicegraph-demo \
-  --namespace servicegraph-system \
-  --values internal-demo-values.yaml \
-  --wait --timeout 5m
-```
-
-Do not install the demo in a production telemetry namespace unless synthetic
-services are explicitly desired.
-
-## Verify end to end
-
-1. Confirm both routers and every backend configured by the selected mode are ready.
-2. Confirm the Flink job is `RUNNING`.
-3. Confirm completed checkpoints continue increasing.
-4. Send paired client/server traces to the router.
-5. Confirm the metrics topic advances.
-6. Confirm node and edge upserts appear.
-7. Confirm the indexer commits offsets and documents appear in ArangoDB.
-8. Traverse expected nodes and edges through Gremlin.
-9. Stop the contributing telemetry and wait for the configured TTL.
-10. Confirm Flink emits element deletes and ArangoDB removes the
-    corresponding documents.
-
-See [Monitoring](operations/monitoring.md) for commands and production signals.
+Confirm that the metrics topic contains decodable `ExportMetricsServiceRequest` records, Flink consumes and checkpoints, the output topic contains only schema-3 events without `metrics`, the indexer group advances after successful writes, and typed Gremlin returns the expected nodes and relationships. Then allow the configured TTL to pass and verify final deletions.
 
 ## Uninstall behavior
 
-Helm deletes the Flink Deployments, Service, and configuration. Kubernetes HA
-ConfigMaps and the retained Flink claim can remain. Uninstalling the indexer or
-Gremlin chart does not delete ArangoDB data. Inspect and preserve checkpoints
-or savepoints before deleting runtime resources or storage.
+Retained Flink state and Arango data are not ordinary chart-owned scratch data. Follow the explicit reset procedure before deleting persistent volumes or generated graph documents. Preserve unrelated databases, credentials, Secrets, and Kafka configuration.

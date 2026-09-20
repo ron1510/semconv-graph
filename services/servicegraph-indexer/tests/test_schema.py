@@ -24,7 +24,7 @@ def test_generated_schema_is_valid_and_complete() -> None:
     assert schema.vertices_by_type["k8s.pod"].collection == "k8s_pod"
     assert schema.edges_by_type["calls"].collection == "calls"
     assert schema.property_aliases.attributes["service.name"] == "service_name"
-    assert schema.property_aliases.metrics["service_graph.request.total"] == "service_graph_request_total"
+    assert schema.metadata.schema_version == "2"
 
 
 def test_generated_schema_and_lookup_maps_are_cached_and_read_only() -> None:

@@ -5,6 +5,8 @@
 .pr-work
 .tmp
 .test-tmp
+.venv
+**/target
 build
 dist
 vendor

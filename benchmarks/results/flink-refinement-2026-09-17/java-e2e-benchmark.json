@@ -1,0 +1,256 @@
+{
+  "scope": "controlled_distributed_flink_workload",
+  "runtime": "java",
+  "image": "extended-otel-flink-runtime:e2e-9a480896",
+  "config": {
+    "entities": 16,
+    "contributors": 4,
+    "seed": 20260823,
+    "observed_at_unix_nano": 1789659767612492200,
+    "service_prefix": "service",
+    "iterations": 3,
+    "warmup": 1,
+    "checkpoint_samples": 2,
+    "timeout_seconds": 120
+  },
+  "deployment_settings": {
+    "application": {
+      "clusterId": "servicegraph-diff",
+      "jobManagerProcessMemory": "1200m",
+      "jobManagerReplicas": 1,
+      "parallelism": 1,
+      "taskManagerProcessMemory": "1800m",
+      "taskManagerReplicas": 1,
+      "taskManagerSlots": 1
+    },
+    "job": {
+      "allowNonRestoredState": false,
+      "allowedLatenessSeconds": 1,
+      "checkpointIntervalMs": 5000,
+      "checkpointMinPauseMs": 5000,
+      "checkpointTimeoutMs": 600000,
+      "elementTtlSeconds": {},
+      "fixedJobId": "00000000000000000000000000000001",
+      "groupId": "graph-element-engine",
+      "interactionTtlSeconds": 45,
+      "restartAttempts": 3,
+      "restartDelaySeconds": 10,
+      "tolerableFailedCheckpoints": 1
+    },
+    "state": {
+      "backend": "rocksdb",
+      "incrementalCheckpoints": true,
+      "rocksdb": {
+        "localDirectory": "/flink-rocksdb",
+        "localStorageSize": "10Gi"
+      }
+    },
+    "resources": {
+      "jobManager": {
+        "limits": {
+          "memory": "1536Mi"
+        },
+        "requests": {
+          "cpu": "500m",
+          "memory": "1280Mi"
+        }
+      },
+      "submitter": {
+        "limits": {
+          "memory": "768Mi"
+        },
+        "requests": {
+          "cpu": "100m",
+          "memory": "256Mi"
+        }
+      },
+      "taskManager": {
+        "limits": {
+          "ephemeral-storage": "12Gi",
+          "memory": "2304Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "ephemeral-storage": "1Gi",
+          "memory": "1920Mi"
+        }
+      }
+    },
+    "storage": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "createClaim": true,
+      "existingClaim": "",
+      "retainClaim": false,
+      "size": "2Gi",
+      "storageClassName": "standard"
+    },
+    "topics": {
+      "entityEvents": "otel.entity.events",
+      "interactionEvents": "graph.elements.events",
+      "servicegraphMetrics": "otel.servicegraph.metrics"
+    }
+  },
+  "payload_sha256": "09504f4d00da6f09cbe1754f595d8c7cd9ed147504b177f2a90c8cca4ef9b7ec",
+  "payload_bytes": 23786,
+  "datapoints_per_batch": 64,
+  "total_measured_datapoints": 192,
+  "measured_seconds": 2.01379059998726,
+  "datapoints_per_second": 95.34258427922677,
+  "batch_completion_latency_ms": {
+    "min": 231.73239998868667,
+    "p50": 243.21100000815932,
+    "p95": 293.84749999735504,
+    "max": 293.84749999735504,
+    "mean": 256.26363333140034
+  },
+  "output_events_warmup": 192,
+  "output_events_measured": 192,
+  "expected_events_measured": 192,
+  "final_element_count": 32,
+  "final_elements_sha256": "fa925ebeb7139d8739228e5fb52ea6bca03b2ae52c0eeb79f52f6804e4a3c34f",
+  "expected_elements_sha256": "fa925ebeb7139d8739228e5fb52ea6bca03b2ae52c0eeb79f52f6804e4a3c34f",
+  "expected_matches": true,
+  "pods_before": [
+    {
+      "pod": "processing-servicegraph-flink-jobmanager-b77f94798-td8r8",
+      "role": "jobmanager",
+      "sampled_at_monotonic_ns": 77008328000000,
+      "cpu_usage_usec": 40975188,
+      "memory_current_bytes": 659701760,
+      "memory_anonymous_resident_bytes": 570044416
+    },
+    {
+      "pod": "processing-servicegraph-flink-taskmanager-757c49c97f-8v4lz",
+      "role": "taskmanager",
+      "sampled_at_monotonic_ns": 77009328000000,
+      "cpu_usage_usec": 29635702,
+      "memory_current_bytes": 726458368,
+      "memory_anonymous_resident_bytes": 654118912
+    }
+  ],
+  "pods_after": [
+    {
+      "pod": "processing-servicegraph-flink-jobmanager-b77f94798-td8r8",
+      "role": "jobmanager",
+      "sampled_at_monotonic_ns": 77013296000000,
+      "cpu_usage_usec": 41355226,
+      "memory_current_bytes": 659927040,
+      "memory_anonymous_resident_bytes": 570253312
+    },
+    {
+      "pod": "processing-servicegraph-flink-taskmanager-757c49c97f-8v4lz",
+      "role": "taskmanager",
+      "sampled_at_monotonic_ns": 77014328000000,
+      "cpu_usage_usec": 32286098,
+      "memory_current_bytes": 783564800,
+      "memory_anonymous_resident_bytes": 711204864
+    }
+  ],
+  "average_cpu_cores": {
+    "jobmanager": 0.07649718196457327,
+    "taskmanager": 0.5300792000000001
+  },
+  "checkpoints": [
+    {
+      "completed": 52,
+      "failed": 0,
+      "latest_id": 52,
+      "duration_ms": 70,
+      "checkpointed_size_bytes": 47950,
+      "full_state_size_bytes": 155725
+    },
+    {
+      "completed": 53,
+      "failed": 0,
+      "latest_id": 53,
+      "duration_ms": 156,
+      "checkpointed_size_bytes": 97377,
+      "full_state_size_bytes": 205152
+    },
+    {
+      "completed": 54,
+      "failed": 0,
+      "latest_id": 54,
+      "duration_ms": 130,
+      "checkpointed_size_bytes": 84031,
+      "full_state_size_bytes": 127066
+    },
+    {
+      "completed": 55,
+      "failed": 0,
+      "latest_id": 55,
+      "duration_ms": 85,
+      "checkpointed_size_bytes": 61003,
+      "full_state_size_bytes": 112449
+    },
+    {
+      "completed": 56,
+      "failed": 0,
+      "latest_id": 56,
+      "duration_ms": 72,
+      "checkpointed_size_bytes": 50667,
+      "full_state_size_bytes": 112449
+    }
+  ],
+  "offsets": [
+    {
+      "input_end": 6,
+      "input_committed": 6,
+      "input_committed_lag": 0,
+      "output_end": 539,
+      "indexer_committed": 539,
+      "indexer_committed_lag": 0
+    },
+    {
+      "input_end": 7,
+      "input_committed": 6,
+      "input_committed_lag": 1,
+      "output_end": 731,
+      "indexer_committed": 731,
+      "indexer_committed_lag": 0
+    },
+    {
+      "input_end": 8,
+      "input_committed": 7,
+      "input_committed_lag": 1,
+      "output_end": 795,
+      "indexer_committed": 795,
+      "indexer_committed_lag": 0
+    },
+    {
+      "input_end": 9,
+      "input_committed": 7,
+      "input_committed_lag": 2,
+      "output_end": 859,
+      "indexer_committed": 859,
+      "indexer_committed_lag": 0
+    },
+    {
+      "input_end": 10,
+      "input_committed": 7,
+      "input_committed_lag": 3,
+      "output_end": 923,
+      "indexer_committed": 923,
+      "indexer_committed_lag": 0
+    },
+    {
+      "input_end": 10,
+      "input_committed": 10,
+      "input_committed_lag": 0,
+      "output_end": 923,
+      "indexer_committed": 923,
+      "indexer_committed_lag": 0
+    }
+  ],
+  "limitations": [
+    "Controlled batched workload; observed rate is not a saturating throughput/capacity claim.",
+    "Kafka metrics to Kafka graph payloads; excludes Collector/Gremlin latency.",
+    "Batch completion includes producer acknowledgement and polling; not per-event latency.",
+    "CPU includes all container processes; memory.current includes file cache/RocksDB.",
+    "Anonymous resident cgroup memory is a process RSS proxy, not JVM-only RSS or heap usage.",
+    "Reported lag uses checkpoint-committed offsets and can lag records already processed.",
+    "Short local runs do not establish private-network storage reliability or six-hour stability."
+  ]
+}

@@ -7,6 +7,7 @@ test. Use CPython 3.12.
 
 ```console
 python -m pytest -m "not e2e"
+mvn -f services/otel-servicegraph-diff/runtime/java/pom.xml verify
 python -m tools.semconv_codegen --check
 python -m ruff check .
 python -m pyright
@@ -16,8 +17,9 @@ The suite covers registry validation, deterministic generation, importable
 models, graph lifecycle behavior, Flink state/timers, demo traffic, ArangoDB
 topology initialization, document routing, edge-delete fanout, Kafka security,
 commit-after-write behavior, generated edge models, and typed Gremlin traversal
-validation. PyFlink tests skip when `apache-flink` is not installed in the
-active environment.
+validation. Native Java parity and operator tests run through Maven. The
+committed golden fixtures preserve the original Python behavioral expectations
+without requiring a Python Flink implementation.
 
 Optional branch coverage has no numeric gate:
 
@@ -32,7 +34,7 @@ named Kind cluster, starts pinned Redpanda and ArangoDB containers on Kind's
 Docker network, builds the production indexer and validated Gremlin images, and
 installs both charts.
 
-It publishes exact Flink schema-2 lifecycle envelopes and verifies:
+It publishes exact Flink schema-3 lifecycle envelopes and verifies:
 
 - node and edge projection;
 - incoming and outgoing GraphBinary traversals;

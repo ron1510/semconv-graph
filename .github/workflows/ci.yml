@@ -35,7 +35,6 @@ jobs:
           cache-dependency-path: |
             pyproject.toml
             packages/extended-opentelemetry-semconv/pyproject.toml
-            services/otel-servicegraph-diff/pyproject.toml
             services/servicegraph-demo/pyproject.toml
             services/servicegraph-indexer/pyproject.toml
 
@@ -46,7 +45,6 @@ jobs:
           .venv/bin/python -m pip install \
             -e ".[dev,docs]" \
             -e "packages/extended-opentelemetry-semconv[gremlin]" \
-            -e services/otel-servicegraph-diff \
             -e services/servicegraph-demo \
             -e services/servicegraph-indexer
 
@@ -106,7 +104,6 @@ jobs:
           cache: pip
           cache-dependency-path: |
             packages/extended-opentelemetry-semconv/pyproject.toml
-            services/otel-servicegraph-diff/pyproject.toml
             services/servicegraph-demo/pyproject.toml
             services/servicegraph-indexer/pyproject.toml
 
@@ -118,7 +115,6 @@ jobs:
           python -m pip install build check-wheel-contents twine
           for package in \
             packages/extended-opentelemetry-semconv \
-            services/otel-servicegraph-diff \
             services/servicegraph-demo \
             services/servicegraph-indexer; do
             python -m build --sdist --wheel --outdir dist "$package"

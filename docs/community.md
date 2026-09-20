@@ -10,9 +10,8 @@ not through its dependency list.
 
 The supporting sentence is:
 
-> It combines inferred semantic entities with opt-in standard OpenTelemetry
-> entity events and aggregated root spans in one contributor-aware lifecycle
-> engine.
+> It combines service interaction evidence with opt-in spanmetrics evidence
+> from non-client/non-server roots in one contributor-aware lifecycle engine.
 
 ## Demonstration story
 
@@ -27,14 +26,12 @@ query:
 4. Query the current graph through typed Gremlin.
 5. Stop one contributor and show shared elements remain.
 6. Stop the final contributor and show explicit graph-element deletion.
-7. Enable explicit entity events and show that the explicit source can complete
-   the same graph element without replacing inferred provenance.
-8. Emit repeated non-interacting execution roots and show spanmetrics collapse
+7. Emit repeated non-interacting execution roots and show spanmetrics collapse
    them into node-only discovery without exporting raw spans to Kafka.
 
 Use concrete services, IDs, attributes, and traversals. The repository's
-in-process benchmark is reproducible, but avoid distributed throughput or cost
-claims until those paths are measured.
+controlled Java workload measurements are reproducible, but avoid production
+capacity or cost claims until those paths are measured.
 
 ## Presentation outline
 
@@ -63,10 +60,8 @@ shared-contributor survival, final expiry, replay, and typed query results.
 ### 5. OpenTelemetry alignment
 
 Reference the official [Entity Data Model](https://opentelemetry.io/docs/specs/otel/entities/data-model/)
-and [Entity Events](https://opentelemetry.io/docs/specs/otel/entities/entity-events/)
-specifications. Present servicegraph metrics, aggregated root spans, and explicit
-entity events as independent sources for one graph, and show the [conformance
-matrix](reference/otel-entity-conformance.md).
+and semantic conventions. Present servicegraph and spanmetrics datapoints as
+freshness evidence for one typed graph.
 
 ### 6. Honest boundaries
 
@@ -82,7 +77,6 @@ Ask for help on a small number of bounded problems rather than asking people to
 
 Good independent contribution areas are:
 
-- conformance fixtures for standard `entity.state` and `entity.delete` events;
 - incoming-relationship cleanup, `schema_url`, and identification-context work;
 - additional semantic entity and relationship extensions;
 - benchmark scenarios and measurement tooling;
@@ -118,8 +112,7 @@ actual operating envelope.
   exists.
 - Open bounded issues for the contribution tracks above.
 - Label introductory issues only when a maintainer can explain and review them.
-- Bring the conformance matrix and a running demo to the OpenTelemetry Entities
-  SIG for technical feedback.
+- Bring a running demo to the OpenTelemetry Entities SIG for technical feedback.
 - Turn accepted design decisions into tests and documentation before broadening
   compatibility claims.
 

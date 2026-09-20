@@ -38,29 +38,22 @@ Python 3.12 is required.
 ## Run the live graph pipeline
 
 Use the complete runtime when you need a continuously maintained topology. It
-can receive graph evidence from three independent sources:
+receives two complementary forms of graph evidence:
 
 1. By default, applications emit normal OpenTelemetry client/server spans;
    Collector backends derive service-graph metrics and publish them to Kafka.
-2. Optionally, the Collector aggregates exported root spans into node-only
-   discovery metrics for non-interacting executions.
-3. Optionally, the Collector router forwards filtered `entity.state` and
-   `entity.delete` OTLP logs to an independent Kafka topic.
-4. Flink reconciles all enabled sources into lifecycle-managed graph elements.
-5. Consumers apply complete element `upsert` and `delete` commands.
+2. Optionally, the Collector sends root spans whose kind is neither client nor
+   server through spanmetrics and publishes node-only discovery evidence for
+   non-interacting executions.
+3. Flink reconciles both evidence lanes into lifecycle-managed graph elements.
+4. Consumers apply complete element `upsert` and `delete` commands.
 
-Entity-event ingestion is disabled by default. It accepts only entity and
-relationship types represented in the generated `service_graph` topology; a
-known upstream entity model outside that topology is rejected because the
-ArangoDB projection has no generated collection for it. See [Collector
-configuration](../configuration/collector.md), [Flink
-configuration](../configuration/flink.md), and the [entity-event compatibility
-matrix](../reference/otel-entity-conformance.md) for the exact contract.
+See [Collector configuration](../configuration/collector.md) and [Flink
+configuration](../configuration/flink.md).
 
 The production deployment expects Kubernetes, Helm, Kafka-compatible brokers,
-two pre-created topics plus one for optional entity events, persistent
-storage for Flink, and an existing ArangoDB 3.12 deployment for the
-current-state property graph.
+two pre-created topics, persistent storage for Flink, and an existing ArangoDB
+3.12 deployment for the current-state property graph.
 
 For an isolated demonstration, follow the [local Kind
 quickstart](quickstart.md). For an existing cluster, follow the [Kubernetes

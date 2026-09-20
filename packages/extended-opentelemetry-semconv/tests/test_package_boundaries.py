@@ -10,7 +10,6 @@ import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 SEMANTIC_SOURCE = REPOSITORY_ROOT / "packages" / "extended-opentelemetry-semconv" / "src" / "extended_otel_semconv"
-FLINK_SOURCE = REPOSITORY_ROOT / "services" / "otel-servicegraph-diff" / "src" / "otel_servicegraph_diff"
 CODEGEN_SOURCE = REPOSITORY_ROOT / "tools" / "semconv_codegen"
 
 
@@ -20,25 +19,20 @@ CODEGEN_SOURCE = REPOSITORY_ROOT / "tools" / "semconv_codegen"
         (
             SEMANTIC_SOURCE,
             {"gremlin"},
-            {"gremlin_python", "opentelemetry", "otel_servicegraph_diff", "tools", "yaml"},
+            {"gremlin_python", "opentelemetry", "tools", "yaml"},
         ),
         (
             SEMANTIC_SOURCE / "gremlin",
             set[str](),
-            {"opentelemetry", "otel_servicegraph_diff", "tools", "yaml"},
-        ),
-        (
-            FLINK_SOURCE,
-            set[str](),
-            {"extended_otel_semconv.gremlin", "gremlin_python", "tools"},
+            {"opentelemetry", "tools", "yaml"},
         ),
         (
             CODEGEN_SOURCE,
             {"tests", "upstream"},
-            {"extended_otel_semconv", "gremlin_python", "opentelemetry", "otel_servicegraph_diff"},
+            {"extended_otel_semconv", "gremlin_python", "opentelemetry"},
         ),
     ],
-    ids=["semantic-core", "semantic-gremlin", "flink-runtime", "codegen"],
+    ids=["semantic-core", "semantic-gremlin", "codegen"],
 )
 def test_dependency_direction(
     source_root: Path,

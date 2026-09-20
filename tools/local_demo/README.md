@@ -16,5 +16,5 @@ The fixed cluster, containers, and images are reserved for this tool; `down` rem
 
 Prerequisites are Python 3.12 with the repository development dependencies, Docker, Kind, kubectl, and Helm.
 
-This focused demo begins at the public schema-2 Kafka lifecycle contract. It does not run Collector or Flink and
+This focused demo begins at the public schema-3 Kafka lifecycle contract. It does not run Collector or Flink and
 therefore proves projection into ArangoDB and typed Gremlin access, not telemetry extraction or Flink processing.

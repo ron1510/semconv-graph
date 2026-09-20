@@ -33,6 +33,8 @@ data:
           - context: span
             conditions:
               - not IsRootSpan()
+              - span.kind == SPAN_KIND_CLIENT
+              - span.kind == SPAN_KIND_SERVER
               {{- range $attribute := $discoveryModel.modeled_attributes }}
               - >-
                 resource.attributes[{{ $attribute | quote }}] != nil and
@@ -40,23 +42,6 @@ data:
                 resource.attributes[{{ $attribute | quote }}] != attributes[{{ $attribute | quote }}]
               {{- end }}
       batch/root_spans:
-        timeout: 1s
-        send_batch_size: 256
-      {{- end }}
-      {{- if .Values.entityEvents.enabled }}
-      filter/entity_events:
-        error_mode: ignore
-        logs:
-          log_record:
-            - >-
-              event_name != "entity.state" and
-              event_name != "entity.delete" and
-              attributes["otel.entity.event.type"] != "entity_state" and
-              attributes["otel.entity.event.type"] != "entity.state" and
-              attributes["otel.entity.event.type"] != "entity_delete" and
-              attributes["otel.entity.event.type"] != "entity_deleted" and
-              attributes["otel.entity.event.type"] != "entity.delete"
-      batch/entity_events:
         timeout: 1s
         send_batch_size: 256
       {{- end }}
@@ -150,42 +135,6 @@ data:
           max_interval: 30s
           max_elapsed_time: 0s
       {{- end }}
-      {{- if .Values.entityEvents.enabled }}
-      kafka/entity_events:
-        brokers:
-          {{- range .Values.streamContract.kafka.brokers }}
-          - {{ . | quote }}
-          {{- end }}
-        logs:
-          topic: {{ .Values.streamContract.topics.entityEvents | quote }}
-          encoding: otlp_json
-        {{- if eq .Values.streamContract.kafka.security.protocol "SASL_SSL" }}
-        tls:
-          insecure: false
-          insecure_skip_verify: false
-        {{- end }}
-        {{- if ne .Values.streamContract.kafka.security.protocol "PLAINTEXT" }}
-        auth:
-          sasl:
-            username: ${env:KAFKA_SASL_USERNAME}
-            password: ${env:KAFKA_SASL_PASSWORD}
-            mechanism: {{ .Values.streamContract.kafka.security.saslMechanism }}
-        {{- end }}
-        producer:
-          compression: gzip
-          required_acks: -1
-          allow_auto_topic_creation: false
-        sending_queue:
-          enabled: true
-          sizer: items
-          num_consumers: 4
-          queue_size: 10000
-        retry_on_failure:
-          enabled: true
-          initial_interval: 1s
-          max_interval: 30s
-          max_elapsed_time: 0s
-      {{- end }}
     service:
       extensions: [health_check]
       pipelines:
@@ -197,12 +146,6 @@ data:
           {{- else }}
           exporters: [load_balancing]
           {{- end }}
-        {{- if .Values.entityEvents.enabled }}
-        logs/entity_events:
-          receivers: [otlp]
-          processors: [memory_limiter, filter/entity_events, batch/entity_events]
-          exporters: [kafka/entity_events]
-        {{- end }}
         {{- if .Values.rootSpanDiscovery.enabled }}
         traces/root_span_discovery:
           receivers: [otlp]

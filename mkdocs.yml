@@ -63,6 +63,7 @@ nav:
       - Typed Gremlin Client: concepts/typed-gremlin-client.md
       - Graph Element Lifecycle: concepts/graph-element-lifecycle.md
       - Runtime Architecture: architecture.md
+      - Detailed System Flow: concepts/system-flow.md
   - Configuration:
       - Registry Extensions: registry-extensions.md
       - Collector: configuration/collector.md
@@ -78,7 +79,6 @@ nav:
       - Troubleshooting: operations/troubleshooting.md
   - Reference:
       - Graph Element Event Schema: reference/event-schema.md
-      - OTel Entity Conformance: reference/otel-entity-conformance.md
       - Helm Values: reference/helm-values.md
   - Community and Launch: community.md
   - Architecture Decisions:
@@ -87,4 +87,4 @@ nav:
       - Repository Development: development.md
       - Testing: development/testing.md
       - Benchmarking: development/benchmarking.md
-      - Run PyFlink Locally: development/local-pyflink.md
+      - Run Flink Locally: development/local-flink.md

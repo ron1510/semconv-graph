@@ -135,12 +135,15 @@ def semantic_type_from_element_id(element_id: str) -> str:
 
 
 def event_to_document(event: Mapping[str, object], schema: GraphSchema) -> tuple[str, dict[str, object]]:
+    _validate_event_contract(event)
     if event.get("operation") != "upsert":
         raise IndexingError("only upsert events can be converted to documents")
     element_value = event.get("element")
     if not isinstance(element_value, Mapping):
         raise IndexingError("upsert event has no element object")
     element = cast(Mapping[str, object], element_value)
+    if "metrics" in element:
+        raise IndexingError("graph schema 3 elements must not contain metrics")
     element_id = event.get("element_id")
     kind = element.get("kind")
     semantic_type = element.get("type")
@@ -156,13 +159,11 @@ def event_to_document(event: Mapping[str, object], schema: GraphSchema) -> tuple
         raise IndexingError(f"unknown {kind} semantic type: {semantic_type!r}")
 
     attributes = _object_map(element.get("attributes", {}), "attributes")
-    metrics = _object_map(element.get("metrics", {}), "metrics")
     document: dict[str, object] = {
         "_key": element_key(element_id),
         "element_id": element_id,
         "semantic_type": semantic_type,
         "attributes": attributes,
-        "metrics": metrics,
         "schema_version": event["schema_version"],
         "event_id": event["event_id"],
         "payload_hash": event["payload_hash"],
@@ -172,9 +173,6 @@ def event_to_document(event: Mapping[str, object], schema: GraphSchema) -> tuple
     for canonical, alias in schema.property_aliases.attributes.items():
         if canonical in attributes:
             document[alias] = attributes[canonical]
-    for canonical, alias in schema.property_aliases.metrics.items():
-        if canonical in metrics:
-            document[alias] = metrics[canonical]
     if kind == "edge":
         source_id = element.get("source_id")
         target_id = element.get("target_id")
@@ -330,7 +328,16 @@ def _decode_event(payload: bytes | str) -> Mapping[str, object]:
     decoded = json.loads(payload)
     if not isinstance(decoded, dict):
         raise IndexingError("graph-element event must be a JSON object")
-    return cast(Mapping[str, object], decoded)
+    event = cast(Mapping[str, object], decoded)
+    _validate_event_contract(event)
+    return event
+
+
+def _validate_event_contract(event: Mapping[str, object]) -> None:
+    if event.get("schema_version") != "3.0":
+        raise IndexingError("indexer accepts only graph-event schema 3.0")
+    if event.get("event_type") != "graph_element_state_changed":
+        raise IndexingError("unsupported graph-element event type")
 
 
 def _object_map(value: object, field: str) -> dict[str, object]:

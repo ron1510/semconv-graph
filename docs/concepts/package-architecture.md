@@ -1,44 +1,37 @@
-# Python Package Architecture
+# Package Architecture
 
-Python ownership follows deployment and installation boundaries while keeping
-domain responsibilities separated into internal modules.
-
-```text
-tools/semconv_codegen --generates--> extended-opentelemetry-semconv
-                                         ^
-                                         |
-                         otel-servicegraph-diff
-```
+The semantic registry is the common source for the Python SDK and the Java
+Flink application's semantic metadata. Code generation is repository tooling
+and is not installed in runtime images.
 
 ## Semantic SDK
 
 `extended-opentelemetry-semconv` exposes `extended_otel_semconv`. It contains
 generated entities and edges, deterministic identities, strict reconstruction,
-and runtime relationship metadata. Its base installation depends only on
-Pydantic.
-
-The optional `gremlin` extra exposes `extended_otel_semconv.gremlin`. This
-module validates element-preserving traversals and reconstructs GraphBinary
-results as semantic models. The semantic core never imports `gremlinpython`.
+and runtime relationship metadata. Its base installation depends on Pydantic.
+The optional `gremlin` extra validates element-preserving traversals and
+reconstructs GraphBinary results as semantic models. The semantic core does
+not import Gremlin runtime dependencies.
 
 ## Flink application
 
-`otel-servicegraph-diff` owns its graph lifecycle engine and Collector ingestion
-adapters under `otel_servicegraph_diff.engine` and
-`otel_servicegraph_diff.ingest`. These remain distinct source modules but are
-released and deployed only with the Flink application.
+`services/otel-servicegraph-diff/runtime/java` is a Java 17 Maven application.
+`ServiceGraphJob` wires native Kafka sources and sink. `MetricParser` and
+`EntityEventIngest` parse OTLP and produce contributions. `SemanticRegistry`
+loads generated fields, identity rules and relationship metadata.
 
-The engine owns contributor aggregation, staleness, and graph-element lifecycle
-events. Ingest owns OpenTelemetry protobuf parsing and direct expansion of
-service-graph datapoints into semantic node and edge contributions.
+`GraphLifecycle` owns pure contributor aggregation, attribute merging, and expiry.
+`ElementLifecycleFunction` owns Flink keyed state and coalesced timers.
+`GraphModel.Element` represents semantic nodes and edges; there is no Python
+Flink package and no individual generated Java entity class hierarchy.
 
-## Repository tooling
+## Projection and tooling
 
-`tools.semconv_codegen` owns the pinned upstream registry, local extensions,
-validation, model rendering, Collector dimensions, relationship metadata, and
-ArangoDB topology generation. It is contributor tooling and is never installed
-in runtime images.
+The Python indexer projects Kafka lifecycle events into ArangoDB. Gremlin
+serves read-only traversals and the optional SDK client reconstructs typed
+entities. These packages remain independent of the Flink implementation.
 
-Architectural tests enforce that the semantic core does not import Gremlin,
-Flink does not import repository tooling, and codegen does not import runtime
-packages.
+`tools.semconv_codegen` owns the pinned upstream registry, extensions,
+validation, model rendering, Java semantic metadata, Collector dimensions,
+relationship metadata and ArangoDB topology generation. Architectural tests
+enforce the Python semantic-core and code-generation dependency boundaries.

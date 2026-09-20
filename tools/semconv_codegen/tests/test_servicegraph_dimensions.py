@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from tools.semconv_codegen.dimensions import (
+    SPAN_METRICS_BUILTIN_DIMENSIONS,
     root_span_discovery_dimensions,
     root_span_discovery_routing_attributes,
     root_span_modeled_attributes,
@@ -61,6 +62,7 @@ def test_root_span_discovery_metadata_covers_scalar_entity_fields() -> None:
     routing = root_span_discovery_routing_attributes(registry)
     modeled = root_span_modeled_attributes(registry)
 
+    assert set(dimensions) == set(service_graph_dimensions(registry)) - SPAN_METRICS_BUILTIN_DIMENSIONS
     assert "service.name" not in dimensions
     assert "service.name" in routing
     assert "service.namespace" in routing

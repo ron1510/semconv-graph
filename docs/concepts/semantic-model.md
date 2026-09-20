@@ -102,7 +102,7 @@ Code generation creates a frozen concrete Pydantic edge class for every
 relationship definition. For example, `relationship.service_calls_service`
 becomes `ServiceCallsServiceEdge`. Each class declares its relationship and
 endpoint semantic types, validates endpoint IDs, and computes the same
-deterministic edge ID used by Flink. Edge metrics and structural attributes are
+deterministic edge ID used by Flink. Structural edge attributes are
 preserved without embedding endpoint entities.
 
 ## From attributes to the live graph

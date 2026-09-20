@@ -8,7 +8,7 @@ Redpanda and ArangoDB containers, the indexer, and read-only Gremlin Server:
 python -m pytest -m e2e --run-e2e --keep-e2e-cluster
 ```
 
-The focused fixture injects exact schema-2 lifecycle events. It verifies:
+The focused fixture injects exact schema-3 lifecycle events. It verifies:
 
 - node and edge projection;
 - incoming and outgoing Gremlin traversal;

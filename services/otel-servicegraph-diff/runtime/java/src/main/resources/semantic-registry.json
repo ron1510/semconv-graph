@@ -1,0 +1,1378 @@
+{
+  "entities": [
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "app.installation.id",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "app.build_id",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "app.build_id"
+      ],
+      "type": "app"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "service.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "service.namespace",
+          "required": true
+        },
+        {
+          "enum_values": [
+            "CONNECT",
+            "DELETE",
+            "GET",
+            "HEAD",
+            "OPTIONS",
+            "PATCH",
+            "POST",
+            "PUT",
+            "TRACE",
+            "QUERY",
+            "_OTHER"
+          ],
+          "kind": "enum",
+          "name": "http.request.method",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "http.route",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "service.name",
+        "service.namespace",
+        "http.request.method",
+        "http.route"
+      ],
+      "type": "app.endpoint"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "browser.document.url.full",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "browser.document.url.full"
+      ],
+      "type": "browser.document"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "cicd.pipeline.name",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "cicd.pipeline.name"
+      ],
+      "type": "cicd.pipeline"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "cicd.pipeline.run.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "cicd.pipeline.run.url.full",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "cicd.pipeline.run.id"
+      ],
+      "type": "cicd.pipeline.run"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "cicd.worker.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "cicd.worker.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "cicd.worker.url.full",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "cicd.worker.id"
+      ],
+      "type": "cicd.worker"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "container.runtime.description",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "container.runtime.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "container.runtime.version",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "container.runtime.name",
+        "container.runtime.version"
+      ],
+      "type": "container.runtime"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.pipeline.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.run.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.part.run.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.part.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "etl.pipeline.id",
+        "etl.run.id",
+        "etl.part.run.id"
+      ],
+      "type": "etl.part.run"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.pipeline.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.pipeline.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "etl.pipeline.id"
+      ],
+      "type": "etl.pipeline"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.pipeline.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.run.id",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "etl.run.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "etl.pipeline.id",
+        "etl.run.id"
+      ],
+      "type": "etl.run"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "gcp.gce.instance_group_manager.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "gcp.gce.instance_group_manager.zone",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "gcp.gce.instance_group_manager.region",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "gcp.gce.instance_group_manager.name",
+        "gcp.gce.instance_group_manager.zone",
+        "gcp.gce.instance_group_manager.region"
+      ],
+      "type": "gcp.gce.instance_group_manager"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.cluster.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.cluster.uid",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "k8s.cluster.uid"
+      ],
+      "type": "k8s.cluster"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.container.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "integer",
+          "name": "k8s.container.restart_count",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.container.status.last_terminated_reason",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.container.name"
+      ],
+      "type": "k8s.container"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.cronjob.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.cronjob.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.cronjob.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.cronjob.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.cronjob.uid"
+      ],
+      "type": "k8s.cronjob"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.daemonset.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.daemonset.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.daemonset.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.daemonset.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.daemonset.uid"
+      ],
+      "type": "k8s.daemonset"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.deployment.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.deployment.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.deployment.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.deployment.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.deployment.uid"
+      ],
+      "type": "k8s.deployment"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.hpa.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.hpa.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.hpa.scaletargetref.kind",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.hpa.scaletargetref.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.hpa.scaletargetref.api_version",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.hpa.uid"
+      ],
+      "type": "k8s.hpa"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.job.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.job.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.job.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.job.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.job.uid"
+      ],
+      "type": "k8s.job"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.namespace.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.namespace.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.namespace.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.namespace.name"
+      ],
+      "type": "k8s.namespace"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.node.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.node.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.node.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.node.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.node.uid"
+      ],
+      "type": "k8s.node"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.node.system_container.name",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "k8s.node.system_container.name"
+      ],
+      "type": "k8s.node.system_container"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.persistentvolume.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.persistentvolume.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.storageclass.name",
+          "required": false
+        },
+        {
+          "enum_values": [
+            "Delete",
+            "Recycle",
+            "Retain"
+          ],
+          "kind": "enum",
+          "name": "k8s.persistentvolume.reclaim_policy",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.persistentvolume.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.persistentvolume.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.persistentvolume.uid"
+      ],
+      "type": "k8s.persistentvolume"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.persistentvolumeclaim.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.persistentvolumeclaim.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.storageclass.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.persistentvolumeclaim.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.persistentvolumeclaim.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.persistentvolumeclaim.uid"
+      ],
+      "type": "k8s.persistentvolumeclaim"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.pod.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.pod.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.pod.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.pod.annotation",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.pod.ip",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.pod.hostname",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.pod.start_time",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.pod.uid"
+      ],
+      "type": "k8s.pod"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.replicaset.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.replicaset.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.replicaset.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.replicaset.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.replicaset.uid"
+      ],
+      "type": "k8s.replicaset"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.replicationcontroller.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.replicationcontroller.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.replicationcontroller.uid"
+      ],
+      "type": "k8s.replicationcontroller"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.resourcequota.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.resourcequota.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.resourcequota.uid"
+      ],
+      "type": "k8s.resourcequota"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.service.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.service.name",
+          "required": false
+        },
+        {
+          "enum_values": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer",
+            "ExternalName"
+          ],
+          "kind": "enum",
+          "name": "k8s.service.type",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.service.traffic_distribution",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "boolean",
+          "name": "k8s.service.publish_not_ready_addresses",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.service.selector",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.service.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.service.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.service.uid"
+      ],
+      "type": "k8s.service"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.statefulset.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "k8s.statefulset.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.statefulset.label",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_map",
+          "name": "k8s.statefulset.annotation",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "k8s.statefulset.uid"
+      ],
+      "type": "k8s.statefulset"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "openshift.clusterquota.uid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "openshift.clusterquota.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "openshift.clusterquota.uid"
+      ],
+      "type": "openshift.clusterquota"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "integer",
+          "name": "process.pid",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "integer",
+          "name": "process.parent_pid",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.command",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.command_line",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string_array",
+          "name": "process.command_args",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "integer",
+          "name": "process.args_count",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.creation.time",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "boolean",
+          "name": "process.interactive",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.title",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.working_directory",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.owner",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.linux.cgroup",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "process.pid",
+        "process.creation.time"
+      ],
+      "type": "process"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.executable.build_id.htlhash",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.executable.path",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.executable.build_id.go",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.executable.build_id.gnu",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.executable.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "process.executable.build_id.htlhash"
+      ],
+      "type": "process.executable"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.runtime.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.runtime.version",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "process.runtime.description",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "process.runtime.name",
+        "process.runtime.version"
+      ],
+      "type": "process.runtime"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "service.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "service.version",
+          "required": false
+        },
+        {
+          "enum_values": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "kind": "enum",
+          "name": "service.criticality",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "service.name"
+      ],
+      "type": "service"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "service.instance.id",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "service.instance.id"
+      ],
+      "type": "service.instance"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "service.namespace",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "service.namespace"
+      ],
+      "type": "service.namespace"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "telemetry.distro.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "telemetry.distro.version",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "telemetry.distro.name"
+      ],
+      "type": "telemetry.distro"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "telemetry.sdk.name",
+          "required": true
+        },
+        {
+          "enum_values": [
+            "cpp",
+            "dotnet",
+            "erlang",
+            "go",
+            "java",
+            "kotlin",
+            "nodejs",
+            "php",
+            "python",
+            "ruby",
+            "rust",
+            "swift",
+            "webjs"
+          ],
+          "kind": "enum",
+          "name": "telemetry.sdk.language",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "telemetry.sdk.version",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "telemetry.sdk.name",
+        "telemetry.sdk.language"
+      ],
+      "type": "telemetry.sdk"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "vcs.ref.head.name",
+          "required": false
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "vcs.ref.head.revision",
+          "required": true
+        },
+        {
+          "enum_values": [
+            "branch",
+            "tag"
+          ],
+          "kind": "enum",
+          "name": "vcs.ref.type",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "vcs.ref.head.revision"
+      ],
+      "type": "vcs.ref"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "vcs.repository.url.full",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "vcs.repository.name",
+          "required": false
+        }
+      ],
+      "identity_fields": [
+        "vcs.repository.url.full"
+      ],
+      "type": "vcs.repository"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "container.runtime",
+      "target": "k8s.container",
+      "type": "runs"
+    },
+    {
+      "source": "etl.pipeline",
+      "target": "etl.run",
+      "type": "contains"
+    },
+    {
+      "source": "etl.run",
+      "target": "etl.part.run",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.cluster",
+      "target": "k8s.namespace",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.cluster",
+      "target": "k8s.node",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.cluster",
+      "target": "k8s.persistentvolume",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.container",
+      "target": "process",
+      "type": "runs"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.cronjob",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.daemonset",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.deployment",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.hpa",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.job",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.persistentvolumeclaim",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.pod",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.replicaset",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.replicationcontroller",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.resourcequota",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.service",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.namespace",
+      "target": "k8s.statefulset",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.node",
+      "target": "k8s.pod",
+      "type": "runs"
+    },
+    {
+      "source": "k8s.pod",
+      "target": "k8s.container",
+      "type": "contains"
+    },
+    {
+      "source": "k8s.pod",
+      "target": "service",
+      "type": "runs"
+    },
+    {
+      "source": "k8s.pod",
+      "target": "service.instance",
+      "type": "runs"
+    },
+    {
+      "source": "process",
+      "target": "process.executable",
+      "type": "uses"
+    },
+    {
+      "source": "process",
+      "target": "process.runtime",
+      "type": "uses"
+    },
+    {
+      "source": "service",
+      "target": "vcs.repository",
+      "type": "built_from"
+    },
+    {
+      "source": "service",
+      "target": "service",
+      "type": "calls"
+    },
+    {
+      "source": "service",
+      "target": "service.instance",
+      "type": "contains"
+    },
+    {
+      "source": "service",
+      "target": "app.endpoint",
+      "type": "exposes"
+    },
+    {
+      "source": "service",
+      "target": "telemetry.distro",
+      "type": "instrumented_by"
+    },
+    {
+      "source": "service",
+      "target": "telemetry.sdk",
+      "type": "instrumented_by"
+    },
+    {
+      "source": "service.namespace",
+      "target": "service",
+      "type": "contains"
+    },
+    {
+      "source": "service",
+      "target": "service",
+      "type": "publishes_to"
+    },
+    {
+      "source": "service",
+      "target": "service",
+      "type": "queries"
+    },
+    {
+      "source": "vcs.repository",
+      "target": "vcs.ref",
+      "type": "contains"
+    }
+  ]
+}

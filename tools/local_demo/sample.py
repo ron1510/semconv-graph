@@ -19,11 +19,11 @@ def demo_events(*, observed_at_unix_nano: int | None = None) -> Sequence[dict[st
         ("ledger", "4.1.2"),
     )
     dependencies = (
-        ("storefront", "checkout", 420.0, 3.0),
-        ("checkout", "payments", 287.0, 2.0),
-        ("checkout", "inventory", 301.0, 0.0),
-        ("checkout", "fraud", 276.0, 7.0),
-        ("payments", "ledger", 284.0, 1.0),
+        ("storefront", "checkout"),
+        ("checkout", "payments"),
+        ("checkout", "inventory"),
+        ("checkout", "fraud"),
+        ("payments", "ledger"),
     )
     events = [
         _upsert(
@@ -39,8 +39,7 @@ def demo_events(*, observed_at_unix_nano: int | None = None) -> Sequence[dict[st
         for name, version in services
     ]
     events.extend(
-        _dependency_event(source, target, requests, failures, observed_at)
-        for source, target, requests, failures in dependencies
+        _dependency_event(source, target, observed_at) for source, target in dependencies
     )
     return events
 
@@ -48,8 +47,6 @@ def demo_events(*, observed_at_unix_nano: int | None = None) -> Sequence[dict[st
 def _dependency_event(
     source: str,
     target: str,
-    requests: float,
-    failures: float,
     observed_at_unix_nano: int,
 ) -> dict[str, object]:
     source_id = f"service:{source}"
@@ -64,10 +61,6 @@ def _dependency_event(
             "source_id": source_id,
             "target_id": target_id,
             "attributes": {},
-            "metrics": {
-                "service_graph.request.total": requests,
-                "service_graph.request.failed.total": failures,
-            },
         },
         observed_at_unix_nano,
     )
@@ -80,7 +73,7 @@ def _upsert(
 ) -> dict[str, object]:
     event_id = f"local-demo-{element_id}"
     return {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "event_id": event_id,
         "event_type": "graph_element_state_changed",
         "operation": "upsert",

@@ -361,10 +361,9 @@ def test_arangodb_schema_uses_registry_topology_aliases_and_identity_fields(tmp_
         "http.route": "http_route",
         "service.name": "service_name",
     }
-    assert schema["property_aliases"]["metrics"] == {
-        "service_graph.request.failed.total": "service_graph_request_failed_total",
-        "service_graph.request.total": "service_graph_request_total",
-    }
+    assert schema["_meta"]["schema_version"] == "2"
+    assert set(schema["property_aliases"]) == {"attributes"}
+    assert "metrics" not in schema["reserved_properties"]
     assert schema["vertex_collections"] == [
         {
             "collection": "app_endpoint",
@@ -535,7 +534,7 @@ def test_yaml_to_importable_models_and_all_generated_artifacts(tmp_path: Path) -
         "service.name",
     ]
     schema = json.loads(paths.arangodb_schema.read_text(encoding="utf-8"))
-    assert schema["_meta"]["schema_version"] == "1"
+    assert schema["_meta"]["schema_version"] == "2"
 
     compile_result = subprocess.run(
         [sys.executable, "-m", "compileall", "-q", str(source_root)],
@@ -672,6 +671,7 @@ groups:
             collector_discovery=tmp_path / "collector" / "root-span-discovery.yaml",
             arangodb_schema=package_dir / "metadata" / "arangodb-graph-schema.json",
             gremlin_schema=tmp_path / "gremlin" / "arangodb-graph-schema.json",
+            java_registry=tmp_path / "java" / "semantic-registry.json",
         ),
         source_root,
     )

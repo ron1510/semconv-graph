@@ -20,6 +20,7 @@ from tools.semconv_codegen.dimensions import (
     service_graph_dimensions,
     service_graph_entity_names,
 )
+from tools.semconv_codegen.java_registry import render_java_registry
 from tools.semconv_codegen.registry.model import (
     EntityAttributeRef,
     EntityDefinition,
@@ -36,9 +37,7 @@ from tools.semconv_codegen.semantic_schema import (
 from tools.semconv_codegen.static_models import render_static_models
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-GRAPH_REQUEST_TOTAL = "service_graph.request.total"
-GRAPH_REQUEST_FAILED_TOTAL = "service_graph.request.failed.total"
-ARANGODB_SCHEMA_VERSION = "1"
+ARANGODB_SCHEMA_VERSION = "2"
 ARANGODB_RESERVED_PROPERTIES = frozenset(
     {
         "_key",
@@ -47,7 +46,6 @@ ARANGODB_RESERVED_PROPERTIES = frozenset(
         "_from",
         "_to",
         "attributes",
-        "metrics",
         "element_id",
         "semantic_type",
         "schema_version",
@@ -71,6 +69,7 @@ class GenerationPaths(NamedTuple):
     collector_discovery: Path
     arangodb_schema: Path
     gremlin_schema: Path
+    java_registry: Path
 
 
 class GeneratedRelationship(NamedTuple):
@@ -103,6 +102,17 @@ def default_generation_paths(root: Path = REPOSITORY_ROOT) -> GenerationPaths:
             / "arangodb-graph-schema.json"
         ),
         gremlin_schema=root / "deploy" / "helm" / "servicegraph-gremlin" / "files" / "arangodb-graph-schema.json",
+        java_registry=(
+            root
+            / "services"
+            / "otel-servicegraph-diff"
+            / "runtime"
+            / "java"
+            / "src"
+            / "main"
+            / "resources"
+            / "semantic-registry.json"
+        ),
     )
 
 
@@ -152,6 +162,7 @@ def generate_files(paths: GenerationPaths) -> dict[Path, str]:
         paths.collector_dimensions: _render_collector_dimensions(registry),
         paths.collector_discovery: _render_root_span_discovery(registry),
         paths.arangodb_schema: _render_arangodb_schema(registry, paths.upstream_lock),
+        paths.java_registry: render_java_registry(semantic_models, tuple(relationships.values())),
     }
     files[paths.gremlin_schema] = files[paths.arangodb_schema]
     return files
@@ -269,7 +280,7 @@ def _render_entity_module(models: tuple[SemanticModel, ...]) -> str:
 
 def _render_edge_module(relationships: tuple[GeneratedRelationship, ...]) -> str:
     lines = [
-        '\"\"\"Generated semantic edge interfaces.\"\"\"',
+        '"""Generated semantic edge interfaces."""',
         "",
         "from typing import ClassVar",
         "",
@@ -309,7 +320,7 @@ def _render_package_init(
     relationships: tuple[GeneratedRelationship, ...],
 ) -> str:
     lines = [
-        '\"\"\"Generated semantic entity and edge interfaces.\"\"\"',
+        '"""Generated semantic entity and edge interfaces."""',
         "",
         "from extended_otel_semconv.edges import SemanticEdge, semantic_edge_from_data",
         "from extended_otel_semconv.entities import SemanticEntity, entity_from_attributes",
@@ -380,7 +391,7 @@ def _render_arangodb_schema(registry: RegistryDocument, upstream_lock: Path) -> 
     relationship_names = sorted({relationship.name for relationship in relationships})
     edge_collections = _unique_sanitized_names(relationship_names, "edge collection")
 
-    canonical_properties = (*service_graph_dimensions(registry), GRAPH_REQUEST_FAILED_TOTAL, GRAPH_REQUEST_TOTAL)
+    canonical_properties = service_graph_dimensions(registry)
     aliases = _property_aliases(canonical_properties)
     vertices: list[dict[str, object]] = []
     for entity_name in entity_names:
@@ -420,10 +431,6 @@ def _render_arangodb_schema(registry: RegistryDocument, upstream_lock: Path) -> 
         "edge_collections": edges,
         "property_aliases": {
             "attributes": {name: aliases[name] for name in service_graph_dimensions(registry)},
-            "metrics": {
-                GRAPH_REQUEST_FAILED_TOTAL: aliases[GRAPH_REQUEST_FAILED_TOTAL],
-                GRAPH_REQUEST_TOTAL: aliases[GRAPH_REQUEST_TOTAL],
-            },
         },
         "reserved_properties": sorted(ARANGODB_RESERVED_PROPERTIES),
     }

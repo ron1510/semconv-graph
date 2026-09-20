@@ -12,7 +12,7 @@ from gremlin_python.driver.driver_remote_connection import DriverRemoteConnectio
 from gremlin_python.process.anonymous_traversal import traversal
 from gremlin_python.process.graph_traversal import GraphTraversal, GraphTraversalSource
 
-from extended_otel_semconv.edges import MetricValue, SemanticEdge, semantic_edge_from_data
+from extended_otel_semconv.edges import SemanticEdge, semantic_edge_from_data
 from extended_otel_semconv.entities import SemanticEntity, entity_from_attributes
 from extended_otel_semconv.errors import SemanticModelError
 
@@ -220,13 +220,11 @@ def _semantic_element_from_map(value: object) -> SemanticGraphElement:
         return entity_from_attributes(semantic_type, attributes, expected_id=element_id)
     source_id = _required_string(item, "source_id")
     target_id = _required_string(item, "target_id")
-    metrics = _required_metric_map(item, "metrics")
     return semantic_edge_from_data(
         semantic_type,
         source_id,
         target_id,
         attributes=attributes,
-        metrics=metrics,
         expected_id=element_id,
     )
 
@@ -249,15 +247,6 @@ def _required_object_map(item: Mapping[object, object], name: str) -> dict[str, 
         result[key] = field_value
     return result
 
-
-def _required_metric_map(item: Mapping[object, object], name: str) -> dict[str, MetricValue]:
-    values = _required_object_map(item, name)
-    result: dict[str, MetricValue] = {}
-    for key, value in values.items():
-        if isinstance(value, bool) or not isinstance(value, int | float):
-            raise SemanticGremlinResultError(f"Gremlin edge metric {key!r} is not numeric")
-        result[key] = value
-    return result
 
 
 __all__ = [

@@ -1,0 +1,2237 @@
+{
+  "semantic_rejections": [
+    {
+      "attributes": {
+        "app.build_id": "app.build_id/日本 😀",
+        "app.installation.id": 42
+      },
+      "name": "app:app.installation.id"
+    },
+    {
+      "attributes": {
+        "app.build_id": 42,
+        "app.installation.id": "app.installation.id/日本 😀"
+      },
+      "name": "app:app.build_id"
+    },
+    {
+      "attributes": {
+        "http.request.method": "CONNECT",
+        "http.route": "http.route/日本 😀",
+        "service.name": 42,
+        "service.namespace": "service.namespace/日本 😀"
+      },
+      "name": "app.endpoint:service.name"
+    },
+    {
+      "attributes": {
+        "http.request.method": "CONNECT",
+        "http.route": "http.route/日本 😀",
+        "service.name": "service.name/日本 😀",
+        "service.namespace": 42
+      },
+      "name": "app.endpoint:service.namespace"
+    },
+    {
+      "attributes": {
+        "http.request.method": "_INVALID_GOLDEN_ENUM",
+        "http.route": "http.route/日本 😀",
+        "service.name": "service.name/日本 😀",
+        "service.namespace": "service.namespace/日本 😀"
+      },
+      "name": "app.endpoint:http.request.method"
+    },
+    {
+      "attributes": {
+        "http.request.method": "CONNECT",
+        "http.route": 42,
+        "service.name": "service.name/日本 😀",
+        "service.namespace": "service.namespace/日本 😀"
+      },
+      "name": "app.endpoint:http.route"
+    },
+    {
+      "attributes": {
+        "browser.document.url.full": 42
+      },
+      "name": "browser.document:browser.document.url.full"
+    },
+    {
+      "attributes": {
+        "cicd.pipeline.name": 42
+      },
+      "name": "cicd.pipeline:cicd.pipeline.name"
+    },
+    {
+      "attributes": {
+        "cicd.pipeline.run.id": 42,
+        "cicd.pipeline.run.url.full": "cicd.pipeline.run.url.full/日本 😀"
+      },
+      "name": "cicd.pipeline.run:cicd.pipeline.run.id"
+    },
+    {
+      "attributes": {
+        "cicd.pipeline.run.id": "cicd.pipeline.run.id/日本 😀",
+        "cicd.pipeline.run.url.full": 42
+      },
+      "name": "cicd.pipeline.run:cicd.pipeline.run.url.full"
+    },
+    {
+      "attributes": {
+        "cicd.worker.id": 42,
+        "cicd.worker.name": "cicd.worker.name/日本 😀",
+        "cicd.worker.url.full": "cicd.worker.url.full/日本 😀"
+      },
+      "name": "cicd.worker:cicd.worker.id"
+    },
+    {
+      "attributes": {
+        "cicd.worker.id": "cicd.worker.id/日本 😀",
+        "cicd.worker.name": 42,
+        "cicd.worker.url.full": "cicd.worker.url.full/日本 😀"
+      },
+      "name": "cicd.worker:cicd.worker.name"
+    },
+    {
+      "attributes": {
+        "cicd.worker.id": "cicd.worker.id/日本 😀",
+        "cicd.worker.name": "cicd.worker.name/日本 😀",
+        "cicd.worker.url.full": 42
+      },
+      "name": "cicd.worker:cicd.worker.url.full"
+    },
+    {
+      "attributes": {
+        "container.runtime.description": 42,
+        "container.runtime.name": "container.runtime.name/日本 😀",
+        "container.runtime.version": "container.runtime.version/日本 😀"
+      },
+      "name": "container.runtime:container.runtime.description"
+    },
+    {
+      "attributes": {
+        "container.runtime.description": "container.runtime.description/日本 😀",
+        "container.runtime.name": 42,
+        "container.runtime.version": "container.runtime.version/日本 😀"
+      },
+      "name": "container.runtime:container.runtime.name"
+    },
+    {
+      "attributes": {
+        "container.runtime.description": "container.runtime.description/日本 😀",
+        "container.runtime.name": "container.runtime.name/日本 😀",
+        "container.runtime.version": 42
+      },
+      "name": "container.runtime:container.runtime.version"
+    },
+    {
+      "attributes": {
+        "etl.part.name": "etl.part.name/日本 😀",
+        "etl.part.run.id": "etl.part.run.id/日本 😀",
+        "etl.pipeline.id": 42,
+        "etl.run.id": "etl.run.id/日本 😀"
+      },
+      "name": "etl.part.run:etl.pipeline.id"
+    },
+    {
+      "attributes": {
+        "etl.part.name": "etl.part.name/日本 😀",
+        "etl.part.run.id": "etl.part.run.id/日本 😀",
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": 42
+      },
+      "name": "etl.part.run:etl.run.id"
+    },
+    {
+      "attributes": {
+        "etl.part.name": "etl.part.name/日本 😀",
+        "etl.part.run.id": 42,
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": "etl.run.id/日本 😀"
+      },
+      "name": "etl.part.run:etl.part.run.id"
+    },
+    {
+      "attributes": {
+        "etl.part.name": 42,
+        "etl.part.run.id": "etl.part.run.id/日本 😀",
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": "etl.run.id/日本 😀"
+      },
+      "name": "etl.part.run:etl.part.name"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": 42,
+        "etl.pipeline.name": "etl.pipeline.name/日本 😀"
+      },
+      "name": "etl.pipeline:etl.pipeline.id"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.pipeline.name": 42
+      },
+      "name": "etl.pipeline:etl.pipeline.name"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": 42,
+        "etl.run.id": "etl.run.id/日本 😀",
+        "etl.run.name": "etl.run.name/日本 😀"
+      },
+      "name": "etl.run:etl.pipeline.id"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": 42,
+        "etl.run.name": "etl.run.name/日本 😀"
+      },
+      "name": "etl.run:etl.run.id"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": "etl.run.id/日本 😀",
+        "etl.run.name": 42
+      },
+      "name": "etl.run:etl.run.name"
+    },
+    {
+      "attributes": {
+        "gcp.gce.instance_group_manager.name": 42,
+        "gcp.gce.instance_group_manager.region": "gcp.gce.instance_group_manager.region/日本 😀",
+        "gcp.gce.instance_group_manager.zone": "gcp.gce.instance_group_manager.zone/日本 😀"
+      },
+      "name": "gcp.gce.instance_group_manager:gcp.gce.instance_group_manager.name"
+    },
+    {
+      "attributes": {
+        "gcp.gce.instance_group_manager.name": "gcp.gce.instance_group_manager.name/日本 😀",
+        "gcp.gce.instance_group_manager.region": "gcp.gce.instance_group_manager.region/日本 😀",
+        "gcp.gce.instance_group_manager.zone": 42
+      },
+      "name": "gcp.gce.instance_group_manager:gcp.gce.instance_group_manager.zone"
+    },
+    {
+      "attributes": {
+        "gcp.gce.instance_group_manager.name": "gcp.gce.instance_group_manager.name/日本 😀",
+        "gcp.gce.instance_group_manager.region": 42,
+        "gcp.gce.instance_group_manager.zone": "gcp.gce.instance_group_manager.zone/日本 😀"
+      },
+      "name": "gcp.gce.instance_group_manager:gcp.gce.instance_group_manager.region"
+    },
+    {
+      "attributes": {
+        "k8s.cluster.name": 42,
+        "k8s.cluster.uid": "k8s.cluster.uid/日本 😀"
+      },
+      "name": "k8s.cluster:k8s.cluster.name"
+    },
+    {
+      "attributes": {
+        "k8s.cluster.name": "k8s.cluster.name/日本 😀",
+        "k8s.cluster.uid": 42
+      },
+      "name": "k8s.cluster:k8s.cluster.uid"
+    },
+    {
+      "attributes": {
+        "k8s.container.name": 42,
+        "k8s.container.restart_count": 987654321,
+        "k8s.container.status.last_terminated_reason": "k8s.container.status.last_terminated_reason/日本 😀"
+      },
+      "name": "k8s.container:k8s.container.name"
+    },
+    {
+      "attributes": {
+        "k8s.container.name": "k8s.container.name/日本 😀",
+        "k8s.container.restart_count": true,
+        "k8s.container.status.last_terminated_reason": "k8s.container.status.last_terminated_reason/日本 😀"
+      },
+      "name": "k8s.container:k8s.container.restart_count"
+    },
+    {
+      "attributes": {
+        "k8s.container.name": "k8s.container.name/日本 😀",
+        "k8s.container.restart_count": 987654321,
+        "k8s.container.status.last_terminated_reason": 42
+      },
+      "name": "k8s.container:k8s.container.status.last_terminated_reason"
+    },
+    {
+      "attributes": {
+        "k8s.cronjob.annotation.zone": "k8s.cronjob.annotation/日本 😀",
+        "k8s.cronjob.label.zone": "k8s.cronjob.label/日本 😀",
+        "k8s.cronjob.name": "k8s.cronjob.name/日本 😀",
+        "k8s.cronjob.uid": 42
+      },
+      "name": "k8s.cronjob:k8s.cronjob.uid"
+    },
+    {
+      "attributes": {
+        "k8s.cronjob.annotation.zone": "k8s.cronjob.annotation/日本 😀",
+        "k8s.cronjob.label.zone": "k8s.cronjob.label/日本 😀",
+        "k8s.cronjob.name": 42,
+        "k8s.cronjob.uid": "k8s.cronjob.uid/日本 😀"
+      },
+      "name": "k8s.cronjob:k8s.cronjob.name"
+    },
+    {
+      "attributes": {
+        "k8s.cronjob.annotation.zone": "k8s.cronjob.annotation/日本 😀",
+        "k8s.cronjob.label.zone": 42,
+        "k8s.cronjob.name": "k8s.cronjob.name/日本 😀",
+        "k8s.cronjob.uid": "k8s.cronjob.uid/日本 😀"
+      },
+      "name": "k8s.cronjob:k8s.cronjob.label"
+    },
+    {
+      "attributes": {
+        "k8s.cronjob.annotation.zone": 42,
+        "k8s.cronjob.label.zone": "k8s.cronjob.label/日本 😀",
+        "k8s.cronjob.name": "k8s.cronjob.name/日本 😀",
+        "k8s.cronjob.uid": "k8s.cronjob.uid/日本 😀"
+      },
+      "name": "k8s.cronjob:k8s.cronjob.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.daemonset.annotation.zone": "k8s.daemonset.annotation/日本 😀",
+        "k8s.daemonset.label.zone": "k8s.daemonset.label/日本 😀",
+        "k8s.daemonset.name": "k8s.daemonset.name/日本 😀",
+        "k8s.daemonset.uid": 42
+      },
+      "name": "k8s.daemonset:k8s.daemonset.uid"
+    },
+    {
+      "attributes": {
+        "k8s.daemonset.annotation.zone": "k8s.daemonset.annotation/日本 😀",
+        "k8s.daemonset.label.zone": "k8s.daemonset.label/日本 😀",
+        "k8s.daemonset.name": 42,
+        "k8s.daemonset.uid": "k8s.daemonset.uid/日本 😀"
+      },
+      "name": "k8s.daemonset:k8s.daemonset.name"
+    },
+    {
+      "attributes": {
+        "k8s.daemonset.annotation.zone": "k8s.daemonset.annotation/日本 😀",
+        "k8s.daemonset.label.zone": 42,
+        "k8s.daemonset.name": "k8s.daemonset.name/日本 😀",
+        "k8s.daemonset.uid": "k8s.daemonset.uid/日本 😀"
+      },
+      "name": "k8s.daemonset:k8s.daemonset.label"
+    },
+    {
+      "attributes": {
+        "k8s.daemonset.annotation.zone": 42,
+        "k8s.daemonset.label.zone": "k8s.daemonset.label/日本 😀",
+        "k8s.daemonset.name": "k8s.daemonset.name/日本 😀",
+        "k8s.daemonset.uid": "k8s.daemonset.uid/日本 😀"
+      },
+      "name": "k8s.daemonset:k8s.daemonset.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.deployment.annotation.zone": "k8s.deployment.annotation/日本 😀",
+        "k8s.deployment.label.zone": "k8s.deployment.label/日本 😀",
+        "k8s.deployment.name": "k8s.deployment.name/日本 😀",
+        "k8s.deployment.uid": 42
+      },
+      "name": "k8s.deployment:k8s.deployment.uid"
+    },
+    {
+      "attributes": {
+        "k8s.deployment.annotation.zone": "k8s.deployment.annotation/日本 😀",
+        "k8s.deployment.label.zone": "k8s.deployment.label/日本 😀",
+        "k8s.deployment.name": 42,
+        "k8s.deployment.uid": "k8s.deployment.uid/日本 😀"
+      },
+      "name": "k8s.deployment:k8s.deployment.name"
+    },
+    {
+      "attributes": {
+        "k8s.deployment.annotation.zone": "k8s.deployment.annotation/日本 😀",
+        "k8s.deployment.label.zone": 42,
+        "k8s.deployment.name": "k8s.deployment.name/日本 😀",
+        "k8s.deployment.uid": "k8s.deployment.uid/日本 😀"
+      },
+      "name": "k8s.deployment:k8s.deployment.label"
+    },
+    {
+      "attributes": {
+        "k8s.deployment.annotation.zone": 42,
+        "k8s.deployment.label.zone": "k8s.deployment.label/日本 😀",
+        "k8s.deployment.name": "k8s.deployment.name/日本 😀",
+        "k8s.deployment.uid": "k8s.deployment.uid/日本 😀"
+      },
+      "name": "k8s.deployment:k8s.deployment.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.hpa.name": "k8s.hpa.name/日本 😀",
+        "k8s.hpa.scaletargetref.api_version": "k8s.hpa.scaletargetref.api_version/日本 😀",
+        "k8s.hpa.scaletargetref.kind": "k8s.hpa.scaletargetref.kind/日本 😀",
+        "k8s.hpa.scaletargetref.name": "k8s.hpa.scaletargetref.name/日本 😀",
+        "k8s.hpa.uid": 42
+      },
+      "name": "k8s.hpa:k8s.hpa.uid"
+    },
+    {
+      "attributes": {
+        "k8s.hpa.name": 42,
+        "k8s.hpa.scaletargetref.api_version": "k8s.hpa.scaletargetref.api_version/日本 😀",
+        "k8s.hpa.scaletargetref.kind": "k8s.hpa.scaletargetref.kind/日本 😀",
+        "k8s.hpa.scaletargetref.name": "k8s.hpa.scaletargetref.name/日本 😀",
+        "k8s.hpa.uid": "k8s.hpa.uid/日本 😀"
+      },
+      "name": "k8s.hpa:k8s.hpa.name"
+    },
+    {
+      "attributes": {
+        "k8s.hpa.name": "k8s.hpa.name/日本 😀",
+        "k8s.hpa.scaletargetref.api_version": "k8s.hpa.scaletargetref.api_version/日本 😀",
+        "k8s.hpa.scaletargetref.kind": 42,
+        "k8s.hpa.scaletargetref.name": "k8s.hpa.scaletargetref.name/日本 😀",
+        "k8s.hpa.uid": "k8s.hpa.uid/日本 😀"
+      },
+      "name": "k8s.hpa:k8s.hpa.scaletargetref.kind"
+    },
+    {
+      "attributes": {
+        "k8s.hpa.name": "k8s.hpa.name/日本 😀",
+        "k8s.hpa.scaletargetref.api_version": "k8s.hpa.scaletargetref.api_version/日本 😀",
+        "k8s.hpa.scaletargetref.kind": "k8s.hpa.scaletargetref.kind/日本 😀",
+        "k8s.hpa.scaletargetref.name": 42,
+        "k8s.hpa.uid": "k8s.hpa.uid/日本 😀"
+      },
+      "name": "k8s.hpa:k8s.hpa.scaletargetref.name"
+    },
+    {
+      "attributes": {
+        "k8s.hpa.name": "k8s.hpa.name/日本 😀",
+        "k8s.hpa.scaletargetref.api_version": 42,
+        "k8s.hpa.scaletargetref.kind": "k8s.hpa.scaletargetref.kind/日本 😀",
+        "k8s.hpa.scaletargetref.name": "k8s.hpa.scaletargetref.name/日本 😀",
+        "k8s.hpa.uid": "k8s.hpa.uid/日本 😀"
+      },
+      "name": "k8s.hpa:k8s.hpa.scaletargetref.api_version"
+    },
+    {
+      "attributes": {
+        "k8s.job.annotation.zone": "k8s.job.annotation/日本 😀",
+        "k8s.job.label.zone": "k8s.job.label/日本 😀",
+        "k8s.job.name": "k8s.job.name/日本 😀",
+        "k8s.job.uid": 42
+      },
+      "name": "k8s.job:k8s.job.uid"
+    },
+    {
+      "attributes": {
+        "k8s.job.annotation.zone": "k8s.job.annotation/日本 😀",
+        "k8s.job.label.zone": "k8s.job.label/日本 😀",
+        "k8s.job.name": 42,
+        "k8s.job.uid": "k8s.job.uid/日本 😀"
+      },
+      "name": "k8s.job:k8s.job.name"
+    },
+    {
+      "attributes": {
+        "k8s.job.annotation.zone": "k8s.job.annotation/日本 😀",
+        "k8s.job.label.zone": 42,
+        "k8s.job.name": "k8s.job.name/日本 😀",
+        "k8s.job.uid": "k8s.job.uid/日本 😀"
+      },
+      "name": "k8s.job:k8s.job.label"
+    },
+    {
+      "attributes": {
+        "k8s.job.annotation.zone": 42,
+        "k8s.job.label.zone": "k8s.job.label/日本 😀",
+        "k8s.job.name": "k8s.job.name/日本 😀",
+        "k8s.job.uid": "k8s.job.uid/日本 😀"
+      },
+      "name": "k8s.job:k8s.job.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.namespace.annotation.zone": "k8s.namespace.annotation/日本 😀",
+        "k8s.namespace.label.zone": "k8s.namespace.label/日本 😀",
+        "k8s.namespace.name": 42
+      },
+      "name": "k8s.namespace:k8s.namespace.name"
+    },
+    {
+      "attributes": {
+        "k8s.namespace.annotation.zone": "k8s.namespace.annotation/日本 😀",
+        "k8s.namespace.label.zone": 42,
+        "k8s.namespace.name": "k8s.namespace.name/日本 😀"
+      },
+      "name": "k8s.namespace:k8s.namespace.label"
+    },
+    {
+      "attributes": {
+        "k8s.namespace.annotation.zone": 42,
+        "k8s.namespace.label.zone": "k8s.namespace.label/日本 😀",
+        "k8s.namespace.name": "k8s.namespace.name/日本 😀"
+      },
+      "name": "k8s.namespace:k8s.namespace.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.node.annotation.zone": "k8s.node.annotation/日本 😀",
+        "k8s.node.label.zone": "k8s.node.label/日本 😀",
+        "k8s.node.name": 42,
+        "k8s.node.uid": "k8s.node.uid/日本 😀"
+      },
+      "name": "k8s.node:k8s.node.name"
+    },
+    {
+      "attributes": {
+        "k8s.node.annotation.zone": "k8s.node.annotation/日本 😀",
+        "k8s.node.label.zone": "k8s.node.label/日本 😀",
+        "k8s.node.name": "k8s.node.name/日本 😀",
+        "k8s.node.uid": 42
+      },
+      "name": "k8s.node:k8s.node.uid"
+    },
+    {
+      "attributes": {
+        "k8s.node.annotation.zone": "k8s.node.annotation/日本 😀",
+        "k8s.node.label.zone": 42,
+        "k8s.node.name": "k8s.node.name/日本 😀",
+        "k8s.node.uid": "k8s.node.uid/日本 😀"
+      },
+      "name": "k8s.node:k8s.node.label"
+    },
+    {
+      "attributes": {
+        "k8s.node.annotation.zone": 42,
+        "k8s.node.label.zone": "k8s.node.label/日本 😀",
+        "k8s.node.name": "k8s.node.name/日本 😀",
+        "k8s.node.uid": "k8s.node.uid/日本 😀"
+      },
+      "name": "k8s.node:k8s.node.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.node.system_container.name": 42
+      },
+      "name": "k8s.node.system_container:k8s.node.system_container.name"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+        "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+        "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+        "k8s.persistentvolume.reclaim_policy": "Delete",
+        "k8s.persistentvolume.uid": 42,
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolume:k8s.persistentvolume.uid"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+        "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+        "k8s.persistentvolume.name": 42,
+        "k8s.persistentvolume.reclaim_policy": "Delete",
+        "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolume:k8s.persistentvolume.name"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+        "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+        "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+        "k8s.persistentvolume.reclaim_policy": "Delete",
+        "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+        "k8s.storageclass.name": 42
+      },
+      "name": "k8s.persistentvolume:k8s.storageclass.name"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+        "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+        "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+        "k8s.persistentvolume.reclaim_policy": "_INVALID_GOLDEN_ENUM",
+        "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolume:k8s.persistentvolume.reclaim_policy"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+        "k8s.persistentvolume.label.zone": 42,
+        "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+        "k8s.persistentvolume.reclaim_policy": "Delete",
+        "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolume:k8s.persistentvolume.label"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": 42,
+        "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+        "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+        "k8s.persistentvolume.reclaim_policy": "Delete",
+        "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolume:k8s.persistentvolume.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolumeclaim.annotation.zone": "k8s.persistentvolumeclaim.annotation/日本 😀",
+        "k8s.persistentvolumeclaim.label.zone": "k8s.persistentvolumeclaim.label/日本 😀",
+        "k8s.persistentvolumeclaim.name": "k8s.persistentvolumeclaim.name/日本 😀",
+        "k8s.persistentvolumeclaim.uid": 42,
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolumeclaim:k8s.persistentvolumeclaim.uid"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolumeclaim.annotation.zone": "k8s.persistentvolumeclaim.annotation/日本 😀",
+        "k8s.persistentvolumeclaim.label.zone": "k8s.persistentvolumeclaim.label/日本 😀",
+        "k8s.persistentvolumeclaim.name": 42,
+        "k8s.persistentvolumeclaim.uid": "k8s.persistentvolumeclaim.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolumeclaim:k8s.persistentvolumeclaim.name"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolumeclaim.annotation.zone": "k8s.persistentvolumeclaim.annotation/日本 😀",
+        "k8s.persistentvolumeclaim.label.zone": "k8s.persistentvolumeclaim.label/日本 😀",
+        "k8s.persistentvolumeclaim.name": "k8s.persistentvolumeclaim.name/日本 😀",
+        "k8s.persistentvolumeclaim.uid": "k8s.persistentvolumeclaim.uid/日本 😀",
+        "k8s.storageclass.name": 42
+      },
+      "name": "k8s.persistentvolumeclaim:k8s.storageclass.name"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolumeclaim.annotation.zone": "k8s.persistentvolumeclaim.annotation/日本 😀",
+        "k8s.persistentvolumeclaim.label.zone": 42,
+        "k8s.persistentvolumeclaim.name": "k8s.persistentvolumeclaim.name/日本 😀",
+        "k8s.persistentvolumeclaim.uid": "k8s.persistentvolumeclaim.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolumeclaim:k8s.persistentvolumeclaim.label"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolumeclaim.annotation.zone": 42,
+        "k8s.persistentvolumeclaim.label.zone": "k8s.persistentvolumeclaim.label/日本 😀",
+        "k8s.persistentvolumeclaim.name": "k8s.persistentvolumeclaim.name/日本 😀",
+        "k8s.persistentvolumeclaim.uid": "k8s.persistentvolumeclaim.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "name": "k8s.persistentvolumeclaim:k8s.persistentvolumeclaim.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": 42
+      },
+      "name": "k8s.pod:k8s.pod.uid"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": 42,
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "name": "k8s.pod:k8s.pod.name"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": 42,
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "name": "k8s.pod:k8s.pod.label"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": 42,
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "name": "k8s.pod:k8s.pod.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": 42,
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "name": "k8s.pod:k8s.pod.ip"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": 42,
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "name": "k8s.pod:k8s.pod.hostname"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": 42,
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "name": "k8s.pod:k8s.pod.start_time"
+    },
+    {
+      "attributes": {
+        "k8s.replicaset.annotation.zone": "k8s.replicaset.annotation/日本 😀",
+        "k8s.replicaset.label.zone": "k8s.replicaset.label/日本 😀",
+        "k8s.replicaset.name": "k8s.replicaset.name/日本 😀",
+        "k8s.replicaset.uid": 42
+      },
+      "name": "k8s.replicaset:k8s.replicaset.uid"
+    },
+    {
+      "attributes": {
+        "k8s.replicaset.annotation.zone": "k8s.replicaset.annotation/日本 😀",
+        "k8s.replicaset.label.zone": "k8s.replicaset.label/日本 😀",
+        "k8s.replicaset.name": 42,
+        "k8s.replicaset.uid": "k8s.replicaset.uid/日本 😀"
+      },
+      "name": "k8s.replicaset:k8s.replicaset.name"
+    },
+    {
+      "attributes": {
+        "k8s.replicaset.annotation.zone": "k8s.replicaset.annotation/日本 😀",
+        "k8s.replicaset.label.zone": 42,
+        "k8s.replicaset.name": "k8s.replicaset.name/日本 😀",
+        "k8s.replicaset.uid": "k8s.replicaset.uid/日本 😀"
+      },
+      "name": "k8s.replicaset:k8s.replicaset.label"
+    },
+    {
+      "attributes": {
+        "k8s.replicaset.annotation.zone": 42,
+        "k8s.replicaset.label.zone": "k8s.replicaset.label/日本 😀",
+        "k8s.replicaset.name": "k8s.replicaset.name/日本 😀",
+        "k8s.replicaset.uid": "k8s.replicaset.uid/日本 😀"
+      },
+      "name": "k8s.replicaset:k8s.replicaset.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.replicationcontroller.name": "k8s.replicationcontroller.name/日本 😀",
+        "k8s.replicationcontroller.uid": 42
+      },
+      "name": "k8s.replicationcontroller:k8s.replicationcontroller.uid"
+    },
+    {
+      "attributes": {
+        "k8s.replicationcontroller.name": 42,
+        "k8s.replicationcontroller.uid": "k8s.replicationcontroller.uid/日本 😀"
+      },
+      "name": "k8s.replicationcontroller:k8s.replicationcontroller.name"
+    },
+    {
+      "attributes": {
+        "k8s.resourcequota.name": "k8s.resourcequota.name/日本 😀",
+        "k8s.resourcequota.uid": 42
+      },
+      "name": "k8s.resourcequota:k8s.resourcequota.uid"
+    },
+    {
+      "attributes": {
+        "k8s.resourcequota.name": 42,
+        "k8s.resourcequota.uid": "k8s.resourcequota.uid/日本 😀"
+      },
+      "name": "k8s.resourcequota:k8s.resourcequota.name"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": 42
+      },
+      "name": "k8s.service:k8s.service.uid"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": 42,
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.name"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "_INVALID_GOLDEN_ENUM",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.type"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": 42,
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.traffic_distribution"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": "true",
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.publish_not_ready_addresses"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": 42,
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.selector"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": 42,
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.label"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": 42,
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "name": "k8s.service:k8s.service.annotation"
+    },
+    {
+      "attributes": {
+        "k8s.statefulset.annotation.zone": "k8s.statefulset.annotation/日本 😀",
+        "k8s.statefulset.label.zone": "k8s.statefulset.label/日本 😀",
+        "k8s.statefulset.name": "k8s.statefulset.name/日本 😀",
+        "k8s.statefulset.uid": 42
+      },
+      "name": "k8s.statefulset:k8s.statefulset.uid"
+    },
+    {
+      "attributes": {
+        "k8s.statefulset.annotation.zone": "k8s.statefulset.annotation/日本 😀",
+        "k8s.statefulset.label.zone": "k8s.statefulset.label/日本 😀",
+        "k8s.statefulset.name": 42,
+        "k8s.statefulset.uid": "k8s.statefulset.uid/日本 😀"
+      },
+      "name": "k8s.statefulset:k8s.statefulset.name"
+    },
+    {
+      "attributes": {
+        "k8s.statefulset.annotation.zone": "k8s.statefulset.annotation/日本 😀",
+        "k8s.statefulset.label.zone": 42,
+        "k8s.statefulset.name": "k8s.statefulset.name/日本 😀",
+        "k8s.statefulset.uid": "k8s.statefulset.uid/日本 😀"
+      },
+      "name": "k8s.statefulset:k8s.statefulset.label"
+    },
+    {
+      "attributes": {
+        "k8s.statefulset.annotation.zone": 42,
+        "k8s.statefulset.label.zone": "k8s.statefulset.label/日本 😀",
+        "k8s.statefulset.name": "k8s.statefulset.name/日本 😀",
+        "k8s.statefulset.uid": "k8s.statefulset.uid/日本 😀"
+      },
+      "name": "k8s.statefulset:k8s.statefulset.annotation"
+    },
+    {
+      "attributes": {
+        "openshift.clusterquota.name": "openshift.clusterquota.name/日本 😀",
+        "openshift.clusterquota.uid": 42
+      },
+      "name": "openshift.clusterquota:openshift.clusterquota.uid"
+    },
+    {
+      "attributes": {
+        "openshift.clusterquota.name": 42,
+        "openshift.clusterquota.uid": "openshift.clusterquota.uid/日本 😀"
+      },
+      "name": "openshift.clusterquota:openshift.clusterquota.name"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": true,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.pid"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": true,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.parent_pid"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": 42,
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.command"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": 42,
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.command_line"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          42
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.command_args"
+    },
+    {
+      "attributes": {
+        "process.args_count": true,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.args_count"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": 42,
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.creation.time"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": "true",
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.interactive"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": 42,
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.title"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": 42
+      },
+      "name": "process:process.working_directory"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": 42,
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.owner"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": 42,
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "name": "process:process.linux.cgroup"
+    },
+    {
+      "attributes": {
+        "process.executable.build_id.gnu": "process.executable.build_id.gnu/日本 😀",
+        "process.executable.build_id.go": "process.executable.build_id.go/日本 😀",
+        "process.executable.build_id.htlhash": 42,
+        "process.executable.name": "process.executable.name/日本 😀",
+        "process.executable.path": "process.executable.path/日本 😀"
+      },
+      "name": "process.executable:process.executable.build_id.htlhash"
+    },
+    {
+      "attributes": {
+        "process.executable.build_id.gnu": "process.executable.build_id.gnu/日本 😀",
+        "process.executable.build_id.go": "process.executable.build_id.go/日本 😀",
+        "process.executable.build_id.htlhash": "process.executable.build_id.htlhash/日本 😀",
+        "process.executable.name": "process.executable.name/日本 😀",
+        "process.executable.path": 42
+      },
+      "name": "process.executable:process.executable.path"
+    },
+    {
+      "attributes": {
+        "process.executable.build_id.gnu": "process.executable.build_id.gnu/日本 😀",
+        "process.executable.build_id.go": 42,
+        "process.executable.build_id.htlhash": "process.executable.build_id.htlhash/日本 😀",
+        "process.executable.name": "process.executable.name/日本 😀",
+        "process.executable.path": "process.executable.path/日本 😀"
+      },
+      "name": "process.executable:process.executable.build_id.go"
+    },
+    {
+      "attributes": {
+        "process.executable.build_id.gnu": 42,
+        "process.executable.build_id.go": "process.executable.build_id.go/日本 😀",
+        "process.executable.build_id.htlhash": "process.executable.build_id.htlhash/日本 😀",
+        "process.executable.name": "process.executable.name/日本 😀",
+        "process.executable.path": "process.executable.path/日本 😀"
+      },
+      "name": "process.executable:process.executable.build_id.gnu"
+    },
+    {
+      "attributes": {
+        "process.executable.build_id.gnu": "process.executable.build_id.gnu/日本 😀",
+        "process.executable.build_id.go": "process.executable.build_id.go/日本 😀",
+        "process.executable.build_id.htlhash": "process.executable.build_id.htlhash/日本 😀",
+        "process.executable.name": 42,
+        "process.executable.path": "process.executable.path/日本 😀"
+      },
+      "name": "process.executable:process.executable.name"
+    },
+    {
+      "attributes": {
+        "process.runtime.description": "process.runtime.description/日本 😀",
+        "process.runtime.name": 42,
+        "process.runtime.version": "process.runtime.version/日本 😀"
+      },
+      "name": "process.runtime:process.runtime.name"
+    },
+    {
+      "attributes": {
+        "process.runtime.description": "process.runtime.description/日本 😀",
+        "process.runtime.name": "process.runtime.name/日本 😀",
+        "process.runtime.version": 42
+      },
+      "name": "process.runtime:process.runtime.version"
+    },
+    {
+      "attributes": {
+        "process.runtime.description": 42,
+        "process.runtime.name": "process.runtime.name/日本 😀",
+        "process.runtime.version": "process.runtime.version/日本 😀"
+      },
+      "name": "process.runtime:process.runtime.description"
+    },
+    {
+      "attributes": {
+        "service.criticality": "critical",
+        "service.name": 42,
+        "service.version": "service.version/日本 😀"
+      },
+      "name": "service:service.name"
+    },
+    {
+      "attributes": {
+        "service.criticality": "critical",
+        "service.name": "service.name/日本 😀",
+        "service.version": 42
+      },
+      "name": "service:service.version"
+    },
+    {
+      "attributes": {
+        "service.criticality": "_INVALID_GOLDEN_ENUM",
+        "service.name": "service.name/日本 😀",
+        "service.version": "service.version/日本 😀"
+      },
+      "name": "service:service.criticality"
+    },
+    {
+      "attributes": {
+        "service.instance.id": 42
+      },
+      "name": "service.instance:service.instance.id"
+    },
+    {
+      "attributes": {
+        "service.namespace": 42
+      },
+      "name": "service.namespace:service.namespace"
+    },
+    {
+      "attributes": {
+        "telemetry.distro.name": 42,
+        "telemetry.distro.version": "telemetry.distro.version/日本 😀"
+      },
+      "name": "telemetry.distro:telemetry.distro.name"
+    },
+    {
+      "attributes": {
+        "telemetry.distro.name": "telemetry.distro.name/日本 😀",
+        "telemetry.distro.version": 42
+      },
+      "name": "telemetry.distro:telemetry.distro.version"
+    },
+    {
+      "attributes": {
+        "telemetry.sdk.language": "cpp",
+        "telemetry.sdk.name": 42,
+        "telemetry.sdk.version": "telemetry.sdk.version/日本 😀"
+      },
+      "name": "telemetry.sdk:telemetry.sdk.name"
+    },
+    {
+      "attributes": {
+        "telemetry.sdk.language": "_INVALID_GOLDEN_ENUM",
+        "telemetry.sdk.name": "telemetry.sdk.name/日本 😀",
+        "telemetry.sdk.version": "telemetry.sdk.version/日本 😀"
+      },
+      "name": "telemetry.sdk:telemetry.sdk.language"
+    },
+    {
+      "attributes": {
+        "telemetry.sdk.language": "cpp",
+        "telemetry.sdk.name": "telemetry.sdk.name/日本 😀",
+        "telemetry.sdk.version": 42
+      },
+      "name": "telemetry.sdk:telemetry.sdk.version"
+    },
+    {
+      "attributes": {
+        "vcs.ref.head.name": 42,
+        "vcs.ref.head.revision": "vcs.ref.head.revision/日本 😀",
+        "vcs.ref.type": "branch"
+      },
+      "name": "vcs.ref:vcs.ref.head.name"
+    },
+    {
+      "attributes": {
+        "vcs.ref.head.name": "vcs.ref.head.name/日本 😀",
+        "vcs.ref.head.revision": 42,
+        "vcs.ref.type": "branch"
+      },
+      "name": "vcs.ref:vcs.ref.head.revision"
+    },
+    {
+      "attributes": {
+        "vcs.ref.head.name": "vcs.ref.head.name/日本 😀",
+        "vcs.ref.head.revision": "vcs.ref.head.revision/日本 😀",
+        "vcs.ref.type": "_INVALID_GOLDEN_ENUM"
+      },
+      "name": "vcs.ref:vcs.ref.type"
+    },
+    {
+      "attributes": {
+        "vcs.repository.name": "vcs.repository.name/日本 😀",
+        "vcs.repository.url.full": 42
+      },
+      "name": "vcs.repository:vcs.repository.url.full"
+    },
+    {
+      "attributes": {
+        "vcs.repository.name": 42,
+        "vcs.repository.url.full": "vcs.repository.url.full/日本 😀"
+      },
+      "name": "vcs.repository:vcs.repository.name"
+    }
+  ],
+  "semantics": [
+    {
+      "attributes": {
+        "app.build_id": "app.build_id/日本 😀",
+        "app.installation.id": "app.installation.id/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "app.build_id": "app.build_id/日本 😀",
+            "app.installation.id": "app.installation.id/日本 😀"
+          },
+          "id": "app:app.build_id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "app"
+        }
+      ],
+      "name": "app"
+    },
+    {
+      "attributes": {
+        "http.request.method": "CONNECT",
+        "http.route": "http.route/日本 😀",
+        "service.name": "service.name/日本 😀",
+        "service.namespace": "service.namespace/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "http.request.method": "CONNECT",
+            "http.route": "http.route/日本 😀",
+            "service.name": "service.name/日本 😀",
+            "service.namespace": "service.namespace/日本 😀"
+          },
+          "id": "app.endpoint:service.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:service.namespace%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:CONNECT:http.route%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "app.endpoint"
+        },
+        {
+          "attributes": {
+            "service.name": "service.name/日本 😀"
+          },
+          "id": "service:service.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "service"
+        },
+        {
+          "attributes": {
+            "service.namespace": "service.namespace/日本 😀"
+          },
+          "id": "service.namespace:service.namespace%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "service.namespace"
+        }
+      ],
+      "name": "app.endpoint"
+    },
+    {
+      "attributes": {
+        "browser.document.url.full": "browser.document.url.full/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "browser.document.url.full": "browser.document.url.full/日本 😀"
+          },
+          "id": "browser.document:browser.document.url.full%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "browser.document"
+        }
+      ],
+      "name": "browser.document"
+    },
+    {
+      "attributes": {
+        "cicd.pipeline.name": "cicd.pipeline.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "cicd.pipeline.name": "cicd.pipeline.name/日本 😀"
+          },
+          "id": "cicd.pipeline:cicd.pipeline.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "cicd.pipeline"
+        }
+      ],
+      "name": "cicd.pipeline"
+    },
+    {
+      "attributes": {
+        "cicd.pipeline.run.id": "cicd.pipeline.run.id/日本 😀",
+        "cicd.pipeline.run.url.full": "cicd.pipeline.run.url.full/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "cicd.pipeline.run.id": "cicd.pipeline.run.id/日本 😀",
+            "cicd.pipeline.run.url.full": "cicd.pipeline.run.url.full/日本 😀"
+          },
+          "id": "cicd.pipeline.run:cicd.pipeline.run.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "cicd.pipeline.run"
+        }
+      ],
+      "name": "cicd.pipeline.run"
+    },
+    {
+      "attributes": {
+        "cicd.worker.id": "cicd.worker.id/日本 😀",
+        "cicd.worker.name": "cicd.worker.name/日本 😀",
+        "cicd.worker.url.full": "cicd.worker.url.full/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "cicd.worker.id": "cicd.worker.id/日本 😀",
+            "cicd.worker.name": "cicd.worker.name/日本 😀",
+            "cicd.worker.url.full": "cicd.worker.url.full/日本 😀"
+          },
+          "id": "cicd.worker:cicd.worker.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "cicd.worker"
+        }
+      ],
+      "name": "cicd.worker"
+    },
+    {
+      "attributes": {
+        "container.runtime.description": "container.runtime.description/日本 😀",
+        "container.runtime.name": "container.runtime.name/日本 😀",
+        "container.runtime.version": "container.runtime.version/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "container.runtime.description": "container.runtime.description/日本 😀",
+            "container.runtime.name": "container.runtime.name/日本 😀",
+            "container.runtime.version": "container.runtime.version/日本 😀"
+          },
+          "id": "container.runtime:container.runtime.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:container.runtime.version%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "container.runtime"
+        }
+      ],
+      "name": "container.runtime"
+    },
+    {
+      "attributes": {
+        "etl.part.name": "etl.part.name/日本 😀",
+        "etl.part.run.id": "etl.part.run.id/日本 😀",
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": "etl.run.id/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "etl.part.name": "etl.part.name/日本 😀",
+            "etl.part.run.id": "etl.part.run.id/日本 😀",
+            "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+            "etl.run.id": "etl.run.id/日本 😀"
+          },
+          "id": "etl.part.run:etl.pipeline.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:etl.run.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:etl.part.run.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "etl.part.run"
+        },
+        {
+          "attributes": {
+            "etl.pipeline.id": "etl.pipeline.id/日本 😀"
+          },
+          "id": "etl.pipeline:etl.pipeline.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "etl.pipeline"
+        },
+        {
+          "attributes": {
+            "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+            "etl.run.id": "etl.run.id/日本 😀"
+          },
+          "id": "etl.run:etl.pipeline.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:etl.run.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "etl.run"
+        }
+      ],
+      "name": "etl.part.run"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.pipeline.name": "etl.pipeline.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+            "etl.pipeline.name": "etl.pipeline.name/日本 😀"
+          },
+          "id": "etl.pipeline:etl.pipeline.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "etl.pipeline"
+        }
+      ],
+      "name": "etl.pipeline"
+    },
+    {
+      "attributes": {
+        "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+        "etl.run.id": "etl.run.id/日本 😀",
+        "etl.run.name": "etl.run.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "etl.pipeline.id": "etl.pipeline.id/日本 😀"
+          },
+          "id": "etl.pipeline:etl.pipeline.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "etl.pipeline"
+        },
+        {
+          "attributes": {
+            "etl.pipeline.id": "etl.pipeline.id/日本 😀",
+            "etl.run.id": "etl.run.id/日本 😀",
+            "etl.run.name": "etl.run.name/日本 😀"
+          },
+          "id": "etl.run:etl.pipeline.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:etl.run.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "etl.run"
+        }
+      ],
+      "name": "etl.run"
+    },
+    {
+      "attributes": {
+        "gcp.gce.instance_group_manager.name": "gcp.gce.instance_group_manager.name/日本 😀",
+        "gcp.gce.instance_group_manager.region": "gcp.gce.instance_group_manager.region/日本 😀",
+        "gcp.gce.instance_group_manager.zone": "gcp.gce.instance_group_manager.zone/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "gcp.gce.instance_group_manager.name": "gcp.gce.instance_group_manager.name/日本 😀",
+            "gcp.gce.instance_group_manager.region": "gcp.gce.instance_group_manager.region/日本 😀",
+            "gcp.gce.instance_group_manager.zone": "gcp.gce.instance_group_manager.zone/日本 😀"
+          },
+          "id": "gcp.gce.instance_group_manager:gcp.gce.instance_group_manager.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:gcp.gce.instance_group_manager.zone%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:gcp.gce.instance_group_manager.region%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "gcp.gce.instance_group_manager"
+        }
+      ],
+      "name": "gcp.gce.instance_group_manager"
+    },
+    {
+      "attributes": {
+        "k8s.cluster.name": "k8s.cluster.name/日本 😀",
+        "k8s.cluster.uid": "k8s.cluster.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.cluster.name": "k8s.cluster.name/日本 😀",
+            "k8s.cluster.uid": "k8s.cluster.uid/日本 😀"
+          },
+          "id": "k8s.cluster:k8s.cluster.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.cluster"
+        }
+      ],
+      "name": "k8s.cluster"
+    },
+    {
+      "attributes": {
+        "k8s.container.name": "k8s.container.name/日本 😀",
+        "k8s.container.restart_count": 987654321,
+        "k8s.container.status.last_terminated_reason": "k8s.container.status.last_terminated_reason/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.container.name": "k8s.container.name/日本 😀",
+            "k8s.container.restart_count": 987654321,
+            "k8s.container.status.last_terminated_reason": "k8s.container.status.last_terminated_reason/日本 😀"
+          },
+          "id": "k8s.container:k8s.container.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.container"
+        }
+      ],
+      "name": "k8s.container"
+    },
+    {
+      "attributes": {
+        "k8s.cronjob.annotation.zone": "k8s.cronjob.annotation/日本 😀",
+        "k8s.cronjob.label.zone": "k8s.cronjob.label/日本 😀",
+        "k8s.cronjob.name": "k8s.cronjob.name/日本 😀",
+        "k8s.cronjob.uid": "k8s.cronjob.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.cronjob.annotation.zone": "k8s.cronjob.annotation/日本 😀",
+            "k8s.cronjob.label.zone": "k8s.cronjob.label/日本 😀",
+            "k8s.cronjob.name": "k8s.cronjob.name/日本 😀",
+            "k8s.cronjob.uid": "k8s.cronjob.uid/日本 😀"
+          },
+          "id": "k8s.cronjob:k8s.cronjob.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.cronjob"
+        }
+      ],
+      "name": "k8s.cronjob"
+    },
+    {
+      "attributes": {
+        "k8s.daemonset.annotation.zone": "k8s.daemonset.annotation/日本 😀",
+        "k8s.daemonset.label.zone": "k8s.daemonset.label/日本 😀",
+        "k8s.daemonset.name": "k8s.daemonset.name/日本 😀",
+        "k8s.daemonset.uid": "k8s.daemonset.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.daemonset.annotation.zone": "k8s.daemonset.annotation/日本 😀",
+            "k8s.daemonset.label.zone": "k8s.daemonset.label/日本 😀",
+            "k8s.daemonset.name": "k8s.daemonset.name/日本 😀",
+            "k8s.daemonset.uid": "k8s.daemonset.uid/日本 😀"
+          },
+          "id": "k8s.daemonset:k8s.daemonset.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.daemonset"
+        }
+      ],
+      "name": "k8s.daemonset"
+    },
+    {
+      "attributes": {
+        "k8s.deployment.annotation.zone": "k8s.deployment.annotation/日本 😀",
+        "k8s.deployment.label.zone": "k8s.deployment.label/日本 😀",
+        "k8s.deployment.name": "k8s.deployment.name/日本 😀",
+        "k8s.deployment.uid": "k8s.deployment.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.deployment.annotation.zone": "k8s.deployment.annotation/日本 😀",
+            "k8s.deployment.label.zone": "k8s.deployment.label/日本 😀",
+            "k8s.deployment.name": "k8s.deployment.name/日本 😀",
+            "k8s.deployment.uid": "k8s.deployment.uid/日本 😀"
+          },
+          "id": "k8s.deployment:k8s.deployment.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.deployment"
+        }
+      ],
+      "name": "k8s.deployment"
+    },
+    {
+      "attributes": {
+        "k8s.hpa.name": "k8s.hpa.name/日本 😀",
+        "k8s.hpa.scaletargetref.api_version": "k8s.hpa.scaletargetref.api_version/日本 😀",
+        "k8s.hpa.scaletargetref.kind": "k8s.hpa.scaletargetref.kind/日本 😀",
+        "k8s.hpa.scaletargetref.name": "k8s.hpa.scaletargetref.name/日本 😀",
+        "k8s.hpa.uid": "k8s.hpa.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.hpa.name": "k8s.hpa.name/日本 😀",
+            "k8s.hpa.scaletargetref.api_version": "k8s.hpa.scaletargetref.api_version/日本 😀",
+            "k8s.hpa.scaletargetref.kind": "k8s.hpa.scaletargetref.kind/日本 😀",
+            "k8s.hpa.scaletargetref.name": "k8s.hpa.scaletargetref.name/日本 😀",
+            "k8s.hpa.uid": "k8s.hpa.uid/日本 😀"
+          },
+          "id": "k8s.hpa:k8s.hpa.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.hpa"
+        }
+      ],
+      "name": "k8s.hpa"
+    },
+    {
+      "attributes": {
+        "k8s.job.annotation.zone": "k8s.job.annotation/日本 😀",
+        "k8s.job.label.zone": "k8s.job.label/日本 😀",
+        "k8s.job.name": "k8s.job.name/日本 😀",
+        "k8s.job.uid": "k8s.job.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.job.annotation.zone": "k8s.job.annotation/日本 😀",
+            "k8s.job.label.zone": "k8s.job.label/日本 😀",
+            "k8s.job.name": "k8s.job.name/日本 😀",
+            "k8s.job.uid": "k8s.job.uid/日本 😀"
+          },
+          "id": "k8s.job:k8s.job.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.job"
+        }
+      ],
+      "name": "k8s.job"
+    },
+    {
+      "attributes": {
+        "k8s.namespace.annotation.zone": "k8s.namespace.annotation/日本 😀",
+        "k8s.namespace.label.zone": "k8s.namespace.label/日本 😀",
+        "k8s.namespace.name": "k8s.namespace.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.namespace.annotation.zone": "k8s.namespace.annotation/日本 😀",
+            "k8s.namespace.label.zone": "k8s.namespace.label/日本 😀",
+            "k8s.namespace.name": "k8s.namespace.name/日本 😀"
+          },
+          "id": "k8s.namespace:k8s.namespace.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.namespace"
+        }
+      ],
+      "name": "k8s.namespace"
+    },
+    {
+      "attributes": {
+        "k8s.node.annotation.zone": "k8s.node.annotation/日本 😀",
+        "k8s.node.label.zone": "k8s.node.label/日本 😀",
+        "k8s.node.name": "k8s.node.name/日本 😀",
+        "k8s.node.uid": "k8s.node.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.node.annotation.zone": "k8s.node.annotation/日本 😀",
+            "k8s.node.label.zone": "k8s.node.label/日本 😀",
+            "k8s.node.name": "k8s.node.name/日本 😀",
+            "k8s.node.uid": "k8s.node.uid/日本 😀"
+          },
+          "id": "k8s.node:k8s.node.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.node"
+        }
+      ],
+      "name": "k8s.node"
+    },
+    {
+      "attributes": {
+        "k8s.node.system_container.name": "k8s.node.system_container.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.node.system_container.name": "k8s.node.system_container.name/日本 😀"
+          },
+          "id": "k8s.node.system_container:k8s.node.system_container.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.node.system_container"
+        }
+      ],
+      "name": "k8s.node.system_container"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+        "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+        "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+        "k8s.persistentvolume.reclaim_policy": "Delete",
+        "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.persistentvolume.annotation.zone": "k8s.persistentvolume.annotation/日本 😀",
+            "k8s.persistentvolume.label.zone": "k8s.persistentvolume.label/日本 😀",
+            "k8s.persistentvolume.name": "k8s.persistentvolume.name/日本 😀",
+            "k8s.persistentvolume.reclaim_policy": "Delete",
+            "k8s.persistentvolume.uid": "k8s.persistentvolume.uid/日本 😀",
+            "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+          },
+          "id": "k8s.persistentvolume:k8s.persistentvolume.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.persistentvolume"
+        }
+      ],
+      "name": "k8s.persistentvolume"
+    },
+    {
+      "attributes": {
+        "k8s.persistentvolumeclaim.annotation.zone": "k8s.persistentvolumeclaim.annotation/日本 😀",
+        "k8s.persistentvolumeclaim.label.zone": "k8s.persistentvolumeclaim.label/日本 😀",
+        "k8s.persistentvolumeclaim.name": "k8s.persistentvolumeclaim.name/日本 😀",
+        "k8s.persistentvolumeclaim.uid": "k8s.persistentvolumeclaim.uid/日本 😀",
+        "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.persistentvolumeclaim.annotation.zone": "k8s.persistentvolumeclaim.annotation/日本 😀",
+            "k8s.persistentvolumeclaim.label.zone": "k8s.persistentvolumeclaim.label/日本 😀",
+            "k8s.persistentvolumeclaim.name": "k8s.persistentvolumeclaim.name/日本 😀",
+            "k8s.persistentvolumeclaim.uid": "k8s.persistentvolumeclaim.uid/日本 😀",
+            "k8s.storageclass.name": "k8s.storageclass.name/日本 😀"
+          },
+          "id": "k8s.persistentvolumeclaim:k8s.persistentvolumeclaim.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.persistentvolumeclaim"
+        }
+      ],
+      "name": "k8s.persistentvolumeclaim"
+    },
+    {
+      "attributes": {
+        "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+        "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+        "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+        "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+        "k8s.pod.name": "k8s.pod.name/日本 😀",
+        "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+        "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.pod.annotation.zone": "k8s.pod.annotation/日本 😀",
+            "k8s.pod.hostname": "k8s.pod.hostname/日本 😀",
+            "k8s.pod.ip": "k8s.pod.ip/日本 😀",
+            "k8s.pod.label.zone": "k8s.pod.label/日本 😀",
+            "k8s.pod.name": "k8s.pod.name/日本 😀",
+            "k8s.pod.start_time": "k8s.pod.start_time/日本 😀",
+            "k8s.pod.uid": "k8s.pod.uid/日本 😀"
+          },
+          "id": "k8s.pod:k8s.pod.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.pod"
+        }
+      ],
+      "name": "k8s.pod"
+    },
+    {
+      "attributes": {
+        "k8s.replicaset.annotation.zone": "k8s.replicaset.annotation/日本 😀",
+        "k8s.replicaset.label.zone": "k8s.replicaset.label/日本 😀",
+        "k8s.replicaset.name": "k8s.replicaset.name/日本 😀",
+        "k8s.replicaset.uid": "k8s.replicaset.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.replicaset.annotation.zone": "k8s.replicaset.annotation/日本 😀",
+            "k8s.replicaset.label.zone": "k8s.replicaset.label/日本 😀",
+            "k8s.replicaset.name": "k8s.replicaset.name/日本 😀",
+            "k8s.replicaset.uid": "k8s.replicaset.uid/日本 😀"
+          },
+          "id": "k8s.replicaset:k8s.replicaset.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.replicaset"
+        }
+      ],
+      "name": "k8s.replicaset"
+    },
+    {
+      "attributes": {
+        "k8s.replicationcontroller.name": "k8s.replicationcontroller.name/日本 😀",
+        "k8s.replicationcontroller.uid": "k8s.replicationcontroller.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.replicationcontroller.name": "k8s.replicationcontroller.name/日本 😀",
+            "k8s.replicationcontroller.uid": "k8s.replicationcontroller.uid/日本 😀"
+          },
+          "id": "k8s.replicationcontroller:k8s.replicationcontroller.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.replicationcontroller"
+        }
+      ],
+      "name": "k8s.replicationcontroller"
+    },
+    {
+      "attributes": {
+        "k8s.resourcequota.name": "k8s.resourcequota.name/日本 😀",
+        "k8s.resourcequota.uid": "k8s.resourcequota.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.resourcequota.name": "k8s.resourcequota.name/日本 😀",
+            "k8s.resourcequota.uid": "k8s.resourcequota.uid/日本 😀"
+          },
+          "id": "k8s.resourcequota:k8s.resourcequota.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.resourcequota"
+        }
+      ],
+      "name": "k8s.resourcequota"
+    },
+    {
+      "attributes": {
+        "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+        "k8s.service.label.zone": "k8s.service.label/日本 😀",
+        "k8s.service.name": "k8s.service.name/日本 😀",
+        "k8s.service.publish_not_ready_addresses": true,
+        "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+        "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+        "k8s.service.type": "ClusterIP",
+        "k8s.service.uid": "k8s.service.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.service.annotation.zone": "k8s.service.annotation/日本 😀",
+            "k8s.service.label.zone": "k8s.service.label/日本 😀",
+            "k8s.service.name": "k8s.service.name/日本 😀",
+            "k8s.service.publish_not_ready_addresses": true,
+            "k8s.service.selector.zone": "k8s.service.selector/日本 😀",
+            "k8s.service.traffic_distribution": "k8s.service.traffic_distribution/日本 😀",
+            "k8s.service.type": "ClusterIP",
+            "k8s.service.uid": "k8s.service.uid/日本 😀"
+          },
+          "id": "k8s.service:k8s.service.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.service"
+        }
+      ],
+      "name": "k8s.service"
+    },
+    {
+      "attributes": {
+        "k8s.statefulset.annotation.zone": "k8s.statefulset.annotation/日本 😀",
+        "k8s.statefulset.label.zone": "k8s.statefulset.label/日本 😀",
+        "k8s.statefulset.name": "k8s.statefulset.name/日本 😀",
+        "k8s.statefulset.uid": "k8s.statefulset.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "k8s.statefulset.annotation.zone": "k8s.statefulset.annotation/日本 😀",
+            "k8s.statefulset.label.zone": "k8s.statefulset.label/日本 😀",
+            "k8s.statefulset.name": "k8s.statefulset.name/日本 😀",
+            "k8s.statefulset.uid": "k8s.statefulset.uid/日本 😀"
+          },
+          "id": "k8s.statefulset:k8s.statefulset.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "k8s.statefulset"
+        }
+      ],
+      "name": "k8s.statefulset"
+    },
+    {
+      "attributes": {
+        "openshift.clusterquota.name": "openshift.clusterquota.name/日本 😀",
+        "openshift.clusterquota.uid": "openshift.clusterquota.uid/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "openshift.clusterquota.name": "openshift.clusterquota.name/日本 😀",
+            "openshift.clusterquota.uid": "openshift.clusterquota.uid/日本 😀"
+          },
+          "id": "openshift.clusterquota:openshift.clusterquota.uid%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "openshift.clusterquota"
+        }
+      ],
+      "name": "openshift.clusterquota"
+    },
+    {
+      "attributes": {
+        "process.args_count": 987654321,
+        "process.command": "process.command/日本 😀",
+        "process.command_args": [
+          "process.command_args/日本 😀"
+        ],
+        "process.command_line": "process.command_line/日本 😀",
+        "process.creation.time": "process.creation.time/日本 😀",
+        "process.interactive": true,
+        "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+        "process.owner": "process.owner/日本 😀",
+        "process.parent_pid": 987654321,
+        "process.pid": 987654321,
+        "process.title": "process.title/日本 😀",
+        "process.working_directory": "process.working_directory/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "process.args_count": 987654321,
+            "process.command": "process.command/日本 😀",
+            "process.command_args": [
+              "process.command_args/日本 😀"
+            ],
+            "process.command_line": "process.command_line/日本 😀",
+            "process.creation.time": "process.creation.time/日本 😀",
+            "process.interactive": true,
+            "process.linux.cgroup": "process.linux.cgroup/日本 😀",
+            "process.owner": "process.owner/日本 😀",
+            "process.parent_pid": 987654321,
+            "process.pid": 987654321,
+            "process.title": "process.title/日本 😀",
+            "process.working_directory": "process.working_directory/日本 😀"
+          },
+          "id": "process:987654321:process.creation.time%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "process"
+        }
+      ],
+      "name": "process"
+    },
+    {
+      "attributes": {
+        "process.executable.build_id.gnu": "process.executable.build_id.gnu/日本 😀",
+        "process.executable.build_id.go": "process.executable.build_id.go/日本 😀",
+        "process.executable.build_id.htlhash": "process.executable.build_id.htlhash/日本 😀",
+        "process.executable.name": "process.executable.name/日本 😀",
+        "process.executable.path": "process.executable.path/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "process.executable.build_id.gnu": "process.executable.build_id.gnu/日本 😀",
+            "process.executable.build_id.go": "process.executable.build_id.go/日本 😀",
+            "process.executable.build_id.htlhash": "process.executable.build_id.htlhash/日本 😀",
+            "process.executable.name": "process.executable.name/日本 😀",
+            "process.executable.path": "process.executable.path/日本 😀"
+          },
+          "id": "process.executable:process.executable.build_id.htlhash%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "process.executable"
+        }
+      ],
+      "name": "process.executable"
+    },
+    {
+      "attributes": {
+        "process.runtime.description": "process.runtime.description/日本 😀",
+        "process.runtime.name": "process.runtime.name/日本 😀",
+        "process.runtime.version": "process.runtime.version/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "process.runtime.description": "process.runtime.description/日本 😀",
+            "process.runtime.name": "process.runtime.name/日本 😀",
+            "process.runtime.version": "process.runtime.version/日本 😀"
+          },
+          "id": "process.runtime:process.runtime.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:process.runtime.version%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "process.runtime"
+        }
+      ],
+      "name": "process.runtime"
+    },
+    {
+      "attributes": {
+        "service.criticality": "critical",
+        "service.name": "service.name/日本 😀",
+        "service.version": "service.version/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "service.criticality": "critical",
+            "service.name": "service.name/日本 😀",
+            "service.version": "service.version/日本 😀"
+          },
+          "id": "service:service.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "service"
+        }
+      ],
+      "name": "service"
+    },
+    {
+      "attributes": {
+        "service.instance.id": "service.instance.id/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "service.instance.id": "service.instance.id/日本 😀"
+          },
+          "id": "service.instance:service.instance.id%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "service.instance"
+        }
+      ],
+      "name": "service.instance"
+    },
+    {
+      "attributes": {
+        "service.namespace": "service.namespace/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "service.namespace": "service.namespace/日本 😀"
+          },
+          "id": "service.namespace:service.namespace%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "service.namespace"
+        }
+      ],
+      "name": "service.namespace"
+    },
+    {
+      "attributes": {
+        "telemetry.distro.name": "telemetry.distro.name/日本 😀",
+        "telemetry.distro.version": "telemetry.distro.version/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "telemetry.distro.name": "telemetry.distro.name/日本 😀",
+            "telemetry.distro.version": "telemetry.distro.version/日本 😀"
+          },
+          "id": "telemetry.distro:telemetry.distro.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "telemetry.distro"
+        }
+      ],
+      "name": "telemetry.distro"
+    },
+    {
+      "attributes": {
+        "telemetry.sdk.language": "cpp",
+        "telemetry.sdk.name": "telemetry.sdk.name/日本 😀",
+        "telemetry.sdk.version": "telemetry.sdk.version/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "telemetry.sdk.language": "cpp",
+            "telemetry.sdk.name": "telemetry.sdk.name/日本 😀",
+            "telemetry.sdk.version": "telemetry.sdk.version/日本 😀"
+          },
+          "id": "telemetry.sdk:telemetry.sdk.name%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80:cpp",
+          "kind": "node",
+          "type": "telemetry.sdk"
+        }
+      ],
+      "name": "telemetry.sdk"
+    },
+    {
+      "attributes": {
+        "vcs.ref.head.name": "vcs.ref.head.name/日本 😀",
+        "vcs.ref.head.revision": "vcs.ref.head.revision/日本 😀",
+        "vcs.ref.type": "branch"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "vcs.ref.head.name": "vcs.ref.head.name/日本 😀",
+            "vcs.ref.head.revision": "vcs.ref.head.revision/日本 😀",
+            "vcs.ref.type": "branch"
+          },
+          "id": "vcs.ref:vcs.ref.head.revision%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "vcs.ref"
+        }
+      ],
+      "name": "vcs.ref"
+    },
+    {
+      "attributes": {
+        "vcs.repository.name": "vcs.repository.name/日本 😀",
+        "vcs.repository.url.full": "vcs.repository.url.full/日本 😀"
+      },
+      "elements": [
+        {
+          "attributes": {
+            "vcs.repository.name": "vcs.repository.name/日本 😀",
+            "vcs.repository.url.full": "vcs.repository.url.full/日本 😀"
+          },
+          "id": "vcs.repository:vcs.repository.url.full%2F%E6%97%A5%E6%9C%AC%20%F0%9F%98%80",
+          "kind": "node",
+          "type": "vcs.repository"
+        }
+      ],
+      "name": "vcs.repository"
+    }
+  ]
+}

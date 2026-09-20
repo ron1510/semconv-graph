@@ -97,30 +97,29 @@ def test_arrays_templates_and_enums_are_typed_and_immutable() -> None:
         Service.from_attributes({"service.name": "checkout", "service.criticality": "urgent"})
 
 
-def test_concrete_edge_reconstruction_preserves_metrics_and_identity() -> None:
+def test_concrete_edge_reconstruction_preserves_attributes_and_identity() -> None:
     expected_id = edge_id("service:storefront", "calls", "service:checkout")
     edge = semantic_edge_from_data(
         "calls",
         "service:storefront",
         "service:checkout",
-        metrics={"service_graph.request.total": 12.0},
+        attributes={"transport": "http"},
         expected_id=expected_id,
     )
 
     assert isinstance(edge, ServiceCallsServiceEdge)
-    assert edge.metrics == {"service_graph.request.total": 12.0}
+    assert edge.attributes == {"transport": "http"}
     assert edge.edge_id == expected_id
     with pytest.raises(TypeError):
-        edge.metrics["service_graph.request.total"] = 13.0  # type: ignore[index]
+        edge.attributes["transport"] = "grpc"  # type: ignore[index]
 
 
-@pytest.mark.parametrize("invalid_metric", [True, float("nan"), float("inf")])
-def test_edge_metrics_are_finite_numbers_not_booleans(invalid_metric: object) -> None:
+def test_edge_metrics_are_rejected_as_removed_contract() -> None:
     with pytest.raises(ValidationError):
         ServiceCallsServiceEdge(
             source_id="service:storefront",
             target_id="service:checkout",
-            metrics={"service_graph.request.total": invalid_metric},  # type: ignore[dict-item]
+            metrics={"service_graph.request.total": 1},  # type: ignore[call-arg]
         )
 
 

@@ -3,12 +3,13 @@
 This chart deploys two stateless OTLP routers and a stateful service-graph
 backend. The default `singleWriter` mode sends both routers directly to one
 backend, so each service-graph metric series has one writer. The backend exports
-OTLP JSON metrics to the configured Kafka topic. An optional router pipeline
-also aggregates root spans for node-only discovery.
+OTLP Protobuf metrics to the configured Kafka topic. An optional router pipeline
+also sends non-client/non-server root spans through spanmetrics for node-only
+discovery.
 
 The backend converts connector-local cumulative counters to deltas, removes
-zero datapoints, and keeps only the request and failed-request counters consumed
-by Flink. The default 30-second flush and 256-point batch reduce Kafka traffic
+zero datapoints, and keeps only the request-total evidence consumed by Flink.
+The default 30-second flush and 256-point batch reduce Kafka traffic
 without changing the graph lifecycle contract.
 
 ```powershell
@@ -31,8 +32,8 @@ rootSpanDiscovery:
     metricsFlushInterval: 60s
 ```
 
-The router keeps exported root spans, routes each semantic identity to one of
-the dedicated backends, and publishes positive delta
+The router keeps roots whose kind is neither client nor server, routes each
+semantic identity to one of the dedicated spanmetrics backends, and publishes positive delta
 `semconv.graph.discovery.calls` metrics to the existing metrics topic. Raw spans
 do not enter Kafka, and the servicegraph pipeline remains unchanged.
 

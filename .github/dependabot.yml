@@ -4,14 +4,17 @@ updates:
     directories:
       - /
       - /packages/extended-opentelemetry-semconv
-      - /services/otel-servicegraph-diff
       - /services/servicegraph-demo
       - /services/servicegraph-indexer
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    ignore:
-      - dependency-name: apache-flink
+
+  - package-ecosystem: maven
+    directory: /services/otel-servicegraph-diff/runtime/java
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
 
   - package-ecosystem: docker
     directories:

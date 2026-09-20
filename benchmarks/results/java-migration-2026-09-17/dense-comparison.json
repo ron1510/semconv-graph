@@ -1,0 +1,1095 @@
+{
+  "scope": "matched_distributed_flink_comparison",
+  "correctness": {
+    "identical_input": true,
+    "identical_workload": true,
+    "identical_deployment_settings": true,
+    "both_match_python_oracle": true,
+    "identical_final_elements_and_metrics": true,
+    "identical_output_event_counts": true
+  },
+  "runs": [
+    {
+      "scope": "controlled_distributed_flink_workload",
+      "runtime": "python",
+      "image": "extended-otel-flink-runtime:e2e-64b30da8",
+      "config": {
+        "entities": 2,
+        "contributors": 256,
+        "seed": 20260823,
+        "observed_at_unix_nano": 1789639741916899100,
+        "service_prefix": "dense-service",
+        "iterations": 20,
+        "warmup": 3,
+        "checkpoint_samples": 2,
+        "timeout_seconds": 120
+      },
+      "matched_deployment_settings": {
+        "application": {
+          "clusterId": "servicegraph-diff",
+          "jobManagerProcessMemory": "1200m",
+          "jobManagerReplicas": 1,
+          "parallelism": 1,
+          "taskManagerProcessMemory": "1800m",
+          "taskManagerReplicas": 1,
+          "taskManagerSlots": 1
+        },
+        "job": {
+          "allowNonRestoredState": false,
+          "allowedLatenessSeconds": 1,
+          "checkpointIntervalMs": 5000,
+          "checkpointMinPauseMs": 5000,
+          "checkpointTimeoutMs": 600000,
+          "elementTtlSeconds": {},
+          "fixedJobId": "00000000000000000000000000000001",
+          "groupId": "graph-element-engine",
+          "interactionTtlSeconds": 45,
+          "restartAttempts": 3,
+          "restartDelaySeconds": 10,
+          "tolerableFailedCheckpoints": 1
+        },
+        "state": {
+          "backend": "rocksdb",
+          "incrementalCheckpoints": true,
+          "rocksdb": {
+            "localDirectory": "/flink-rocksdb",
+            "localStorageSize": "10Gi"
+          }
+        },
+        "resources": {
+          "jobManager": {
+            "limits": {
+              "memory": "1536Mi"
+            },
+            "requests": {
+              "cpu": "500m",
+              "memory": "1280Mi"
+            }
+          },
+          "submitter": {
+            "limits": {
+              "memory": "768Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            }
+          },
+          "taskManager": {
+            "limits": {
+              "ephemeral-storage": "12Gi",
+              "memory": "2304Mi"
+            },
+            "requests": {
+              "cpu": "1",
+              "ephemeral-storage": "1Gi",
+              "memory": "1920Mi"
+            }
+          }
+        },
+        "storage": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "createClaim": true,
+          "existingClaim": "",
+          "retainClaim": false,
+          "size": "2Gi",
+          "storageClassName": "standard"
+        },
+        "topics": {
+          "entityEvents": "otel.entity.events",
+          "interactionEvents": "graph.elements.events",
+          "servicegraphMetrics": "otel.servicegraph.metrics"
+        }
+      },
+      "payload_sha256": "5377aeb9d6af32c6316b8ae5cef70680716ecb30217fb55374a09c722ba5d3ff",
+      "payload_bytes": 194834,
+      "datapoints_per_batch": 512,
+      "total_measured_datapoints": 10240,
+      "measured_seconds": 206.8925822999954,
+      "datapoints_per_second": 49.49428290837388,
+      "batch_completion_latency_ms": {
+        "min": 8500.98660000367,
+        "p50": 9615.974099993764,
+        "p95": 10828.522600000724,
+        "max": 11413.415700000769,
+        "mean": 9713.833134999368
+      },
+      "output_events_warmup": 2560,
+      "output_events_measured": 10240,
+      "oracle_expected_events_warmup": 2560,
+      "oracle_expected_events_measured": 10240,
+      "final_element_count": 4,
+      "final_elements_sha256": "e26db07f643be817999390c5c4ee146bec92ada1de3ce0df820d066a47873cf0",
+      "oracle_elements_sha256": "e26db07f643be817999390c5c4ee146bec92ada1de3ce0df820d066a47873cf0",
+      "oracle_matches": true,
+      "pods_before": [
+        {
+          "pod": "processing-servicegraph-flink-jobmanager-6cdc6b9c5-2c67j",
+          "role": "jobmanager",
+          "sampled_at_monotonic_ns": 57632281000000,
+          "cpu_usage_usec": 45218826,
+          "memory_current_bytes": 690585600,
+          "memory_anonymous_resident_bytes": 586518528
+        },
+        {
+          "pod": "processing-servicegraph-flink-taskmanager-688c65556-nvvzw",
+          "role": "taskmanager",
+          "sampled_at_monotonic_ns": 57633359000000,
+          "cpu_usage_usec": 92623958,
+          "memory_current_bytes": 1089490944,
+          "memory_anonymous_resident_bytes": 1001476096
+        }
+      ],
+      "pods_after": [
+        {
+          "pod": "processing-servicegraph-flink-jobmanager-6cdc6b9c5-2c67j",
+          "role": "jobmanager",
+          "sampled_at_monotonic_ns": 57842406000000,
+          "cpu_usage_usec": 53351185,
+          "memory_current_bytes": 696680448,
+          "memory_anonymous_resident_bytes": 596037632
+        },
+        {
+          "pod": "processing-servicegraph-flink-taskmanager-688c65556-nvvzw",
+          "role": "taskmanager",
+          "sampled_at_monotonic_ns": 57843718000000,
+          "cpu_usage_usec": 289301143,
+          "memory_current_bytes": 1208082432,
+          "memory_anonymous_resident_bytes": 1120747520
+        }
+      ],
+      "average_cpu_cores": {
+        "jobmanager": 0.03870248185603807,
+        "taskmanager": 0.9349596879620078
+      },
+      "checkpoints": [
+        {
+          "completed": 63,
+          "failed": 0,
+          "latest_id": 63,
+          "duration_ms": 56,
+          "checkpointed_size_bytes": 44372,
+          "full_state_size_bytes": 60197
+        },
+        {
+          "completed": 64,
+          "failed": 0,
+          "latest_id": 64,
+          "duration_ms": 5350,
+          "checkpointed_size_bytes": 260766,
+          "full_state_size_bytes": 276591
+        },
+        {
+          "completed": 65,
+          "failed": 0,
+          "latest_id": 65,
+          "duration_ms": 4338,
+          "checkpointed_size_bytes": 258735,
+          "full_state_size_bytes": 489468
+        },
+        {
+          "completed": 66,
+          "failed": 0,
+          "latest_id": 66,
+          "duration_ms": 5269,
+          "checkpointed_size_bytes": 259950,
+          "full_state_size_bytes": 694143
+        },
+        {
+          "completed": 67,
+          "failed": 0,
+          "latest_id": 67,
+          "duration_ms": 7671,
+          "checkpointed_size_bytes": 261867,
+          "full_state_size_bytes": 902739
+        },
+        {
+          "completed": 68,
+          "failed": 0,
+          "latest_id": 68,
+          "duration_ms": 3857,
+          "checkpointed_size_bytes": 468786,
+          "full_state_size_bytes": 487149
+        },
+        {
+          "completed": 69,
+          "failed": 0,
+          "latest_id": 69,
+          "duration_ms": 4068,
+          "checkpointed_size_bytes": 263945,
+          "full_state_size_bytes": 699931
+        },
+        {
+          "completed": 70,
+          "failed": 0,
+          "latest_id": 70,
+          "duration_ms": 4601,
+          "checkpointed_size_bytes": 265132,
+          "full_state_size_bytes": 906211
+        },
+        {
+          "completed": 72,
+          "failed": 0,
+          "latest_id": 72,
+          "duration_ms": 5744,
+          "checkpointed_size_bytes": 475296,
+          "full_state_size_bytes": 493723
+        },
+        {
+          "completed": 73,
+          "failed": 0,
+          "latest_id": 73,
+          "duration_ms": 4739,
+          "checkpointed_size_bytes": 270059,
+          "full_state_size_bytes": 707305
+        },
+        {
+          "completed": 74,
+          "failed": 0,
+          "latest_id": 74,
+          "duration_ms": 5802,
+          "checkpointed_size_bytes": 271042,
+          "full_state_size_bytes": 914032
+        },
+        {
+          "completed": 75,
+          "failed": 0,
+          "latest_id": 75,
+          "duration_ms": 7154,
+          "checkpointed_size_bytes": 272800,
+          "full_state_size_bytes": 1121333
+        },
+        {
+          "completed": 76,
+          "failed": 0,
+          "latest_id": 76,
+          "duration_ms": 4060,
+          "checkpointed_size_bytes": 480194,
+          "full_state_size_bytes": 498593
+        },
+        {
+          "completed": 77,
+          "failed": 0,
+          "latest_id": 77,
+          "duration_ms": 4779,
+          "checkpointed_size_bytes": 275386,
+          "full_state_size_bytes": 712122
+        },
+        {
+          "completed": 78,
+          "failed": 0,
+          "latest_id": 78,
+          "duration_ms": 6378,
+          "checkpointed_size_bytes": 276222,
+          "full_state_size_bytes": 918638
+        },
+        {
+          "completed": 79,
+          "failed": 0,
+          "latest_id": 79,
+          "duration_ms": 3728,
+          "checkpointed_size_bytes": 277803,
+          "full_state_size_bytes": 1125563
+        },
+        {
+          "completed": 80,
+          "failed": 0,
+          "latest_id": 80,
+          "duration_ms": 4814,
+          "checkpointed_size_bytes": 485452,
+          "full_state_size_bytes": 503827
+        },
+        {
+          "completed": 81,
+          "failed": 0,
+          "latest_id": 81,
+          "duration_ms": 6237,
+          "checkpointed_size_bytes": 280761,
+          "full_state_size_bytes": 717347
+        },
+        {
+          "completed": 82,
+          "failed": 0,
+          "latest_id": 82,
+          "duration_ms": 4802,
+          "checkpointed_size_bytes": 281126,
+          "full_state_size_bytes": 923426
+        },
+        {
+          "completed": 83,
+          "failed": 0,
+          "latest_id": 83,
+          "duration_ms": 4542,
+          "checkpointed_size_bytes": 283011,
+          "full_state_size_bytes": 1130133
+        },
+        {
+          "completed": 84,
+          "failed": 0,
+          "latest_id": 84,
+          "duration_ms": 3801,
+          "checkpointed_size_bytes": 490426,
+          "full_state_size_bytes": 508794
+        },
+        {
+          "completed": 85,
+          "failed": 0,
+          "latest_id": 85,
+          "duration_ms": 4925,
+          "checkpointed_size_bytes": 285856,
+          "full_state_size_bytes": 721953
+        },
+        {
+          "completed": 86,
+          "failed": 0,
+          "latest_id": 86,
+          "duration_ms": 5112,
+          "checkpointed_size_bytes": 286735,
+          "full_state_size_bytes": 928268
+        },
+        {
+          "completed": 86,
+          "failed": 0,
+          "latest_id": 86,
+          "duration_ms": 5112,
+          "checkpointed_size_bytes": 286735,
+          "full_state_size_bytes": 928268
+        },
+        {
+          "completed": 87,
+          "failed": 0,
+          "latest_id": 87,
+          "duration_ms": 101,
+          "checkpointed_size_bytes": 76866,
+          "full_state_size_bytes": 929994
+        },
+        {
+          "completed": 88,
+          "failed": 0,
+          "latest_id": 88,
+          "duration_ms": 93,
+          "checkpointed_size_bytes": 75381,
+          "full_state_size_bytes": 929994
+        }
+      ],
+      "offsets": [
+        {
+          "input_end": 4,
+          "input_committed": 4,
+          "input_committed_lag": 0,
+          "output_end": 416,
+          "indexer_committed": 416,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 5,
+          "input_committed": 4,
+          "input_committed_lag": 1,
+          "output_end": 1952,
+          "indexer_committed": 1952,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 6,
+          "input_committed": 5,
+          "input_committed_lag": 1,
+          "output_end": 2464,
+          "indexer_committed": 2464,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 7,
+          "input_committed": 6,
+          "input_committed_lag": 1,
+          "output_end": 2976,
+          "indexer_committed": 2976,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 8,
+          "input_committed": 7,
+          "input_committed_lag": 1,
+          "output_end": 3488,
+          "indexer_committed": 3488,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 9,
+          "input_committed": 8,
+          "input_committed_lag": 1,
+          "output_end": 4000,
+          "indexer_committed": 4000,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 10,
+          "input_committed": 9,
+          "input_committed_lag": 1,
+          "output_end": 4512,
+          "indexer_committed": 4512,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 11,
+          "input_committed": 10,
+          "input_committed_lag": 1,
+          "output_end": 5024,
+          "indexer_committed": 5024,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 12,
+          "input_committed": 11,
+          "input_committed_lag": 1,
+          "output_end": 5536,
+          "indexer_committed": 5536,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 13,
+          "input_committed": 12,
+          "input_committed_lag": 1,
+          "output_end": 6048,
+          "indexer_committed": 6048,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 14,
+          "input_committed": 13,
+          "input_committed_lag": 1,
+          "output_end": 6560,
+          "indexer_committed": 6560,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 15,
+          "input_committed": 14,
+          "input_committed_lag": 1,
+          "output_end": 7072,
+          "indexer_committed": 7072,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 16,
+          "input_committed": 15,
+          "input_committed_lag": 1,
+          "output_end": 7584,
+          "indexer_committed": 7584,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 17,
+          "input_committed": 16,
+          "input_committed_lag": 1,
+          "output_end": 8096,
+          "indexer_committed": 8096,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 18,
+          "input_committed": 17,
+          "input_committed_lag": 1,
+          "output_end": 8608,
+          "indexer_committed": 8608,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 19,
+          "input_committed": 18,
+          "input_committed_lag": 1,
+          "output_end": 9120,
+          "indexer_committed": 9120,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 20,
+          "input_committed": 19,
+          "input_committed_lag": 1,
+          "output_end": 9632,
+          "indexer_committed": 9632,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 21,
+          "input_committed": 20,
+          "input_committed_lag": 1,
+          "output_end": 10144,
+          "indexer_committed": 10144,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 22,
+          "input_committed": 21,
+          "input_committed_lag": 1,
+          "output_end": 10656,
+          "indexer_committed": 10656,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 23,
+          "input_committed": 22,
+          "input_committed_lag": 1,
+          "output_end": 11168,
+          "indexer_committed": 11168,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 24,
+          "input_committed": 23,
+          "input_committed_lag": 1,
+          "output_end": 11680,
+          "indexer_committed": 11680,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 25,
+          "input_committed": 24,
+          "input_committed_lag": 1,
+          "output_end": 12192,
+          "indexer_committed": 12192,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 26,
+          "input_committed": 25,
+          "input_committed_lag": 1,
+          "output_end": 12704,
+          "indexer_committed": 12704,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 27,
+          "input_committed": 26,
+          "input_committed_lag": 1,
+          "output_end": 13216,
+          "indexer_committed": 13216,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 27,
+          "input_committed": 27,
+          "input_committed_lag": 0,
+          "output_end": 13216,
+          "indexer_committed": 13216,
+          "indexer_committed_lag": 0
+        }
+      ],
+      "limitations": [
+        "Controlled batched workload; observed rate is not a saturating throughput/capacity claim.",
+        "Kafka metrics to Kafka graph payloads; excludes Collector/Gremlin latency.",
+        "Batch completion includes producer acknowledgement and polling; not per-event latency.",
+        "CPU includes all container processes; memory.current includes file cache/RocksDB.",
+        "Anonymous resident cgroup memory is a process RSS proxy, not JVM-only RSS or heap usage.",
+        "Reported lag uses checkpoint-committed offsets and can lag records already processed.",
+        "Short local runs do not establish private-network storage reliability or six-hour stability."
+      ]
+    },
+    {
+      "scope": "controlled_distributed_flink_workload",
+      "runtime": "java",
+      "image": "extended-otel-flink-runtime:e2e-59d90667",
+      "config": {
+        "entities": 2,
+        "contributors": 256,
+        "seed": 20260823,
+        "observed_at_unix_nano": 1789639741916899100,
+        "service_prefix": "dense-service",
+        "iterations": 20,
+        "warmup": 3,
+        "checkpoint_samples": 2,
+        "timeout_seconds": 120
+      },
+      "matched_deployment_settings": {
+        "application": {
+          "clusterId": "servicegraph-diff",
+          "jobManagerProcessMemory": "1200m",
+          "jobManagerReplicas": 1,
+          "parallelism": 1,
+          "taskManagerProcessMemory": "1800m",
+          "taskManagerReplicas": 1,
+          "taskManagerSlots": 1
+        },
+        "job": {
+          "allowNonRestoredState": false,
+          "allowedLatenessSeconds": 1,
+          "checkpointIntervalMs": 5000,
+          "checkpointMinPauseMs": 5000,
+          "checkpointTimeoutMs": 600000,
+          "elementTtlSeconds": {},
+          "fixedJobId": "00000000000000000000000000000001",
+          "groupId": "graph-element-engine",
+          "interactionTtlSeconds": 45,
+          "restartAttempts": 3,
+          "restartDelaySeconds": 10,
+          "tolerableFailedCheckpoints": 1
+        },
+        "state": {
+          "backend": "rocksdb",
+          "incrementalCheckpoints": true,
+          "rocksdb": {
+            "localDirectory": "/flink-rocksdb",
+            "localStorageSize": "10Gi"
+          }
+        },
+        "resources": {
+          "jobManager": {
+            "limits": {
+              "memory": "1536Mi"
+            },
+            "requests": {
+              "cpu": "500m",
+              "memory": "1280Mi"
+            }
+          },
+          "submitter": {
+            "limits": {
+              "memory": "768Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            }
+          },
+          "taskManager": {
+            "limits": {
+              "ephemeral-storage": "12Gi",
+              "memory": "2304Mi"
+            },
+            "requests": {
+              "cpu": "1",
+              "ephemeral-storage": "1Gi",
+              "memory": "1920Mi"
+            }
+          }
+        },
+        "storage": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "createClaim": true,
+          "existingClaim": "",
+          "retainClaim": false,
+          "size": "2Gi",
+          "storageClassName": "standard"
+        },
+        "topics": {
+          "entityEvents": "otel.entity.events",
+          "interactionEvents": "graph.elements.events",
+          "servicegraphMetrics": "otel.servicegraph.metrics"
+        }
+      },
+      "payload_sha256": "5377aeb9d6af32c6316b8ae5cef70680716ecb30217fb55374a09c722ba5d3ff",
+      "payload_bytes": 194834,
+      "datapoints_per_batch": 512,
+      "total_measured_datapoints": 10240,
+      "measured_seconds": 92.61237470000196,
+      "datapoints_per_second": 110.56837742440247,
+      "batch_completion_latency_ms": {
+        "min": 3470.5801000018255,
+        "p50": 4056.5946999995504,
+        "p95": 4560.536700002558,
+        "max": 4580.348799994681,
+        "mean": 4028.8531400005013
+      },
+      "output_events_warmup": 2560,
+      "output_events_measured": 10240,
+      "oracle_expected_events_warmup": 2560,
+      "oracle_expected_events_measured": 10240,
+      "final_element_count": 4,
+      "final_elements_sha256": "e26db07f643be817999390c5c4ee146bec92ada1de3ce0df820d066a47873cf0",
+      "oracle_elements_sha256": "e26db07f643be817999390c5c4ee146bec92ada1de3ce0df820d066a47873cf0",
+      "oracle_matches": true,
+      "pods_before": [
+        {
+          "pod": "processing-servicegraph-flink-jobmanager-5cfc9994cf-jqdvm",
+          "role": "jobmanager",
+          "sampled_at_monotonic_ns": 58423640000000,
+          "cpu_usage_usec": 41784682,
+          "memory_current_bytes": 672894976,
+          "memory_anonymous_resident_bytes": 583725056
+        },
+        {
+          "pod": "processing-servicegraph-flink-taskmanager-95b67c4bd-v8ftr",
+          "role": "taskmanager",
+          "sampled_at_monotonic_ns": 58424796000000,
+          "cpu_usage_usec": 66919484,
+          "memory_current_bytes": 1015726080,
+          "memory_anonymous_resident_bytes": 942383104
+        }
+      ],
+      "pods_after": [
+        {
+          "pod": "processing-servicegraph-flink-jobmanager-5cfc9994cf-jqdvm",
+          "role": "jobmanager",
+          "sampled_at_monotonic_ns": 58519468000000,
+          "cpu_usage_usec": 45579823,
+          "memory_current_bytes": 675807232,
+          "memory_anonymous_resident_bytes": 586752000
+        },
+        {
+          "pod": "processing-servicegraph-flink-taskmanager-95b67c4bd-v8ftr",
+          "role": "taskmanager",
+          "sampled_at_monotonic_ns": 58520546000000,
+          "cpu_usage_usec": 163709867,
+          "memory_current_bytes": 1044746240,
+          "memory_anonymous_resident_bytes": 970964992
+        }
+      ],
+      "average_cpu_cores": {
+        "jobmanager": 0.039603675334975164,
+        "taskmanager": 1.0108656187989558
+      },
+      "checkpoints": [
+        {
+          "completed": 59,
+          "failed": 0,
+          "latest_id": 59,
+          "duration_ms": 58,
+          "checkpointed_size_bytes": 42084,
+          "full_state_size_bytes": 151112
+        },
+        {
+          "completed": 60,
+          "failed": 0,
+          "latest_id": 60,
+          "duration_ms": 2496,
+          "checkpointed_size_bytes": 253417,
+          "full_state_size_bytes": 272701
+        },
+        {
+          "completed": 62,
+          "failed": 0,
+          "latest_id": 62,
+          "duration_ms": 350,
+          "checkpointed_size_bytes": 257524,
+          "full_state_size_bytes": 686833
+        },
+        {
+          "completed": 63,
+          "failed": 0,
+          "latest_id": 63,
+          "duration_ms": 4120,
+          "checkpointed_size_bytes": 258923,
+          "full_state_size_bytes": 898466
+        },
+        {
+          "completed": 64,
+          "failed": 0,
+          "latest_id": 64,
+          "duration_ms": 210,
+          "checkpointed_size_bytes": 255802,
+          "full_state_size_bytes": 287822
+        },
+        {
+          "completed": 65,
+          "failed": 0,
+          "latest_id": 65,
+          "duration_ms": 2625,
+          "checkpointed_size_bytes": 267153,
+          "full_state_size_bytes": 481605
+        },
+        {
+          "completed": 66,
+          "failed": 0,
+          "latest_id": 66,
+          "duration_ms": 3640,
+          "checkpointed_size_bytes": 263597,
+          "full_state_size_bytes": 693189
+        },
+        {
+          "completed": 67,
+          "failed": 0,
+          "latest_id": 67,
+          "duration_ms": 115,
+          "checkpointed_size_bytes": 265196,
+          "full_state_size_bytes": 905179
+        },
+        {
+          "completed": 68,
+          "failed": 0,
+          "latest_id": 68,
+          "duration_ms": 4076,
+          "checkpointed_size_bytes": 263058,
+          "full_state_size_bytes": 288590
+        },
+        {
+          "completed": 69,
+          "failed": 0,
+          "latest_id": 69,
+          "duration_ms": 3424,
+          "checkpointed_size_bytes": 271846,
+          "full_state_size_bytes": 488837
+        },
+        {
+          "completed": 70,
+          "failed": 0,
+          "latest_id": 70,
+          "duration_ms": 3877,
+          "checkpointed_size_bytes": 270645,
+          "full_state_size_bytes": 701536
+        },
+        {
+          "completed": 71,
+          "failed": 0,
+          "latest_id": 71,
+          "duration_ms": 142,
+          "checkpointed_size_bytes": 270631,
+          "full_state_size_bytes": 913028
+        },
+        {
+          "completed": 72,
+          "failed": 0,
+          "latest_id": 72,
+          "duration_ms": 5424,
+          "checkpointed_size_bytes": 267779,
+          "full_state_size_bytes": 300008
+        },
+        {
+          "completed": 73,
+          "failed": 0,
+          "latest_id": 73,
+          "duration_ms": 3191,
+          "checkpointed_size_bytes": 278907,
+          "full_state_size_bytes": 493347
+        },
+        {
+          "completed": 73,
+          "failed": 0,
+          "latest_id": 73,
+          "duration_ms": 3191,
+          "checkpointed_size_bytes": 278907,
+          "full_state_size_bytes": 493347
+        },
+        {
+          "completed": 74,
+          "failed": 0,
+          "latest_id": 74,
+          "duration_ms": 62,
+          "checkpointed_size_bytes": 63879,
+          "full_state_size_bytes": 493347
+        },
+        {
+          "completed": 75,
+          "failed": 0,
+          "latest_id": 75,
+          "duration_ms": 65,
+          "checkpointed_size_bytes": 63879,
+          "full_state_size_bytes": 493347
+        }
+      ],
+      "offsets": [
+        {
+          "input_end": 4,
+          "input_committed": 4,
+          "input_committed_lag": 0,
+          "output_end": 416,
+          "indexer_committed": 416,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 5,
+          "input_committed": 4,
+          "input_committed_lag": 1,
+          "output_end": 1952,
+          "indexer_committed": 1952,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 6,
+          "input_committed": 4,
+          "input_committed_lag": 2,
+          "output_end": 2464,
+          "indexer_committed": 2464,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 7,
+          "input_committed": 6,
+          "input_committed_lag": 1,
+          "output_end": 2976,
+          "indexer_committed": 2976,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 8,
+          "input_committed": 7,
+          "input_committed_lag": 1,
+          "output_end": 3488,
+          "indexer_committed": 3488,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 9,
+          "input_committed": 8,
+          "input_committed_lag": 1,
+          "output_end": 4000,
+          "indexer_committed": 4000,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 10,
+          "input_committed": 8,
+          "input_committed_lag": 2,
+          "output_end": 4512,
+          "indexer_committed": 4512,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 11,
+          "input_committed": 10,
+          "input_committed_lag": 1,
+          "output_end": 5024,
+          "indexer_committed": 5024,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 12,
+          "input_committed": 11,
+          "input_committed_lag": 1,
+          "output_end": 5536,
+          "indexer_committed": 5536,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 13,
+          "input_committed": 11,
+          "input_committed_lag": 2,
+          "output_end": 6048,
+          "indexer_committed": 6048,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 14,
+          "input_committed": 13,
+          "input_committed_lag": 1,
+          "output_end": 6560,
+          "indexer_committed": 6560,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 15,
+          "input_committed": 13,
+          "input_committed_lag": 2,
+          "output_end": 7072,
+          "indexer_committed": 7072,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 16,
+          "input_committed": 15,
+          "input_committed_lag": 1,
+          "output_end": 7584,
+          "indexer_committed": 7584,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 17,
+          "input_committed": 15,
+          "input_committed_lag": 2,
+          "output_end": 8096,
+          "indexer_committed": 8096,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 18,
+          "input_committed": 16,
+          "input_committed_lag": 2,
+          "output_end": 8608,
+          "indexer_committed": 8608,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 19,
+          "input_committed": 18,
+          "input_committed_lag": 1,
+          "output_end": 9120,
+          "indexer_committed": 9120,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 20,
+          "input_committed": 18,
+          "input_committed_lag": 2,
+          "output_end": 9632,
+          "indexer_committed": 9632,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 21,
+          "input_committed": 20,
+          "input_committed_lag": 1,
+          "output_end": 10144,
+          "indexer_committed": 10144,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 22,
+          "input_committed": 20,
+          "input_committed_lag": 2,
+          "output_end": 10656,
+          "indexer_committed": 10656,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 23,
+          "input_committed": 22,
+          "input_committed_lag": 1,
+          "output_end": 11168,
+          "indexer_committed": 11168,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 24,
+          "input_committed": 23,
+          "input_committed_lag": 1,
+          "output_end": 11680,
+          "indexer_committed": 11680,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 25,
+          "input_committed": 23,
+          "input_committed_lag": 2,
+          "output_end": 12192,
+          "indexer_committed": 12192,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 26,
+          "input_committed": 25,
+          "input_committed_lag": 1,
+          "output_end": 12704,
+          "indexer_committed": 12704,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 27,
+          "input_committed": 25,
+          "input_committed_lag": 2,
+          "output_end": 13216,
+          "indexer_committed": 13216,
+          "indexer_committed_lag": 0
+        },
+        {
+          "input_end": 27,
+          "input_committed": 27,
+          "input_committed_lag": 0,
+          "output_end": 13216,
+          "indexer_committed": 13216,
+          "indexer_committed_lag": 0
+        }
+      ],
+      "limitations": [
+        "Controlled batched workload; observed rate is not a saturating throughput/capacity claim.",
+        "Kafka metrics to Kafka graph payloads; excludes Collector/Gremlin latency.",
+        "Batch completion includes producer acknowledgement and polling; not per-event latency.",
+        "CPU includes all container processes; memory.current includes file cache/RocksDB.",
+        "Anonymous resident cgroup memory is a process RSS proxy, not JVM-only RSS or heap usage.",
+        "Reported lag uses checkpoint-committed offsets and can lag records already processed.",
+        "Short local runs do not establish private-network storage reliability or six-hour stability."
+      ]
+    }
+  ]
+}

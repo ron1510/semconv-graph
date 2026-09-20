@@ -9,18 +9,18 @@ packages:
 python -m venv .venv
 python -m pip install -e ".[dev,docs]"
 python -m pip install -e "packages/extended-opentelemetry-semconv[gremlin]"
-python -m pip install -e services/otel-servicegraph-diff
 python -m pip install -e services/servicegraph-demo
 python -m pip install -e services/servicegraph-indexer
 ```
 
-The PyFlink package is large. For package-only changes, install only the
-semantic package and tools required by the relevant tests.
+The Flink application uses Java 17 and Maven. Python 3.12 is used for the SDK,
+indexer, demo, code generation, and repository tooling.
 
 ## Generated files
 
 Registry source is hand-written; the semantic JSON Schema, static Pydantic
-Python, relationship metadata, and Collector dimensions are committed:
+Python, Java semantic metadata, relationship metadata, and Collector dimensions
+are committed:
 
 ```console
 python -m tools.semconv_codegen
@@ -38,6 +38,7 @@ python -m tools.semconv_codegen --check
 python -m ruff check .
 python -m pyright
 python -m pytest -m "not e2e"
+mvn -f services/otel-servicegraph-diff/runtime/java/pom.xml verify
 helm lint deploy/helm/servicegraph-collector
 helm lint deploy/helm/servicegraph-demo
 helm lint deploy/helm/servicegraph-flink
@@ -63,26 +64,23 @@ must not be committed.
 
 ## Runtime images
 
-The Flink release artifact is one immutable image. Python packages are
-installed directly from repository source; there is no wheel staging:
+The Flink release artifact is one immutable Java 17 image built by Maven:
 
 ```console
 docker build \
   --file services/otel-servicegraph-diff/Dockerfile \
   --target runtime \
-  --build-arg PIP_INDEX_URL=https://pypi.internal.example/simple \
   --secret id=maven_settings,src=$HOME/.m2/settings.xml \
-  --tag registry.internal.example/extended-otel-flink-runtime:2.2.1-java11 \
+  --tag registry.internal.example/extended-otel-flink-runtime:2.2.1-java17 \
   .
 ```
 
-The build compiles Java serializers, resolves the Flink Kafka connector,
-installs Python packages and dependencies, and copies them into the Flink
-2.2.1 Java 11 image. The access and demo images install their packages
-directly.
+The build packages the native Java Flink application and connector dependencies
+into an executable JAR on Flink 2.2.1 Java 17. No Python dependency is required
+by the Flink image. The build supports the Maven settings secret for internal
+repositories. The access and demo images install Python packages directly.
 
-For local MiniCluster execution and PyCharm setup, see
-[Run the PyFlink job locally](development/local-pyflink.md).
+For local Java execution, see [Run Flink locally](development/local-flink.md).
 
 ## Release checklist
 

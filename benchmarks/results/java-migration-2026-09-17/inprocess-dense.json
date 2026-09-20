@@ -1,0 +1,141 @@
+{
+  "correctness": {
+    "complete_final_state": true,
+    "contributions": true,
+    "contributors": true,
+    "elements": true,
+    "events": true,
+    "identical_input": true
+  },
+  "java": {
+    "active_elements": 1,
+    "contributions_per_iteration": 256,
+    "contributor_snapshots": 256,
+    "datapoints": 256,
+    "events_emitted": 256,
+    "ingest": {
+      "batch_latency_ms": {
+        "p50": 13.2162,
+        "p95": 17.5394,
+        "p99": 34.3462
+      },
+      "operations_per_second": 17479.79581413515,
+      "total_seconds": 0.2929096
+    },
+    "iterations": 20,
+    "java_version": "17.0.20.1",
+    "lifecycle": {
+      "batch_latency_ms": {
+        "p50": 18.8859,
+        "p95": 38.1772,
+        "p99": 45.4877
+      },
+      "operations_per_second": 13366.174441629368,
+      "total_seconds": 0.3830565
+    },
+    "payload_sha256": "d22c2f7e8f77ab472202733b470b19be35aba2be35cb560064979ed21d57048b",
+    "scope": "in_process_java",
+    "state_sha256": "17d4d14fb69b2e672889412b9630789a6fe52613111bec928039a0d625e7ef7e",
+    "warmup_iterations": 10
+  },
+  "limitations": [
+    "Does not measure Flink, Kafka, checkpoints, cluster CPU/RSS, lag or end-to-end latency.",
+    "Java uses a fixed 512MiB heap; Python uses the host allocator. These are not equal resource limits.",
+    "Both stages use identical payloads, cardinalities, clocks, iterations and warmup counts.",
+    "A distributed comparison under identical Kubernetes resources and storage is still required."
+  ],
+  "python": {
+    "config": {
+      "contributors": 256,
+      "entities": 1,
+      "iterations": 20,
+      "seed": 20260823,
+      "warmup_iterations": 10
+    },
+    "dataset": {
+      "datapoints": 256,
+      "format": "otlp_json_metrics",
+      "metric": "traces_service_graph_request_total",
+      "payload_bytes": 94462,
+      "payload_sha256": "d22c2f7e8f77ab472202733b470b19be35aba2be35cb560064979ed21d57048b",
+      "temporality": "delta"
+    },
+    "limitations": [
+      "Runs project-owned parsing, extraction, and lifecycle functions in one CPython process.",
+      "Does not start or measure Flink, Kafka, networking, checkpoints, ArangoDB, Gremlin, or Kubernetes.",
+      "Does not establish distributed throughput, latency, capacity, availability, or infrastructure cost."
+    ],
+    "platform": {
+      "hash_randomization_enabled": true,
+      "logical_cpu_count": 16,
+      "machine": "AMD64",
+      "perf_counter_resolution_seconds": 1e-07,
+      "processor": "Intel64 Family 6 Model 85 Stepping 4, GenuineIntel",
+      "python_implementation": "CPython",
+      "python_version": "3.12.13",
+      "release": "11",
+      "system": "Windows"
+    },
+    "results": {
+      "ingest": {
+        "amortized_operation_latency_us": {
+          "max": 822.9546875,
+          "mean": 657.5592578124999,
+          "min": 534.95859375,
+          "p50": 662.475390625,
+          "p95": 730.271875,
+          "p99": 822.9546875
+        },
+        "batch_latency_ms": {
+          "max": 210.6764,
+          "mean": 168.33517,
+          "min": 136.9494,
+          "p50": 169.5937,
+          "p95": 186.9496,
+          "p99": 210.6764
+        },
+        "contributions_per_iteration": 256,
+        "iterations": 20,
+        "operations_per_iteration": 256,
+        "operations_per_second": 1520.77548619222,
+        "total_operations": 5120,
+        "total_seconds": 3.3667034,
+        "unit": "datapoint"
+      },
+      "lifecycle": {
+        "amortized_operation_latency_us": {
+          "max": 287.8296875,
+          "mean": 199.06904296875,
+          "min": 107.20234375,
+          "p50": 194.860546875,
+          "p95": 247.580859375,
+          "p99": 287.8296875
+        },
+        "batch_latency_ms": {
+          "max": 73.6844,
+          "mean": 50.961675,
+          "min": 27.4438,
+          "p50": 49.8843,
+          "p95": 63.3807,
+          "p99": 73.6844
+        },
+        "events_emitted": 256,
+        "iterations": 20,
+        "operations_per_iteration": 256,
+        "operations_per_second": 5023.38276754051,
+        "state_cardinality": {
+          "active_elements": 1,
+          "contributor_snapshots": 256,
+          "edge_elements": 0,
+          "node_elements": 1
+        },
+        "total_operations": 5120,
+        "total_seconds": 1.0192335,
+        "unit": "contribution"
+      }
+    },
+    "schema_version": "1.0",
+    "scope": "in_process_python"
+  },
+  "scope": "matched_in_process_comparison"
+}

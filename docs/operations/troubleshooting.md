@@ -9,7 +9,7 @@ Check:
 1. application spans contain a client and server side with the same trace ID;
 2. both sides reach the router;
 3. routers can resolve every backend endpoint configured by the selected mode;
-4. the metrics topic receives OTLP JSON;
+4. the metrics topic receives OTLP Protobuf;
 5. Flink is `RUNNING`;
 6. output topic offsets advance;
 7. projector offsets advance;
@@ -62,7 +62,7 @@ Confirm:
 - processing-time timers are running;
 - Flink checkpoints and TaskManagers are healthy.
 
-Zero delta metrics do not refresh expiry. Any non-zero delta does.
+Only positive finite delta evidence refreshes expiry; invalid values are rejected.
 
 ## Graph elements churn or repeatedly reappear
 
@@ -159,7 +159,7 @@ record through an appropriately secured tool.
 Only the two servicegraph counters and `semconv.graph.discovery.calls` are
 supported. They must be delta sums with finite, nonnegative values and
 timestamps. Servicegraph points additionally require client and server fields.
-Zero deltas and unrelated metrics are ignored. Root attribute conflicts are
+Zero deltas are rejected and unrelated metric names are ignored. Root attribute conflicts are
 dropped in the Collector before aggregation, not rejected in Flink.
 
 ## API reports ready but data is old

@@ -40,17 +40,16 @@ markers = [
 pythonpath = [
   ".",
   "packages/extended-opentelemetry-semconv/src",
-  "services/otel-servicegraph-diff/src",
   "services/servicegraph-demo/src",
   "services/servicegraph-indexer/src",
 ]
 testpaths = [
   "packages/extended-opentelemetry-semconv/tests",
   "examples/auto-instrumentation",
-  "services/otel-servicegraph-diff/tests",
   "services/servicegraph-demo/tests",
   "services/servicegraph-indexer/tests",
   "tools/semconv_codegen/tests",
+  "tests/helm",
   "tests/benchmarks",
   "tests/local_demo",
   "tests/e2e",
@@ -82,7 +81,6 @@ ignore = ["RUF043"]
 [tool.ruff.lint.isort]
 known-first-party = [
   "extended_otel_semconv",
-  "otel_servicegraph_diff",
   "servicegraph_demo",
   "servicegraph_indexer",
   "tools",
@@ -93,8 +91,6 @@ include = [
   "packages/extended-opentelemetry-semconv/src",
   "packages/extended-opentelemetry-semconv/tests",
   "examples/auto-instrumentation",
-  "services/otel-servicegraph-diff/src",
-  "services/otel-servicegraph-diff/tests",
   "services/servicegraph-demo/src",
   "services/servicegraph-demo/tests",
   "services/servicegraph-indexer/src",
@@ -102,6 +98,7 @@ include = [
   "tools/semconv_codegen",
   "tools/local_demo",
   "benchmarks",
+  "tests/helm",
   "tests/benchmarks",
   "tests/local_demo",
   "conftest.py",
@@ -110,7 +107,6 @@ include = [
 extraPaths = [
   ".",
   "packages/extended-opentelemetry-semconv/src",
-  "services/otel-servicegraph-diff/src",
   "services/servicegraph-demo/src",
   "services/servicegraph-indexer/src",
 ]

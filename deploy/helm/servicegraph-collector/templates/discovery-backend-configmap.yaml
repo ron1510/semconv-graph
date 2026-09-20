@@ -65,7 +65,7 @@ data:
           {{- end }}
         metrics:
           topic: {{ .Values.streamContract.topics.servicegraphMetrics | quote }}
-          encoding: otlp_json
+          encoding: otlp_proto
         {{- if eq .Values.streamContract.kafka.security.protocol "SASL_SSL" }}
         tls:
           insecure: false

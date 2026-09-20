@@ -107,7 +107,6 @@ def test_element_maps_reconstruct_concrete_entities_and_edges() -> None:
             "element_id": "service:checkout",
             "semantic_type": "service",
             "attributes": {"service.name": "checkout", "service.version": "1.4.0"},
-            "metrics": {},
         }
     )
     expected_edge_id = edge_id("service:storefront", "calls", "service:checkout")
@@ -118,14 +117,12 @@ def test_element_maps_reconstruct_concrete_entities_and_edges() -> None:
             "source_id": "service:storefront",
             "target_id": "service:checkout",
             "attributes": {},
-            "metrics": {"service_graph.request.total": 12.0},
         }
     )
 
     assert isinstance(service, Service)
     assert service.service_version == "1.4.0"
     assert isinstance(edge, ServiceCallsServiceEdge)
-    assert edge.metrics["service_graph.request.total"] == 12.0
 
 
 @pytest.mark.parametrize(
@@ -139,15 +136,6 @@ def test_element_maps_reconstruct_concrete_entities_and_edges() -> None:
             "semantic_type": "calls",
             "source_id": "service:one",
             "attributes": {},
-            "metrics": {},
-        },
-        {
-            "element_id": edge_id("service:one", "calls", "service:two"),
-            "semantic_type": "calls",
-            "source_id": "service:one",
-            "target_id": "service:two",
-            "attributes": {},
-            "metrics": {"service_graph.request.total": True},
         },
     ],
 )
@@ -168,7 +156,6 @@ def test_client_hydrates_results_and_owns_connection(monkeypatch: pytest.MonkeyP
                 "element_id": "service:checkout",
                 "semantic_type": "service",
                 "attributes": {"service.name": "checkout"},
-                "metrics": {},
             }
         ]
 
@@ -217,7 +204,6 @@ def test_client_preserves_execution_and_model_errors_as_causes(monkeypatch: pyte
                 "element_id": "service:wrong",
                 "semantic_type": "service",
                 "attributes": {"service.name": "checkout"},
-                "metrics": {},
             }
         ],
     )

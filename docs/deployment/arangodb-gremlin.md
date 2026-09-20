@@ -148,7 +148,7 @@ intentional scalar, aggregate, map, or path results.
 
 Labels are generated from semantic types: `service.instance` becomes
 `service_instance`, `k8s.pod` becomes `k8s_pod`, and relationship `calls`
-remains `calls`. Canonical fields remain under `attributes` and `metrics`, while
+remains `calls`. Canonical semantic fields remain under `attributes`, while
 scalar Gremlin properties use aliases such as `service_name`, `k8s_pod_uid`,
 and `service_graph_request_total`.
 

@@ -26,9 +26,7 @@ data:
       filter/servicegraph_output:
         error_mode: ignore
         metric_conditions:
-          - >-
-            metric.name != "traces_service_graph_request_total" and
-            metric.name != "traces_service_graph_request_failed_total"
+          - metric.name != "traces_service_graph_request_total"
           - datapoint.value_int == 0
       batch/traces:
         timeout: 1s
@@ -57,7 +55,7 @@ data:
           {{- end }}
         metrics:
           topic: {{ .Values.streamContract.topics.servicegraphMetrics | quote }}
-          encoding: otlp_json
+          encoding: otlp_proto
         {{- if eq .Values.streamContract.kafka.security.protocol "SASL_SSL" }}
         tls:
           insecure: false

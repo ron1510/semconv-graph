@@ -1,77 +1,30 @@
 # Semconv Graph
 
-**Turn existing OpenTelemetry traces into a live typed entity graph without
-changing app instrumentation.**
-
-Semconv Graph is the working product name. The Python SDK remains
-`extended-opentelemetry-semconv`, and existing package, image, chart, and import
-names remain unchanged.
-
-## The product boundary
-
-Semconv Graph is a lifecycle engine and graph projection for semantic entities
-derived from telemetry. It is not a tracing backend and it does not ask
-applications to emit a proprietary inventory format.
-
-Today it converts Collector service-graph delta metrics into semantic graph
-contributions. Flink merges those contributions, owns staleness, and emits
-complete node and edge lifecycle events. ArangoDB holds the current-state graph,
-and trusted clients traverse it through read-only Gremlin.
+**Turn existing OpenTelemetry traces into a live typed entity graph without changing application instrumentation.**
 
 ```text
-Existing OTLP traces
-  -> Collector service-graph metrics
-  -> Kafka
-  -> Flink lifecycle engine
-  -> graph element events
-  -> ArangoDB
-  -> Gremlin
+OTLP traces → Collector evidence → Kafka OTLP Protobuf → Java Flink lifecycle
+            → schema-3 graph events → ArangoDB → typed Gremlin
 ```
 
-## The adoption argument
-
-Standard entity events are valuable when producers can explicitly describe
-inventory and relationships. Existing estates often do not have those
-producers yet. Inference from traces provides a lower-friction starting point:
-deploy infrastructure around the telemetry pipeline, then obtain a useful graph
-without changing every instrumented application.
-
-Aggregated root spans and standard OTel entity events are opt-in sources. The
-Collector's spanmetrics lane covers node-only executions absent from service interactions; explicit entities
-can provide complete state and relationships. All sources enter the same
-contributor lifecycle without replacing the default servicegraph path. Read the
-[product direction](product.md) and the [conformance
-matrix](reference/otel-entity-conformance.md) for the exact current boundary.
+The generated semantic registry keeps entity identity, relationship topology, Collector dimensions, Java extraction, Python models, and Arango collections aligned.
 
 ## Runtime guarantees
 
-- Trace-affine routing keeps both sides of a trace on one service-graph backend.
-- Flink owns contributor-aware merging, expiry, and graph lifecycle state.
-- Complete `upsert` and `delete` events are keyed by deterministic element IDs.
-- Nodes and edges follow the same lifecycle rules.
-- Downstream projections do not invent their own TTL policy.
-- ArangoDB projection is idempotent under Kafka replay.
-
-Delivery is at least once. Deterministic event IDs and graph identifiers let
-consumers apply events idempotently.
+- Trace-affine routing keeps both sides of an interaction on one service-graph backend.
+- Positive request and discovery sums are freshness evidence; their magnitudes are discarded.
+- Flink merges independent contributors and owns 24-hour freshness by default.
+- Unchanged evidence refreshes expiry without repeated graph upserts.
+- Nodes and relationships use deterministic IDs and identical lifecycle rules.
+- Schema-3 events are complete replacements or deletes keyed by element ID.
+- The indexer commits Kafka offsets only after successful Arango writes.
+- Typed Gremlin reconstructs generated node and edge models without counter metadata.
 
 ## Start here
 
 - [Run the focused local environment](getting-started/quickstart.md)
-- [Understand the product and roadmap](product.md)
-- [Read the runtime architecture](architecture.md)
-- [Check OTel entity-event conformance](reference/otel-entity-conformance.md)
+- [Read the detailed system flow](concepts/system-flow.md)
+- [Understand the product boundary](product.md)
 - [Add a custom entity](getting-started/custom-entity.md)
 - [Deploy to Kubernetes](deployment-and-operations.md)
-- [Find a contribution area](community.md)
-
-## Project status
-
-The semantic SDK, inferred service-graph source, Flink lifecycle path, Kafka
-contract, ArangoDB projection, Gremlin runtime, and Helm charts are implemented.
-Opt-in spanmetrics root discovery and standard entity-event ingestion are implemented.
-Historical queries, standard OTel output, incoming-relationship implicit
-deletion, and published distributed scale benchmarks are not yet implemented. A focused automated
-Collector-to-Flink-to-Gremlin E2E covers spanmetrics root discovery. A
-reproducible in-process benchmark covers parsing, extraction,
-and lifecycle functions without making distributed-scale claims.
+- [Plan a clean upgrade](operations/upgrades.md)

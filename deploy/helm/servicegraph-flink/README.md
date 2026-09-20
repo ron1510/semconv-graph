@@ -2,7 +2,7 @@
 
 This chart runs Flink 2.2.1 as a standalone Kubernetes Session cluster. Helm
 owns one JobManager Deployment, a fixed TaskManager pool, the REST Service, and
-the initial PyFlink submission Job. Flink does not create Kubernetes workloads
+the initial native Java submission Job. Flink does not create Kubernetes workloads
 and the chart requires no CRDs or finalizer permissions.
 
 Kubernetes HA retains the submitted job across a JobManager pod replacement.
@@ -52,7 +52,8 @@ distributions that do not mutate the pod identity, set
 non-root IDs. The Flink image's built-in user is `9999`.
 
 The post-install submitter waits for the REST endpoint and submits
-`otel_servicegraph_diff.flink_job` with `job.fixedJobId`. A repeated install skips an
+`io.extendedotel.flink.ServiceGraphJob` from
+`/opt/flink/usrlib/otel-servicegraph-diff.jar` with `job.fixedJobId`. A repeated install skips an
 already active job with that ID.
 
 Every Helm upgrade performs a stateful application replacement:
@@ -71,9 +72,14 @@ Keep `application.clusterId`, `job.fixedJobId`, and the state claim unchanged
 across automatic upgrades. Set `job.allowNonRestoredState=true` only for an
 intentional topology change that removes state which may be discarded.
 
-Chart `0.8.0` introduces incompatible v4 lifecycle state and requires the
-destructive reset documented in the operations guide. Do not restore a v3
-checkpoint or savepoint into this version.
+The chart uses Java 17 and CBOR-v2 lifecycle state. Hooks accept only the
+`java-cbor-v2` runtime marker and reject older Python, JSON, and CBOR-v1 state.
+This contract change requires the clean reset documented in
+`docs/operations/upgrades.md`; `allowNonRestoredState` cannot convert serializers.
+
+Java is the only application runtime; the chart always submits
+`io.extendedotel.flink.ServiceGraphJob` from its executable JAR. The obsolete
+`application.runtime` setting is rejected. The image requires no Python.
 
 Flink writes to container stdout:
 
@@ -85,7 +91,7 @@ kubectl logs -n servicegraph-system `
 ```
 
 JobManager logs contain leadership, recovery, and checkpoint coordination.
-TaskManager logs contain Kafka connector, operator, and Python worker output.
+TaskManager logs contain Kafka connector, operator, and native Java output.
 Use `kubectl logs <pod> --previous` after a container restart.
 
 Upgrade lifecycle logs remain available through the hook Jobs:

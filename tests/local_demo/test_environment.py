@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -157,10 +157,10 @@ def test_produce_metrics_sends_keyless_kafka_records(
 
     class _Producer:
         def __init__(self, **kwargs: object) -> None:
-            self.value_serializer = cast(Callable[[object], bytes], kwargs["value_serializer"])
+            assert "value_serializer" not in kwargs
 
         def send(self, topic: str, *, key: object, value: object) -> _Future:
-            sent.append((topic, cast(bytes | None, key), self.value_serializer(value)))
+            sent.append((topic, cast(bytes | None, key), cast(bytes, value)))
             return _Future()
 
         def flush(self, *, timeout: int) -> None:
@@ -175,7 +175,7 @@ def test_produce_metrics_sends_keyless_kafka_records(
 
     environment.produce_metrics(({"resourceMetrics": []},))
 
-    assert sent == [("otel.servicegraph.metrics", None, b'{"resourceMetrics":[]}')]
+    assert sent == [("otel.servicegraph.metrics", None, b"")]
 
 
 def test_prerequisite_error_names_missing_commands(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

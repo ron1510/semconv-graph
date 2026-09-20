@@ -22,8 +22,6 @@ the executable defaults.
 | `streamContract.kafka.security.protocol` | `SASL_SSL` | `PLAINTEXT`, `SASL_PLAINTEXT`, or `SASL_SSL` |
 | `streamContract.kafka.security.existingSecret` | `servicegraph-kafka-auth` | Existing SASL credentials |
 | `streamContract.topics.servicegraphMetrics` | `otel.servicegraph.metrics` | Metrics topic |
-| `streamContract.topics.entityEvents` | `otel.entity.events` | Optional filtered OTLP entity-event logs topic |
-| `entityEvents.enabled` | `false` | Add the router entity-event logs pipeline |
 | `rootSpanDiscovery.enabled` | `false` | Add root filtering and the spanmetrics discovery pool |
 | `rootSpanDiscovery.backend.replicaCount` | `2` | Identity-sharded spanmetrics backends |
 | `rootSpanDiscovery.backend.metricsFlushInterval` | `60s` | Discovery delta flush period |
@@ -48,10 +46,6 @@ also available in the chart.
 | `job.fixedJobId` | `000...001` | Stable Flink job ID |
 | `job.allowNonRestoredState` | `false` | Allow reviewed upgrades to discard unmapped savepoint state |
 | `job.groupId` | `graph-element-engine` | Kafka source group |
-| `streamContract.topics.entityEvents` | `otel.entity.events` | Optional entity-event input topic |
-| `entityEvents.enabled` | `false` | Add the independent entity-event Kafka source |
-| `entityEvents.groupId` | `graph-element-engine-entities` | Entity-event source consumer group |
-| `entityEvents.reportIntervalGraceSeconds` | `30` | Grace added to positive report intervals |
 | `job.interactionTtlSeconds` | `300` | Delete inactivity threshold |
 | `job.elementTtlSeconds` | `{}` | Optional inactivity thresholds by semantic element type |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |

@@ -81,12 +81,11 @@ def _upsert(*, kind: str = "node", element_id: str = "service:checkout", event_i
             {
                 "source_id": "service:storefront",
                 "target_id": "service:checkout",
-                "metrics": {"service_graph.request.total": 3.0},
             }
         )
     return json.dumps(
         {
-            "schema_version": "2.0",
+            "schema_version": "3.0",
             "event_id": event_id,
             "event_type": "graph_element_state_changed",
             "operation": "upsert",
@@ -102,7 +101,7 @@ def _upsert(*, kind: str = "node", element_id: str = "service:checkout", event_i
 def _delete(element_id: str) -> bytes:
     return json.dumps(
         {
-            "schema_version": "2.0",
+            "schema_version": "3.0",
             "event_id": "event-delete",
             "event_type": "graph_element_state_changed",
             "operation": "delete",
@@ -115,7 +114,7 @@ def _delete(element_id: str) -> bytes:
     ).encode()
 
 
-def test_node_and_edge_documents_preserve_maps_and_add_aliases() -> None:
+def test_node_and_edge_documents_preserve_attributes_and_endpoints() -> None:
     schema = load_graph_schema()
     node_event = cast(Mapping[str, object], json.loads(_upsert()))
     collection, node = event_to_document(node_event, schema)
@@ -130,7 +129,7 @@ def test_node_and_edge_documents_preserve_maps_and_add_aliases() -> None:
     assert edge_collection == "calls"
     assert edge["_from"] == f"service/{element_key('service:storefront')}"
     assert edge["_to"] == f"service/{element_key('service:checkout')}"
-    assert edge["service_graph_request_total"] == 3.0
+    assert "metrics" not in edge
 
 
 def test_poll_coalesces_events_routes_deletes_and_commits_after_writes() -> None:
@@ -185,6 +184,14 @@ def test_invalid_events_fail_visibly() -> None:
     cast(dict[str, object], event["element"])["type"] = "unknown"
     with pytest.raises(IndexingError, match="unknown node"):
         event_to_document(event, schema)
+    schema_two = cast(dict[str, object], json.loads(_upsert()))
+    schema_two["schema_version"] = "2.0"
+    with pytest.raises(IndexingError, match="schema 3.0"):
+        event_to_document(schema_two, schema)
+    with_metrics = cast(dict[str, object], json.loads(_upsert(kind="edge", element_id="edge:one")))
+    cast(dict[str, object], with_metrics["element"])["metrics"] = {"requests": 1}
+    with pytest.raises(IndexingError, match="must not contain metrics"):
+        event_to_document(with_metrics, schema)
 
 
 def test_kafka_plaintext_and_sasl_settings(monkeypatch: pytest.MonkeyPatch) -> None:

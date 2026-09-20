@@ -59,48 +59,8 @@ spec:
           args:
             - |
               decision=0
-              python - <<'PY' || decision=$?
-              import json
-              import os
-              import sys
-              import time
-              import urllib.error
-              import urllib.request
-
-              rest_url = os.environ["FLINK_REST_URL"]
-              job_id = os.environ["FLINK_JOB_ID"]
-              deadline = time.monotonic() + 480
-
-              while True:
-                  try:
-                      with urllib.request.urlopen(f"{rest_url}/overview", timeout=3):
-                          break
-                  except (OSError, urllib.error.URLError):
-                      if time.monotonic() >= deadline:
-                          print(f"Flink REST endpoint {rest_url} did not become ready", file=sys.stderr)
-                          sys.exit(1)
-                      time.sleep(2)
-
-              try:
-                  with urllib.request.urlopen(f"{rest_url}/jobs/{job_id}", timeout=5) as response:
-                      state = json.load(response).get("state", "UNKNOWN")
-              except urllib.error.HTTPError as error:
-                  if error.code == 404:
-                      sys.exit(0)
-                  raise
-
-              terminal_states = {"CANCELED", "FAILED", "FINISHED"}
-              if state in terminal_states:
-                  print(
-                      f"Flink job {job_id} is terminal ({state}); choose a new fixedJobId "
-                      "for an intentional replacement",
-                      file=sys.stderr,
-                  )
-                  sys.exit(43)
-
-              print(f"Flink job {job_id} already exists in state {state}; skipping submission")
-              sys.exit(42)
-              PY
+              java -cp /opt/flink/usrlib/otel-servicegraph-diff.jar \
+                io.extendedotel.flink.DeploymentCommands inspect || decision=$?
 
               if [ "${decision}" -eq 42 ]; then
                 exit 0
@@ -123,15 +83,30 @@ spec:
                 echo "Restoring Flink job ${FLINK_JOB_ID} from ${savepoint_path}"
               fi
 
-              exec /opt/flink/bin/flink run --detached \
+              /opt/flink/bin/flink run --detached \
                 -m "${FLINK_REST_ADDRESS}" \
                 -D'$internal.pipeline.job-id'="${FLINK_JOB_ID}" \
                 --parallelism {{ .Values.application.parallelism }} \
-                -Dpython.client.executable=/usr/local/bin/python \
-                -Dpython.executable=/usr/local/bin/python \
+                -Dstate.backend.type={{ .Values.state.backend }} \
+                {{- if eq .Values.state.backend "rocksdb" }}
+                -Dstate.backend.rocksdb.localdir={{ .Values.state.rocksdb.localDirectory | quote }} \
+                -Dstate.backend.rocksdb.timer-service.factory=ROCKSDB \
+                -Dexecution.checkpointing.incremental={{ .Values.state.incrementalCheckpoints }} \
+                {{- end }}
+                -Dexecution.checkpointing.storage=filesystem \
+                -Dexecution.checkpointing.dir=file:///flink-state/checkpoints \
+                -Dexecution.checkpointing.savepoint-dir=file:///flink-state/savepoints \
+                -Dexecution.checkpointing.externalized-checkpoint-retention=RETAIN_ON_CANCELLATION \
+                -Dexecution.checkpointing.num-retained=2 \
+                -Dexecution.checkpointing.max-concurrent-checkpoints=1 \
+                -Dexecution.checkpointing.timeout={{ printf "%d ms" (.Values.job.checkpointTimeoutMs | int) | quote }} \
+                -Dexecution.checkpointing.min-pause={{ printf "%d ms" (.Values.job.checkpointMinPauseMs | int) | quote }} \
+                -Dexecution.checkpointing.tolerable-failed-checkpoints={{ .Values.job.tolerableFailedCheckpoints }} \
                 "${restore_args[@]}" \
-                --pyModule otel_servicegraph_diff.flink_job \
-                --pyFiles /opt/application
+                --class io.extendedotel.flink.ServiceGraphJob \
+                /opt/flink/usrlib/otel-servicegraph-diff.jar
+              java -cp /opt/flink/usrlib/otel-servicegraph-diff.jar \
+                io.extendedotel.flink.DeploymentCommands record-runtime
           env:
             - name: FLINK_REST_URL
               value: http://{{ include "servicegraph-flink.restServiceName" . }}:8081

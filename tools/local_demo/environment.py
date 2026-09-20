@@ -12,7 +12,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -243,8 +243,26 @@ class DemoEnvironment:
     def produce_events(self, events: Sequence[dict[str, object]]) -> None:
         self._produce_json("graph.elements.events", events, key_field="element_id")
 
-    def produce_metrics(self, payloads: Sequence[dict[str, object]]) -> None:
-        self._produce_json("otel.servicegraph.metrics", payloads)
+    def produce_metrics(self, payloads: Sequence[bytes | Mapping[str, object]]) -> None:
+        from google.protobuf.json_format import ParseDict
+        from kafka import KafkaProducer
+        from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
+
+        address = self.kafka_host_address
+        if address is None:
+            raise RuntimeError("Redpanda host address is not initialized")
+        producer = KafkaProducer(bootstrap_servers=address)
+        try:
+            for payload in payloads:
+                value = (
+                    payload
+                    if isinstance(payload, bytes)
+                    else ParseDict(dict(payload), ExportMetricsServiceRequest()).SerializeToString()
+                )
+                producer.send("otel.servicegraph.metrics", key=None, value=value).get(timeout=30)
+            producer.flush(timeout=30)
+        finally:
+            producer.close(timeout=10)
 
     def _produce_json(
         self,
@@ -290,6 +308,9 @@ class DemoEnvironment:
             response.read()
 
     def topic_values(self, topic: str, *, timeout_ms: int = 2_000) -> list[str]:
+        return [value.decode("utf-8") for value in self.topic_bytes(topic, timeout_ms=timeout_ms)]
+
+    def topic_bytes(self, topic: str, *, timeout_ms: int = 2_000) -> list[bytes]:
         from kafka import KafkaConsumer
 
         address = self.kafka_host_address
@@ -303,7 +324,7 @@ class DemoEnvironment:
             consumer_timeout_ms=timeout_ms,
         )
         try:
-            return [record.value.decode("utf-8") for record in consumer]
+            return [record.value for record in consumer]
         finally:
             consumer.close()
 
@@ -325,10 +346,14 @@ class DemoEnvironment:
         from gremlin_python.driver.driver_remote_connection import DriverRemoteConnection
         from gremlin_python.process.anonymous_traversal import traversal
 
+        from tools.local_demo.gremlin_transport import DemoGremlinTransport
+
         forward = self.gremlin_forward
         if forward is None:
             raise RuntimeError("Gremlin port-forward is not initialized")
-        connection = DriverRemoteConnection(f"ws://127.0.0.1:{forward.local_port}/gremlin", "g")
+        connection = DriverRemoteConnection(
+            f"ws://127.0.0.1:{forward.local_port}/gremlin", "g", transport_factory=DemoGremlinTransport
+        )
         try:
             yield traversal().with_(connection)
         finally:
@@ -527,7 +552,6 @@ class DemoEnvironment:
                     self.flink_image,
                     "--file",
                     "services/otel-servicegraph-diff/Dockerfile",
-                    *pip_arguments,
                     *maven_secret,
                     ".",
                 ],

@@ -19,8 +19,8 @@ registry, and stateful lifecycle processing to infer typed nodes and edges.
 ```text
 Existing OTLP traces
   -> trace-affine OpenTelemetry Collectors
-  -> service-graph delta metrics
-  -> Kafka
+  -> positive service-graph evidence
+  -> Kafka OTLP Protobuf
   -> Flink contributor and lifecycle state
   -> graph-element upsert/delete events
   -> ArangoDB current-state graph
@@ -33,7 +33,7 @@ Existing OTLP traces
   not need to emit a new signal.
 - Registry-generated Pydantic entity and relationship models.
 - Organization-specific entity extensions and Collector dimensions.
-- Optional ETL Pipeline, Run, and Part Run discovery from completed root spans
+- Optional ETL Pipeline, Run, and Part Run discovery from completed non-client/non-server root spans through spanmetrics
   carrying the generated model fields.
 - Contributor-aware attribute merging and expiry in Flink.
 - Equal lifecycle treatment for semantic nodes and edges.
@@ -41,31 +41,19 @@ Existing OTLP traces
 - Idempotent projection into ArangoDB and typed read-only Gremlin access.
 - Helm deployments built from standard Kubernetes resources without CRDs.
 
-Spanmetrics root-span discovery and OpenTelemetry Entity Events are also
-supported as opt-in inputs. The discovery lane aggregates completed roots in
-the Collector and sends node-only discovery metrics rather than raw spans. The
-[OpenTelemetry Entity Data Model](https://opentelemetry.io/docs/specs/otel/entities/data-model/)
-and [Entity Events](https://opentelemetry.io/docs/specs/otel/entities/entity-events/)
-specifications are both in development. When enabled, filtered `entity.state`
-and `entity.delete` OTLP logs enter the same contributor lifecycle engine as
-the inferred servicegraph and spanmetrics sources.
+Root-span discovery is available as an opt-in input. It filters for completed roots whose kind is neither client nor server, aggregates them with the Collector spanmetrics connector, and sends node-only evidence rather than raw spans. Both evidence lanes converge on one Java lifecycle engine. Numeric request counts and entity-event logs are intentionally outside the focused graph pipeline.
 
 ## Why the inputs matter
 
 | Source | Role | Status |
 | --- | --- | --- |
-| Existing traces through the Collector `servicegraph` connector | Bootstrap a useful graph without changing application instrumentation | Implemented |
-| Aggregated root spans | Discover execution entities that do not appear in service interactions | Implemented, opt-in |
-| Standard OTel entity events | Add explicit inventory, complete descriptions, relationships, and deletion from conforming producers | Implemented, opt-in |
-
-All inputs converge on one lifecycle engine. Explicit events, servicegraph
-metrics, and spanmetrics discovery retain independent contributor IDs, so one source
-cannot retract a fact still supported by another.
+| Existing traces through the Collector `servicegraph` connector | Bootstrap nodes and relationships without application changes | Implemented |
+| Aggregated root spans | Discover execution nodes absent from service interactions | Implemented, opt-in |
 
 ## Try the focused environment
 
 The repository includes a persistent local demo that starts Redpanda, ArangoDB,
-the Kafka indexer, and Gremlin Server, then seeds representative Flink schema-2
+the Kafka indexer, and Gremlin Server, then seeds representative schema-3 graph
 events for typed traversal. It also includes an opt-in Kind fixture that verifies
 projection, deletion, restart persistence, and spanmetrics root discovery
 through the complete Collector-to-Gremlin path.
@@ -105,9 +93,7 @@ The repository does **not** currently provide:
 - a safe public query API (Gremlin is a trusted internal interface);
 - production Kafka or ArangoDB operations.
 
-See [Proof and limitations](docs/product.md#proof-and-limitations) and the
-[OTel entity conformance matrix](docs/reference/otel-entity-conformance.md)
-before evaluating production fit.
+See [Product direction](docs/product.md) before evaluating production fit.
 
 ## Repository map
 
@@ -115,7 +101,7 @@ before evaluating production fit.
 | --- | --- |
 | `packages/extended-opentelemetry-semconv` | Generated semantic SDK and optional typed Gremlin client |
 | `tools/semconv_codegen` | Registry validation and deterministic generation |
-| `services/otel-servicegraph-diff` | Service-graph ingestion, lifecycle engine, and PyFlink wiring |
+| `services/otel-servicegraph-diff` | Native Java Flink ingestion/lifecycle engine |
 | `services/servicegraph-indexer` | ArangoDB initializer and Kafka projection |
 | `services/servicegraph-gremlin` | Pinned read-only TinkerPop/ArangoDB runtime |
 | `services/servicegraph-demo` | Optional synthetic OTLP traffic |
@@ -130,7 +116,6 @@ Kafka, topic creation, and production ArangoDB remain platform concerns.
 - [Local demo](docs/getting-started/quickstart.md)
 - [Auto-instrumented endpoint](docs/getting-started/auto-instrumentation.md)
 - [Runtime architecture](docs/architecture.md)
-- [OTel entity conformance](docs/reference/otel-entity-conformance.md)
 - [Community and launch guide](docs/community.md)
 - [Custom entity tutorial](docs/getting-started/custom-entity.md)
 - [Kubernetes deployment](docs/deployment-and-operations.md)

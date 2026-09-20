@@ -1,42 +1,38 @@
-# Graph Element Event Schema
+# Graph element event schema
 
-The compacted `graph.elements.events` topic contains JSON lifecycle commands
-keyed by `element_id`. The producer schema is `2.0`.
+Flink publishes canonical JSON records to `graph.elements.events`. Schema 3.0 is a clean contract break: edge counters and the `metrics` field do not exist. Kafka keys are always `element_id`, so compaction retains the latest complete state or deletion for each graph element.
 
 ## Envelope
 
-| Field | Type | Description |
+| Field | Type | Meaning |
 | --- | --- | --- |
-| `schema_version` | string | `"2.0"` |
-| `event_id` | string | Deterministic SHA-256 transition ID |
-| `event_type` | string | `"graph_element_state_changed"` |
-| `operation` | string | `"upsert"` or `"delete"` |
-| `element_id` | string | Graph element ID and Kafka key |
-| `observed_at_unix_nano` | integer | Observation or final expiry time |
-| `emitted_at_unix_ms` | integer | Event emission wall-clock time |
-| `payload_hash` | string or null | Hash of the complete upsert element |
-| `element` | object or null | Complete node or edge on upsert |
+| `schema_version` | string | Always `"3.0"` |
+| `event_id` | string | Deterministic SHA-256 identity for this lifecycle transition |
+| `event_type` | string | Always `graph_element_state_changed` |
+| `element_id` | string | Stable node or relationship ID and Kafka key |
+| `observed_at_unix_nano` | integer | Evidence or expiry time |
+| `emitted_at_unix_ms` | integer | Processing time when Flink emitted the record |
+| `operation` | string | `upsert` or `delete` |
+| `payload_hash` | string or null | Canonical element hash for upserts |
+| `element` | object or null | Complete node/edge state for upserts |
 
 ## Node upsert
 
 ```json
 {
-  "schema_version": "2.0",
-  "event_id": "sha256",
+  "schema_version": "3.0",
+  "event_id": "...",
   "event_type": "graph_element_state_changed",
+  "element_id": "service:checkout",
+  "observed_at_unix_nano": 1700000000000000000,
+  "emitted_at_unix_ms": 1700000000000,
   "operation": "upsert",
-  "element_id": "service:checkout-api",
-  "observed_at_unix_nano": 1784977200000000000,
-  "emitted_at_unix_ms": 1784977200500,
-  "payload_hash": "sha256",
+  "payload_hash": "...",
   "element": {
     "kind": "node",
-    "id": "service:checkout-api",
+    "id": "service:checkout",
     "type": "service",
-    "attributes": {
-      "service.name": "checkout-api",
-      "service.version": "2.4"
-    }
+    "attributes": {"service.name": "checkout"}
   }
 }
 ```
@@ -45,45 +41,27 @@ keyed by `element_id`. The producer schema is `2.0`.
 
 ```json
 {
-  "schema_version": "2.0",
-  "event_id": "sha256",
+  "schema_version": "3.0",
+  "event_id": "...",
   "event_type": "graph_element_state_changed",
+  "element_id": "edge:...",
+  "observed_at_unix_nano": 1700000000000000000,
+  "emitted_at_unix_ms": 1700000000000,
   "operation": "upsert",
-  "element_id": "edge:sha256",
-  "observed_at_unix_nano": 1784977200000000000,
-  "emitted_at_unix_ms": 1784977200500,
-  "payload_hash": "sha256",
+  "payload_hash": "...",
   "element": {
     "kind": "edge",
-    "id": "edge:sha256",
+    "id": "edge:...",
     "type": "calls",
     "source_id": "service:storefront",
-    "target_id": "service:checkout-api",
-    "attributes": {},
-    "metrics": {
-      "service_graph.request.total": 3,
-      "service_graph.request.failed.total": 0
-    }
+    "target_id": "service:checkout",
+    "attributes": {}
   }
 }
 ```
 
 ## Delete
 
-```json
-{
-  "schema_version": "2.0",
-  "event_id": "sha256",
-  "event_type": "graph_element_state_changed",
-  "operation": "delete",
-  "element_id": "service:checkout-api",
-  "observed_at_unix_nano": 1784977500000000000,
-  "emitted_at_unix_ms": 1784977500100,
-  "payload_hash": null,
-  "element": null
-}
-```
+Deletes have `payload_hash: null` and `element: null`. The indexer removes the document selected by `element_id`; edge deletes are attempted across generated edge collections because the ID contains no semantic-type prefix.
 
-Consumers must treat upsert as complete replacement, delete by `element_id`,
-preserve per-key Kafka order, and avoid independent extraction or expiry logic.
-Deterministic event IDs support deduplication under at-least-once delivery.
+The indexer rejects any version other than 3.0 and rejects an element containing `metrics`.

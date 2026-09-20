@@ -1,5 +1,5 @@
 image:
-  ref: registry.internal.example/extended-otel-flink-runtime:2.2.1-java11
+  ref: registry.internal.example/extended-otel-flink-runtime:2.2.1-java17
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
@@ -31,19 +31,13 @@ streamContract:
       passwordKey: password
   topics:
     servicegraphMetrics: otel.servicegraph.metrics
-    entityEvents: otel.entity.events
     interactionEvents: graph.elements.events
-
-entityEvents:
-  enabled: false
-  groupId: graph-element-engine-entities
-  reportIntervalGraceSeconds: 30
 
 job:
   fixedJobId: "00000000000000000000000000000001"
   allowNonRestoredState: false
   groupId: graph-element-engine
-  interactionTtlSeconds: 300
+  interactionTtlSeconds: 86400
   elementTtlSeconds: {}
   allowedLatenessSeconds: 60
   checkpointIntervalMs: 30000

@@ -12,8 +12,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    FiniteFloat,
-    StrictInt,
     ValidationError,
     computed_field,
     field_serializer,
@@ -29,7 +27,6 @@ from extended_otel_semconv.errors import (
 )
 
 type EdgeId = str
-type MetricValue = StrictInt | FiniteFloat
 type StructuralValue = str | int | float | bool
 
 
@@ -50,14 +47,13 @@ class SemanticEdge(BaseModel):
     source_id: EntityId = Field(min_length=1)
     target_id: EntityId = Field(min_length=1)
     attributes: Mapping[str, StructuralValue] = Field(default_factory=dict)
-    metrics: Mapping[str, MetricValue] = Field(default_factory=dict)
 
-    @field_validator("attributes", "metrics", mode="after")
+    @field_validator("attributes", mode="after")
     @classmethod
     def freeze_mapping(cls, value: Mapping[str, object]) -> Mapping[str, object]:
         return MappingProxyType(dict(value))
 
-    @field_serializer("attributes", "metrics")
+    @field_serializer("attributes")
     def serialize_mapping(self, value: Mapping[str, object]) -> dict[str, object]:
         return dict(value)
 
@@ -81,7 +77,6 @@ def semantic_edge_from_data(
     target_id: str,
     *,
     attributes: Mapping[str, object] | None = None,
-    metrics: Mapping[str, object] | None = None,
     expected_id: str | None = None,
 ) -> SemanticEdge:
     from extended_otel_semconv.generated.edges import EDGE_MODELS
@@ -99,7 +94,6 @@ def semantic_edge_from_data(
             source_id=source_id,
             target_id=target_id,
             attributes=cast(Mapping[str, StructuralValue], attributes or {}),
-            metrics=cast(Mapping[str, MetricValue], metrics or {}),
         )
     except ValidationError as error:
         raise SemanticModelValidationError(f"invalid {model.__name__} data: {error}") from error

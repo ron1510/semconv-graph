@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import json
 import time
+from urllib.parse import quote
 
 import pytest
 from gremlin_python.driver.protocol import GremlinServerError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, InstrumentationScope, KeyValue
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
-from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
+from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span, Status
 
+from benchmarks.flink import measure
 from extended_otel_semconv import Service, ServiceCallsServiceEdge
 from extended_otel_semconv.edges import edge_id as semantic_edge_id
 from extended_otel_semconv.gremlin import UnsupportedSemanticTraversalError
@@ -19,7 +21,7 @@ from tools.local_demo.environment import DemoEnvironment, wait_for
 
 
 @pytest.mark.e2e
-def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvironment) -> None:
+def test_schema3_events_are_projected_and_traversable(e2e_environment: DemoEnvironment) -> None:
     observed_at = time.time_ns()
     storefront_id = "service:storefront"
     checkout_id = "service:checkout-api"
@@ -36,10 +38,6 @@ def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvir
                 "source_id": storefront_id,
                 "target_id": checkout_id,
                 "attributes": {},
-                "metrics": {
-                    "service_graph.request.total": 12.0,
-                    "service_graph.request.failed.total": 1.0,
-                },
             },
             observed_at,
             "edge-v1",
@@ -60,7 +58,6 @@ def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvir
         assert graph.V().has("service_name", "checkout-api").in_("calls").values("service_name").to_list() == [
             "storefront"
         ]
-        assert graph.E().has_label("calls").values("service_graph_request_total").to_list() == [12.0]
 
     with e2e_environment.semantic_client() as client:
         services = client.query(lambda g: g.V().has_label("service").order().by("service_name"))
@@ -74,7 +71,6 @@ def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvir
         ]
         assert len(calls) == 1
         assert isinstance(calls[0], ServiceCallsServiceEdge)
-        assert calls[0].metrics["service_graph.request.total"] == 12.0
         assert len(dependencies) == 1
         assert isinstance(dependencies[0], Service)
         assert dependencies[0].service_name == "checkout-api"
@@ -114,6 +110,66 @@ def test_schema2_events_are_projected_and_traversable(e2e_environment: DemoEnvir
 
 
 @pytest.mark.e2e
+def test_collector_servicegraph_metrics_reach_typed_gremlin(e2e_environment: DemoEnvironment) -> None:
+    now = time.time_ns()
+    resources: list[ResourceSpans] = []
+    for index in range(4):
+        trace_id = (index + 101).to_bytes(16, "big")
+        client_id = (index + 201).to_bytes(8, "big")
+        for name, kind, span_id, parent in (
+            ("migration-client", Span.SPAN_KIND_CLIENT, client_id, b""),
+            ("migration-server", Span.SPAN_KIND_SERVER, (index + 301).to_bytes(8, "big"), client_id),
+        ):
+            resources.append(
+                ResourceSpans(
+                    resource=Resource(attributes=(_attribute("service.name", name),)),
+                    scope_spans=(
+                        ScopeSpans(
+                            scope=InstrumentationScope(name="java-migration-servicegraph-e2e"),
+                            spans=(
+                                Span(
+                                    trace_id=trace_id,
+                                    span_id=span_id,
+                                    parent_span_id=parent,
+                                    name="paired-request",
+                                    kind=kind,
+                                    start_time_unix_nano=now - 2_000_000,
+                                    end_time_unix_nano=now,
+                                    status=Status(
+                                        code=Status.STATUS_CODE_ERROR if index == 3 else Status.STATUS_CODE_OK
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+            )
+    e2e_environment.send_otlp_traces(ExportTraceServiceRequest(resource_spans=resources).SerializeToString())
+
+    def dependency_ready() -> bool:
+        with e2e_environment.semantic_client() as client:
+            edges = client.query(lambda g: g.E().has_label("calls"))
+            return any(
+                isinstance(edge, ServiceCallsServiceEdge)
+                and edge.source_id == "service:migration-client"
+                and edge.target_id == "service:migration-server"
+                for edge in edges
+            )
+
+    assert wait_for("Collector-to-typed-Gremlin relationship evidence", 120, dependency_ready)
+    with e2e_environment.semantic_client() as client:
+        targets = client.query(lambda g: g.V().has("service_name", "migration-client").out("calls"))
+        assert len(targets) == 1 and isinstance(targets[0], Service)
+        assert targets[0].service_name == "migration-server"
+    assert wait_for(
+        "paired-service lifecycle expiry",
+        120,
+        lambda: _service_count(e2e_environment, "migration-client") == 0
+        and _service_count(e2e_environment, "migration-server") == 0,
+    )
+
+
+@pytest.mark.e2e
 def test_spanmetrics_root_discovery_normalizes_etl_nodes_then_expires(
     e2e_environment: DemoEnvironment,
 ) -> None:
@@ -140,6 +196,18 @@ def test_spanmetrics_root_discovery_normalizes_etl_nodes_then_expires(
                 for index in range(8)
             ),
             _root_resource("etl-worker", token="load", part_run_id="load"),
+            _root_resource(
+                "etl-worker",
+                token="client-root",
+                part_run_id="client-root",
+                kind=Span.SPAN_KIND_CLIENT,
+            ),
+            _root_resource(
+                "etl-worker",
+                token="server-root",
+                part_run_id="server-root",
+                kind=Span.SPAN_KIND_SERVER,
+            ),
         )
     )
     e2e_environment.send_otlp_traces(roots.SerializeToString())
@@ -225,20 +293,10 @@ def test_incremental_checkpoints_restore_granular_lifecycle_state(
         lambda: e2e_environment.completed_checkpoints() > after_recovery,
     )
 
-    e2e_environment.produce_metrics((_discovery_metric(service_name, time.time_ns()),))
+    # Do not send any input after recovery: restored processing timers must
+    # publish deletion even when the metrics source stays idle.
     assert wait_for(
-        "post-recovery refresh consumption",
-        30,
-        lambda: e2e_environment.committed_offset("graph-element-engine") >= 3,
-    )
-    after_refresh = e2e_environment.completed_checkpoints()
-    assert wait_for(
-        "post-recovery refresh checkpoint",
-        45,
-        lambda: e2e_environment.completed_checkpoints() > after_refresh,
-    )
-    assert wait_for(
-        "high-cardinality contributor expiry",
+        "idle post-recovery contributor expiry",
         120,
         lambda: _service_count(e2e_environment, service_name) == 0,
     )
@@ -248,6 +306,71 @@ def test_incremental_checkpoints_restore_granular_lifecycle_state(
         45,
         lambda: e2e_environment.completed_checkpoints() > after_expiry,
     )
+
+
+@pytest.mark.e2e
+def test_supported_malformed_metrics_are_rejected_without_stopping_job(e2e_environment: DemoEnvironment) -> None:
+    before = _rejection_count(e2e_environment)
+    e2e_environment.produce_metrics(
+        (
+            {
+                "resourceMetrics": [
+                    {
+                        "scopeMetrics": [
+                            {
+                                "metrics": [
+                                    {
+                                        "name": "traces_service_graph_request_total",
+                                        "sum": {
+                                            "aggregationTemporality": "AGGREGATION_TEMPORALITY_DELTA",
+                                            "dataPoints": [{"asInt": "-1", "timeUnixNano": str(time.time_ns())}],
+                                        },
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+        )
+    )
+    assert wait_for("observable malformed metric rejection", 30, lambda: _rejection_count(e2e_environment) > before)
+    assert _flink_job_running(e2e_environment)
+
+
+@pytest.mark.e2e
+def test_native_flink_controlled_workload_matches_expected_graph(e2e_environment: DemoEnvironment) -> None:
+    report = measure(e2e_environment)
+    assert report["expected_matches"]
+    assert report["output_events_measured"] == report["expected_events_measured"]
+    path = e2e_environment.work_dir / "java-benchmark.json"
+    path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"Native Flink measured benchmark: {path}")
+
+
+def _rejection_count(environment: DemoEnvironment) -> int:
+    jobs = environment.flink_job_overview()["jobs"]
+    assert isinstance(jobs, list) and len(jobs) == 1
+    job = jobs[0]
+    assert isinstance(job, dict)
+    job_id = job["jid"]
+    assert isinstance(job_id, str)
+    prefix = (
+        f"/api/v1/namespaces/{environment.namespace}/services/"
+        f"http:servicegraph-diff-rest:8081/proxy/jobs/{job_id}"
+    )
+    details = json.loads(environment.kubectl("get", "--raw", prefix).stdout)
+    total = 0
+    for vertex in details["vertices"]:
+        endpoint = f"{prefix}/vertices/{vertex['id']}/metrics"
+        metrics = json.loads(environment.kubectl("get", "--raw", endpoint).stdout)
+        for metric in metrics:
+            if metric["id"].endswith("rejected_inputs"):
+                values = json.loads(
+                    environment.kubectl("get", "--raw", f"{endpoint}?get={quote(metric['id'], safe='')}").stdout
+                )
+                total += sum(int(value["value"]) for value in values)
+    return total
 
 
 def _service(element_id: str, name: str, version: str) -> dict[str, object]:
@@ -266,7 +389,7 @@ def _upsert(
     event_id: str,
 ) -> dict[str, object]:
     return {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "event_id": event_id,
         "event_type": "graph_element_state_changed",
         "operation": "upsert",
@@ -280,7 +403,7 @@ def _upsert(
 
 def _delete(element_id: str, observed_at_unix_nano: int, event_id: str) -> dict[str, object]:
     return {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "event_id": event_id,
         "event_type": "graph_element_state_changed",
         "operation": "delete",
@@ -298,6 +421,7 @@ def _root_resource(
     token: str,
     parent_span_id: bytes = b"",
     part_run_id: str = "extract",
+    kind: int = Span.SPAN_KIND_INTERNAL,
 ) -> ResourceSpans:
     span_attributes = [
         _attribute("etl.run.id", "run-42"),
@@ -311,7 +435,7 @@ def _root_resource(
         span_id=token.encode().ljust(8, b"0")[:8],
         parent_span_id=parent_span_id,
         name="customers",
-        kind=Span.SPAN_KIND_INTERNAL,
+        kind=kind,
         start_time_unix_nano=now - 1_000_000,
         end_time_unix_nano=now,
         attributes=span_attributes,
@@ -427,16 +551,23 @@ def _etl_counts(environment: DemoEnvironment) -> tuple[int, int, int]:
 
 
 def _discovery_counts(environment: DemoEnvironment) -> list[int]:
+    from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
+
     counts: list[int] = []
-    for value in environment.topic_values("otel.servicegraph.metrics"):
-        document = json.loads(value)
-        for resource_metrics in document.get("resourceMetrics", []):
-            for scope_metrics in resource_metrics.get("scopeMetrics", []):
-                for metric in scope_metrics.get("metrics", []):
-                    if metric.get("name") != "semconv.graph.discovery.calls":
+    for value in environment.topic_bytes("otel.servicegraph.metrics"):
+        document = ExportMetricsServiceRequest.FromString(value)
+        for resource_metrics in document.resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    if metric.name != "semconv.graph.discovery.calls":
                         continue
-                    for point in metric.get("sum", {}).get("dataPoints", []):
-                        count = point.get("asInt")
-                        if count is not None:
-                            counts.append(int(count))
+                    for point in metric.sum.data_points:
+                        if not any(
+                            attribute.key == "etl.pipeline.id"
+                            and attribute.value.string_value == "customers"
+                            for attribute in point.attributes
+                        ):
+                            continue
+                        if point.HasField("as_int"):
+                            counts.append(point.as_int)
     return counts

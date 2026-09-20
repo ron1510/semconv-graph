@@ -179,7 +179,6 @@ def _serialize_element(element: SemanticEntity | SemanticEdge) -> dict[str, obje
         "source_id": element.source_id,
         "target_id": element.target_id,
         "attributes": dict(element.attributes),
-        "metrics": dict(element.metrics),
     }
 
 
