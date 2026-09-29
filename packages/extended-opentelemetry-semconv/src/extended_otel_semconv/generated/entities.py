@@ -42,6 +42,7 @@ from extended_otel_semconv.generated._models import ServiceInstanceFields as _Se
 from extended_otel_semconv.generated._models import ServiceNamespaceFields as _ServiceNamespaceFields
 from extended_otel_semconv.generated._models import TelemetryDistroFields as _TelemetryDistroFields
 from extended_otel_semconv.generated._models import TelemetrySdkFields as _TelemetrySdkFields
+from extended_otel_semconv.generated._models import TransactionFields as _TransactionFields
 from extended_otel_semconv.generated._models import VcsRefFields as _VcsRefFields
 from extended_otel_semconv.generated._models import VcsRepositoryFields as _VcsRepositoryFields
 
@@ -273,6 +274,12 @@ class TelemetrySdk(_TelemetrySdkFields):
     template_fields: ClassVar[tuple[str, ...]] = ()
 
 
+class Transaction(_TransactionFields):
+    entity_type: ClassVar[str] = "transaction"
+    identity_fields: ClassVar[tuple[str, ...]] = ('service.name', 'span.name', 'span.kind')
+    template_fields: ClassVar[tuple[str, ...]] = ()
+
+
 class VcsRef(_VcsRefFields):
     entity_type: ClassVar[str] = "vcs.ref"
     identity_fields: ClassVar[tuple[str, ...]] = ('vcs.ref.head.revision',)
@@ -324,6 +331,7 @@ ENTITY_MODELS = MappingProxyType({
     "service.namespace": ServiceNamespace,
     "telemetry.distro": TelemetryDistro,
     "telemetry.sdk": TelemetrySdk,
+    "transaction": Transaction,
     "vcs.ref": VcsRef,
     "vcs.repository": VcsRepository,
 })

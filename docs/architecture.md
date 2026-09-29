@@ -18,7 +18,7 @@ The Collector owns span pairing and root aggregation. It exports only positive d
 
 ## Semantic extraction
 
-The generated registry defines entities, identifying attributes, relationship topology, Collector dimensions, Java registry data, Python types, and the Arango schema. `MetricParser` preserves the existing dimensions, contributor IDs, entity IDs, relationship IDs, attributes, and timestamps while discarding evidence magnitude.
+The generated registry defines entities, identifying attributes, evidence-source eligibility, observation and interaction relationship topology, interaction connection selectors, Collector dimensions, Java registry data, Python types, and the Arango schema. Servicegraph evidence expands two `service_graph` observations plus their selected interaction; root discovery expands one `span_metrics` observation. `MetricParser` contains no concrete entity or relationship rules.
 
 ## Lifecycle processing
 
@@ -28,4 +28,4 @@ An unchanged refresh updates state and deadlines without another public event. A
 
 ## Projection and access
 
-Schema-3 graph events contain complete node or edge state and no edge metrics. The indexer validates the contract, replaces documents by deterministic key, deletes idempotently, and commits Kafka offsets only after successful writes. Generated Arango schema version 2 contains attribute aliases and topology only. The Gremlin service exposes read-only traversals, while the Python client reconstructs generated entity and edge types.
+Schema-3 graph events contain complete node or edge state and no edge metrics. The indexer validates the contract, replaces documents by deterministic key, deletes idempotently, and commits Kafka offsets only after successful writes. Generated Arango schema version 3 contains attribute aliases and topology only. The Gremlin service exposes read-only traversals, while the Python client reconstructs generated entity and edge types.

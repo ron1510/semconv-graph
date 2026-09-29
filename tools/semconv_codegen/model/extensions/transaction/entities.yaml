@@ -1,0 +1,16 @@
+groups:
+  - id: entity.transaction
+    type: entity
+    stability: development
+    name: transaction
+    brief: A logical root operation executed by a service.
+    attributes:
+      - ref: service.name
+        requirement_level: required
+        role: identifying
+      - ref: span.name
+        requirement_level: required
+        role: identifying
+      - ref: span.kind
+        requirement_level: required
+        role: identifying

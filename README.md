@@ -33,15 +33,15 @@ Existing OTLP traces
   not need to emit a new signal.
 - Registry-generated Pydantic entity and relationship models.
 - Organization-specific entity extensions and Collector dimensions.
-- Optional ETL Pipeline, Run, and Part Run discovery from completed non-client/non-server root spans through spanmetrics
-  carrying the generated model fields.
+- Optional ETL and transaction discovery from completed non-client/non-server
+  root spans through spanmetrics carrying the generated model fields.
 - Contributor-aware attribute merging and expiry in Flink.
 - Equal lifecycle treatment for semantic nodes and edges.
 - Deterministic, compactable Kafka upsert/delete events.
 - Idempotent projection into ArangoDB and typed read-only Gremlin access.
 - Helm deployments built from standard Kubernetes resources without CRDs.
 
-Root-span discovery is available as an opt-in input. It filters for completed roots whose kind is neither client nor server, aggregates them with the Collector spanmetrics connector, and sends node-only evidence rather than raw spans. Both evidence lanes converge on one Java lifecycle engine. Numeric request counts and entity-event logs are intentionally outside the focused graph pipeline.
+Root-span discovery is available as an opt-in input. It filters for completed roots whose kind is neither client nor server, aggregates them with the Collector spanmetrics connector, and sends observation evidence rather than raw spans. Registry rules expand each observation into complete entities and relationships, including `service -[executes]→ transaction`. Both evidence lanes converge on one Java lifecycle engine. Numeric request counts and entity-event logs are intentionally outside the focused graph pipeline.
 
 ## Why the inputs matter
 

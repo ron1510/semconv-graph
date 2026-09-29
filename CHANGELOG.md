@@ -22,6 +22,10 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A native Java 17 Flink 2.2 lifecycle job with Protobuf ingestion, framed CBOR
   state, deterministic contributor merging, and checkpoint recovery coverage.
 - Contract tests for Collector evidence routing and Java-only Flink deployment.
+- Registry-driven observation expansion and generated transaction entities for
+  eligible non-client/non-server root spans.
+- First-class `service_graph` and `span_metrics` evidence-source selection in
+  generated entity and relationship rules.
 - Apache-2.0 licensing and the Semconv Graph working product identity.
 
 ### Changed
@@ -31,7 +35,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Collector interaction and root-discovery evidence now uses gzip-compressed
   OTLP Protobuf. Root discovery aggregates eligible non-client/non-server root
   spans with spanmetrics before Kafka.
-- Graph events use schema 3 and generated ArangoDB graph schemas use version 2.
+- Graph events use schema 3 and generated ArangoDB graph schemas use version 3.
   Edges retain topology and attributes without request counters.
 - Repeated identical evidence refreshes contributor deadlines without emitting
   another public upsert; topology or attribute changes still emit complete state.
@@ -41,6 +45,10 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   retaining service wheels as GitHub release artifacts.
 
 ### Fixed
+
+- Java Flink now derives every observation and interaction edge by expanding
+  generated relationship definitions and connection selectors. The parser has
+  no concrete entity or relationship cases, and all same-ID edges are suppressed.
 
 ### Removed
 

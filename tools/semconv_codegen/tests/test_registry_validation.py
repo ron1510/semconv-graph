@@ -146,3 +146,139 @@ groups:
 
     with pytest.raises(AssertionError, match=message):
         validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+
+@pytest.mark.parametrize(
+    ("contract", "message"),
+    [
+        ("", "must define evidence_scope exactly when a graph evidence source is declared"),
+        (
+            "    evidence_scope: observation\n    connection_type: unset\n",
+            "must define connection_type exactly when evidence_scope is interaction",
+        ),
+        (
+            "    evidence_scope: interaction\n",
+            "must define connection_type exactly when evidence_scope is interaction",
+        ),
+        (
+            '    evidence_scope: interaction\n    connection_type: ""\n',
+            "connection_type must be nonempty",
+        ),
+    ],
+)
+def test_servicegraph_relationship_contract_is_scope_driven(
+    tmp_path: Path, contract: str, message: str
+) -> None:
+    extension_model = tmp_path / "extensions"
+    extension_model.mkdir()
+    (extension_model / "relationships.yaml").write_text(
+        f"""
+groups:
+  - id: relationship.invalid
+    type: relationship
+    name: calls
+    source_entity: service
+    target_entity: service
+    source_signals: [service_graph]
+{contract}""".lstrip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssertionError, match=message):
+        validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+
+def test_connection_type_can_select_distinct_endpoint_definitions(tmp_path: Path) -> None:
+    extension_model = tmp_path / "extensions"
+    extension_model.mkdir()
+    (extension_model / "relationships.yaml").write_text(
+        """
+groups:
+  - id: relationship.service_calls_service
+    type: relationship
+    name: calls
+    source_entity: service
+    target_entity: service
+    source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: unset
+  - id: relationship.service_calls_instance
+    type: relationship
+    name: calls
+    source_entity: service
+    target_entity: service.instance
+    source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: unset
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+
+def test_spanmetrics_allows_observations_and_rejects_interactions(tmp_path: Path) -> None:
+    extension_model = tmp_path / "extensions"
+    extension_model.mkdir()
+    relationship_file = extension_model / "relationships.yaml"
+    relationship_file.write_text(
+        """
+groups:
+  - id: relationship.service_contains_instance
+    type: relationship
+    name: contains
+    source_entity: service
+    target_entity: service.instance
+    source_signals: [span_metrics]
+    evidence_scope: observation
+""".lstrip(),
+        encoding="utf-8",
+    )
+    validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+    relationship_file.write_text(
+        """
+groups:
+  - id: relationship.service_calls_service
+    type: relationship
+    name: calls
+    source_entity: service
+    target_entity: service
+    source_signals: [span_metrics]
+    evidence_scope: interaction
+    connection_type: unset
+""".lstrip(),
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError, match="interaction evidence must come only from service_graph"):
+        validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+
+def test_duplicate_relationship_triple_is_rejected(tmp_path: Path) -> None:
+    extension_model = tmp_path / "extensions"
+    extension_model.mkdir()
+    (extension_model / "relationships.yaml").write_text(
+        """
+groups:
+  - id: relationship.calls_one
+    type: relationship
+    name: calls
+    source_entity: service
+    target_entity: service
+    source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: unset
+  - id: relationship.calls_two
+    type: relationship
+    name: calls
+    source_entity: service
+    target_entity: service
+    source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: database
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssertionError, match="duplicate extension relationship triple"):
+        validate_extension_model(UPSTREAM_MODEL, extension_model)

@@ -155,7 +155,7 @@ def test_poll_coalesces_events_routes_deletes_and_commits_after_writes() -> None
     assert writer.replacements[0][1][0]["event_id"] == "new"
     assert ("k8s_pod", [element_key("k8s.pod:pod-1")]) in writer.deletions
     edge_deletes = [item for item in writer.deletions if item[0] != "k8s_pod"]
-    assert len(edge_deletes) == 9
+    assert len(edge_deletes) == 10
     assert all(keys == [element_key("edge:dead")] for _, keys in edge_deletes)
     offsets = consumer.commit.call_args.kwargs["offsets"]
     assert offsets[partition].offset == 6

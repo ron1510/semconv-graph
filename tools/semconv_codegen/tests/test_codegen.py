@@ -317,7 +317,8 @@ def test_metadata_renderers_filter_relationships_and_dimensions() -> None:
                     "name": "exposes",
                     "source_entity": "service",
                     "target_entity": "app",
-                    "source_signals": ["service_graph"],
+                    "source_signals": ["service_graph", "span_metrics"],
+                    "evidence_scope": "observation",
                 },
                 {
                     "id": "relationship.trace_only",
@@ -361,7 +362,7 @@ def test_arangodb_schema_uses_registry_topology_aliases_and_identity_fields(tmp_
         "http.route": "http_route",
         "service.name": "service_name",
     }
-    assert schema["_meta"]["schema_version"] == "2"
+    assert schema["_meta"]["schema_version"] == "3"
     assert set(schema["property_aliases"]) == {"attributes"}
     assert "metrics" not in schema["reserved_properties"]
     assert schema["vertex_collections"] == [
@@ -392,23 +393,25 @@ def test_real_arangodb_schema_contains_every_graph_type_and_dimension_once() -> 
     upstream = codegen.load_model_registry(paths.upstream_model)
     extension = codegen.load_model_registry(paths.extension_model)
     registry = codegen._merged_registry(upstream, extension)
-    dimensions = codegen.service_graph_dimensions(registry)
+    servicegraph_dimensions = codegen.service_graph_dimensions(registry)
+    dimensions = codegen.graph_dimensions(registry)
     document = json.loads(_render_arangodb_schema(registry, paths.upstream_lock))
     attributes = document["property_aliases"]["attributes"]
 
-    assert len(dimensions) == 90
+    assert len(servicegraph_dimensions) == 84
+    assert len(dimensions) == 92
     assert tuple(attributes) == tuple(sorted(dimensions))
     assert len(attributes) == len(set(attributes))
     assert not any(name.endswith((".label", ".annotation", ".selector")) for name in attributes)
-    assert len(document["vertex_collections"]) == 32
-    assert len(document["edge_collections"]) == 9
-    assert {item["semantic_type"] for item in document["vertex_collections"]} == codegen.service_graph_entity_names(
+    assert len(document["vertex_collections"]) == 33
+    assert len(document["edge_collections"]) == 10
+    assert {item["semantic_type"] for item in document["vertex_collections"]} == codegen.graph_entity_names(
         registry
     )
     assert {item["semantic_type"] for item in document["edge_collections"]} == {
         relationship.name
         for relationship in registry.relationships_by_id.values()
-        if "service_graph" in relationship.source_signals
+        if codegen.GRAPH_EVIDENCE_SIGNALS.intersection(relationship.source_signals)
     }
 
 
@@ -534,7 +537,7 @@ def test_yaml_to_importable_models_and_all_generated_artifacts(tmp_path: Path) -
         "service.name",
     ]
     schema = json.loads(paths.arangodb_schema.read_text(encoding="utf-8"))
-    assert schema["_meta"]["schema_version"] == "2"
+    assert schema["_meta"]["schema_version"] == "3"
 
     compile_result = subprocess.run(
         [sys.executable, "-m", "compileall", "-q", str(source_root)],
@@ -644,7 +647,8 @@ groups:
     name: exposes
     source_entity: service
     target_entity: app.endpoint
-    source_signals: [service_graph]
+    source_signals: [service_graph, span_metrics]
+    evidence_scope: observation
 """.lstrip(),
         encoding="utf-8",
     )

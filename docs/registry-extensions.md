@@ -90,7 +90,8 @@ groups:
     name: implements
     source_entity: service
     target_entity: business.capability
-    source_signals: [service_graph]
+    source_signals: [service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service implements an observed business capability.
 ```
@@ -99,14 +100,17 @@ Rules:
 
 - relationship IDs must be unique;
 - source and target entities must exist;
-- source signals may be `trace` or `service_graph`;
+- source signals may be `trace`, `service_graph`, or `span_metrics`;
+- relationships consumed from either metric lane declare `evidence_scope`;
+- `span_metrics` supports observation relationships only;
+- interaction relationships come from `service_graph` and declare `connection_type`;
 - both endpoint entities must be observed together;
 - same-entity structural expansion is skipped;
 - service-to-service dependencies require an explicitly allowed relationship.
 
-The supplied deployed pipeline materializes `service_graph` relationships.
-`trace` remains part of the registry model for library-level graph operations
-and future raw-trace pipelines.
+The deployed runtime independently selects `service_graph` or `span_metrics`
+relationships according to the metric lane. `trace` remains part of the
+registry model for library-level graph operations and future raw-trace pipelines.
 
 ## Generated artifacts
 
@@ -129,7 +133,7 @@ deploy/helm/servicegraph-collector/files/dimensions.yaml
 ```
 
 It selects attributes from every entity participating in a
-`service_graph` relationship. It excludes non-scalar types and template
+corresponding evidence-source relationship. It excludes non-scalar types and template
 attributes ending in `.label`, `.annotation`, or `.selector`.
 
 ## Cardinality review
@@ -166,7 +170,7 @@ signals, and stale generated files.
 4. Run tests and type checks.
 5. Build a new immutable Flink runtime image.
 6. Upgrade the Collector chart from the same commit.
-7. Deploy Flink using the normal state-compatible upgrade process.
+7. Deploy Flink; rebuild disposable alpha state if the generated contract is incompatible.
 8. Emit matching telemetry.
 9. Verify the new entity and edge through the output topic or Gremlin.
 

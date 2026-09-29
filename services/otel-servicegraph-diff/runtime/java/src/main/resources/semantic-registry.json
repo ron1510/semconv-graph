@@ -1153,6 +1153,39 @@
         {
           "enum_values": [],
           "kind": "string",
+          "name": "service.name",
+          "required": true
+        },
+        {
+          "enum_values": [],
+          "kind": "string",
+          "name": "span.name",
+          "required": true
+        },
+        {
+          "enum_values": [
+            "SPAN_KIND_UNSPECIFIED",
+            "SPAN_KIND_INTERNAL",
+            "SPAN_KIND_PRODUCER",
+            "SPAN_KIND_CONSUMER"
+          ],
+          "kind": "enum",
+          "name": "span.kind",
+          "required": true
+        }
+      ],
+      "identity_fields": [
+        "service.name",
+        "span.name",
+        "span.kind"
+      ],
+      "type": "transaction"
+    },
+    {
+      "fields": [
+        {
+          "enum_values": [],
+          "kind": "string",
           "name": "vcs.ref.head.name",
           "required": false
         },
@@ -1200,176 +1233,391 @@
   ],
   "relationships": [
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "container.runtime",
       "target": "k8s.container",
       "type": "runs"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "span_metrics"
+      ],
       "source": "etl.pipeline",
       "target": "etl.run",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "span_metrics"
+      ],
       "source": "etl.run",
       "target": "etl.part.run",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.cluster",
       "target": "k8s.namespace",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.cluster",
       "target": "k8s.node",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.cluster",
       "target": "k8s.persistentvolume",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.container",
       "target": "process",
       "type": "runs"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.cronjob",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.daemonset",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.deployment",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.hpa",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.job",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.persistentvolumeclaim",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.pod",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.replicaset",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.replicationcontroller",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.resourcequota",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.service",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.namespace",
       "target": "k8s.statefulset",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.node",
       "target": "k8s.pod",
       "type": "runs"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.pod",
       "target": "k8s.container",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.pod",
       "target": "service",
       "type": "runs"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "k8s.pod",
       "target": "service.instance",
       "type": "runs"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "process",
       "target": "process.executable",
       "type": "uses"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "process",
       "target": "process.runtime",
       "type": "uses"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "service",
       "target": "vcs.repository",
       "type": "built_from"
     },
     {
+      "connection_type": "unset",
+      "evidence_scope": "interaction",
+      "evidence_sources": [
+        "service_graph"
+      ],
       "source": "service",
       "target": "service",
       "type": "calls"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "service",
       "target": "service.instance",
       "type": "contains"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "span_metrics"
+      ],
+      "source": "service",
+      "target": "transaction",
+      "type": "executes"
+    },
+    {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "service",
       "target": "app.endpoint",
       "type": "exposes"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "service",
       "target": "telemetry.distro",
       "type": "instrumented_by"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "service",
       "target": "telemetry.sdk",
       "type": "instrumented_by"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "service.namespace",
       "target": "service",
       "type": "contains"
     },
     {
+      "connection_type": "messaging_system",
+      "evidence_scope": "interaction",
+      "evidence_sources": [
+        "service_graph"
+      ],
       "source": "service",
       "target": "service",
       "type": "publishes_to"
     },
     {
+      "connection_type": "database",
+      "evidence_scope": "interaction",
+      "evidence_sources": [
+        "service_graph"
+      ],
       "source": "service",
       "target": "service",
       "type": "queries"
     },
     {
+      "connection_type": null,
+      "evidence_scope": "observation",
+      "evidence_sources": [
+        "service_graph",
+        "span_metrics"
+      ],
       "source": "vcs.repository",
       "target": "vcs.ref",
       "type": "contains"

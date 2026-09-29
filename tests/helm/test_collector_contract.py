@@ -24,6 +24,10 @@ def _render(chart: Path, *settings: str) -> str:
 
 
 def test_collector_renders_only_protobuf_evidence_exporters() -> None:
+    servicegraph_only = _render(COLLECTOR)
+    assert '"span.name"' not in servicegraph_only
+    assert '"span.kind"' not in servicegraph_only
+
     manifests = _render(COLLECTOR, "rootSpanDiscovery.enabled=true")
     assert manifests.count("encoding: otlp_proto") == 2
     assert 'metric.name != "traces_service_graph_request_total"' in manifests
@@ -32,6 +36,9 @@ def test_collector_renders_only_protobuf_evidence_exporters() -> None:
     assert "span.kind == SPAN_KIND_CLIENT" in manifests
     assert "span.kind == SPAN_KIND_SERVER" in manifests
     assert "span_metrics/root_span_discovery" in manifests
+    assert '- "span.name"' in manifests
+    assert '- "span.kind"' in manifests
+    assert "exclude_dimensions:\n          - status.code\n          - collector.instance.id" in manifests
     for removed in (
         "otlp_json",
         "request_failed_total",

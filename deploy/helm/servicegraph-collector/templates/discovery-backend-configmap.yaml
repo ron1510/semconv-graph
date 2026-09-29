@@ -40,7 +40,6 @@ data:
           - name: {{ $attribute | quote }}
           {{- end }}
         exclude_dimensions:
-          - span.name
           - status.code
           - collector.instance.id
         histogram:

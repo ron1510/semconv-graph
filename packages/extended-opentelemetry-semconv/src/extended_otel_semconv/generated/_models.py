@@ -941,6 +941,27 @@ class TelemetrySdkFields(SemanticEntity):
     ] = None
 
 
+class TransactionFields(SemanticEntity):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    service_name: Annotated[
+        StrictStr, Field(alias='service.name', description='Logical name of the service.', min_length=1)
+    ]
+    span_kind: Annotated[
+        Literal['SPAN_KIND_UNSPECIFIED', 'SPAN_KIND_INTERNAL', 'SPAN_KIND_PRODUCER', 'SPAN_KIND_CONSUMER'],
+        Field(alias='span.kind', description='The intrinsic kind of the root span representing the transaction.'),
+    ]
+    span_name: Annotated[
+        StrictStr,
+        Field(
+            alias='span.name',
+            description='The intrinsic name of the root span representing the transaction.',
+            min_length=1,
+        ),
+    ]
+
+
 class VcsRefFields(SemanticEntity):
     model_config = ConfigDict(
         extra='forbid',

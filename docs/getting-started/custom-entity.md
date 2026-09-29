@@ -56,15 +56,17 @@ groups:
     name: implements
     source_entity: service
     target_entity: business.capability
-    source_signals: [service_graph]
+    source_signals: [service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service implements an observed business capability.
 ```
 
-The deployed runtime currently materializes relationships sourced from
-`service_graph`. The registry also accepts `trace` for library-level graph
-normalization, but the supplied Kubernetes pipeline does not publish a separate
-raw-trace graph stream.
+The deployed runtime selects relationships independently for `service_graph`
+and `span_metrics` evidence. Observation relationships may use either or both;
+interaction relationships use `service_graph` and require a `connection_type`.
+The registry also accepts `trace` for library-level graph normalization, but the
+supplied Kubernetes pipeline does not publish a separate raw-trace graph stream.
 
 ## 4. Generate runtime artifacts
 

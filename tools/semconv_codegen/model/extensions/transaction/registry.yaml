@@ -1,0 +1,23 @@
+groups:
+  - id: registry.transaction
+    type: attribute_group
+    display_name: Transaction Attributes
+    brief: Intrinsic root-span fields used to identify logical transactions.
+    attributes:
+      - id: span.name
+        type: string
+        stability: development
+        brief: The intrinsic name of the root span representing the transaction.
+      - id: span.kind
+        type:
+          members:
+            - id: unspecified
+              value: SPAN_KIND_UNSPECIFIED
+            - id: internal
+              value: SPAN_KIND_INTERNAL
+            - id: producer
+              value: SPAN_KIND_PRODUCER
+            - id: consumer
+              value: SPAN_KIND_CONSUMER
+        stability: development
+        brief: The intrinsic kind of the root span representing the transaction.

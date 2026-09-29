@@ -17,7 +17,23 @@ public final class SemanticRegistry {
 
   private record Model(String type, List<String> identity, List<Field> fields) {}
 
-  public record Relationship(String type, String source, String target) {}
+  public enum RelationshipScope {
+    OBSERVATION,
+    INTERACTION
+  }
+
+  public enum EvidenceSource {
+    SERVICE_GRAPH,
+    SPAN_METRICS
+  }
+
+  public record Relationship(
+      String type,
+      String source,
+      String target,
+      Set<EvidenceSource> evidenceSources,
+      RelationshipScope scope,
+      String connectionType) {}
 
   private final Map<String, Model> models;
   private final List<Relationship> relationships;
@@ -50,12 +66,24 @@ public final class SemanticRegistry {
         String type = entity.get("type").asText();
         loaded.put(type, new Model(type, List.copyOf(identity), List.copyOf(fields)));
       }
-      for (JsonNode relation : document.get("relationships"))
+      for (JsonNode relation : document.get("relationships")) {
+        var evidenceSources = new java.util.HashSet<EvidenceSource>();
+        relation
+            .get("evidence_sources")
+            .forEach(
+                source ->
+                    evidenceSources.add(EvidenceSource.valueOf(source.asText().toUpperCase())));
         relations.add(
             new Relationship(
                 relation.get("type").asText(),
                 relation.get("source").asText(),
-                relation.get("target").asText()));
+                relation.get("target").asText(),
+                Set.copyOf(evidenceSources),
+                RelationshipScope.valueOf(relation.get("evidence_scope").asText().toUpperCase()),
+                relation.get("connection_type").isTextual()
+                    ? relation.get("connection_type").asText()
+                    : null));
+      }
     } catch (IOException error) {
       throw new IllegalStateException("cannot load semantic registry", error);
     }
@@ -65,10 +93,6 @@ public final class SemanticRegistry {
         relations.stream()
             .flatMap(item -> java.util.stream.Stream.of(item.source(), item.target()))
             .collect(Collectors.toUnmodifiableSet());
-  }
-
-  public List<Relationship> relationships() {
-    return relationships;
   }
 
   public Set<String> graphTypes() {
@@ -81,13 +105,61 @@ public final class SemanticRegistry {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  public boolean allows(String source, String target, String type) {
+  /** Expand exactly the registered relationships between two observed entity sets. */
+  public List<GraphModel.Element> edges(
+      List<GraphModel.Element> sources,
+      List<GraphModel.Element> targets,
+      EvidenceSource evidenceSource,
+      RelationshipScope scope) {
+    return edges(sources, targets, evidenceSource, scope, null);
+  }
+
+  /** Expand registered relationships for one connection type between two observed entity sets. */
+  public List<GraphModel.Element> edges(
+      List<GraphModel.Element> sources,
+      List<GraphModel.Element> targets,
+      EvidenceSource evidenceSource,
+      RelationshipScope scope,
+      String connectionType) {
+    var result = new ArrayList<GraphModel.Element>();
+    for (Relationship relationship : relationships) {
+      if (!relationship.evidenceSources().contains(evidenceSource)) continue;
+      if (relationship.scope() != scope) continue;
+      if (!java.util.Objects.equals(relationship.connectionType(), connectionType)) continue;
+      for (GraphModel.Element source : sources) {
+        if (!source.type().equals(relationship.source())) continue;
+        for (GraphModel.Element target : targets) {
+          if (!target.type().equals(relationship.target()) || source.id().equals(target.id()))
+            continue;
+          result.add(
+              GraphModel.Element.edge(
+                  edgeId(source.id(), relationship.type(), target.id()),
+                  relationship.type(),
+                  source.id(),
+                  target.id(),
+                  Map.of()));
+        }
+      }
+    }
+    return List.copyOf(result);
+  }
+
+  public boolean supportsConnectionType(EvidenceSource evidenceSource, String connectionType) {
     return relationships.stream()
         .anyMatch(
-            item ->
-                item.source().equals(source)
-                    && item.target().equals(target)
-                    && item.type().equals(type));
+            relationship ->
+                relationship.evidenceSources().contains(evidenceSource)
+                    && relationship.scope() == RelationshipScope.INTERACTION
+                    && java.util.Objects.equals(relationship.connectionType(), connectionType));
+  }
+
+  public boolean supportsEntity(EvidenceSource evidenceSource, String entityType) {
+    return relationships.stream()
+        .anyMatch(
+            relationship ->
+                relationship.evidenceSources().contains(evidenceSource)
+                    && (relationship.source().equals(entityType)
+                        || relationship.target().equals(entityType)));
   }
 
   public List<GraphModel.Element> extract(Map<String, Object> attributes) {
@@ -95,6 +167,22 @@ public final class SemanticRegistry {
     for (String type : models.keySet().stream().sorted().toList()) {
       var entity = extract(type, attributes);
       if (entity != null) result.add(entity);
+    }
+    return result;
+  }
+
+  /**
+   * Extract independently valid entities without allowing one malformed model to hide its peers.
+   */
+  public List<GraphModel.Element> extractValid(Map<String, Object> attributes) {
+    var result = new ArrayList<GraphModel.Element>();
+    for (String type : models.keySet().stream().sorted().toList()) {
+      try {
+        var entity = extract(type, attributes);
+        if (entity != null) result.add(entity);
+      } catch (IllegalArgumentException ignored) {
+        // An observation can contain complete entities even when another candidate is invalid.
+      }
     }
     return result;
   }

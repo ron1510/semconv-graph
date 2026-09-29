@@ -14,7 +14,12 @@ from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span, Status
 
 from benchmarks.flink import measure
-from extended_otel_semconv import Service, ServiceCallsServiceEdge
+from extended_otel_semconv import (
+    Service,
+    ServiceCallsServiceEdge,
+    ServiceExecutesTransactionEdge,
+    Transaction,
+)
 from extended_otel_semconv.edges import edge_id as semantic_edge_id
 from extended_otel_semconv.gremlin import UnsupportedSemanticTraversalError
 from tools.local_demo.environment import DemoEnvironment, wait_for
@@ -122,7 +127,16 @@ def test_collector_servicegraph_metrics_reach_typed_gremlin(e2e_environment: Dem
         ):
             resources.append(
                 ResourceSpans(
-                    resource=Resource(attributes=(_attribute("service.name", name),)),
+                    resource=Resource(
+                        attributes=(
+                            _attribute("service.name", name),
+                            *(
+                                (_attribute("service.namespace", "migration"),)
+                                if kind == Span.SPAN_KIND_SERVER
+                                else ()
+                            ),
+                        )
+                    ),
                     scope_spans=(
                         ScopeSpans(
                             scope=InstrumentationScope(name="java-migration-servicegraph-e2e"),
@@ -138,12 +152,47 @@ def test_collector_servicegraph_metrics_reach_typed_gremlin(e2e_environment: Dem
                                     status=Status(
                                         code=Status.STATUS_CODE_ERROR if index == 3 else Status.STATUS_CODE_OK
                                     ),
+                                    attributes=(
+                                        (
+                                            _attribute("http.request.method", "GET"),
+                                            _attribute("http.route", "/migration"),
+                                        )
+                                        if kind == Span.SPAN_KIND_SERVER
+                                        else ()
+                                    ),
                                 ),
                             ),
                         ),
                     ),
                 )
             )
+    self_trace_id = (999).to_bytes(16, "big")
+    self_client_id = (1000).to_bytes(8, "big")
+    for kind, span_id, parent in (
+        (Span.SPAN_KIND_CLIENT, self_client_id, b""),
+        (Span.SPAN_KIND_SERVER, (1001).to_bytes(8, "big"), self_client_id),
+    ):
+        resources.append(
+            ResourceSpans(
+                resource=Resource(attributes=(_attribute("service.name", "self-service"),)),
+                scope_spans=(
+                    ScopeSpans(
+                        scope=InstrumentationScope(name="self-loop-e2e"),
+                        spans=(
+                            Span(
+                                trace_id=self_trace_id,
+                                span_id=span_id,
+                                parent_span_id=parent,
+                                name="self-request",
+                                kind=kind,
+                                start_time_unix_nano=now - 2_000_000,
+                                end_time_unix_nano=now,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
     e2e_environment.send_otlp_traces(ExportTraceServiceRequest(resource_spans=resources).SerializeToString())
 
     def dependency_ready() -> bool:
@@ -157,6 +206,10 @@ def test_collector_servicegraph_metrics_reach_typed_gremlin(e2e_environment: Dem
             )
 
     assert wait_for("Collector-to-typed-Gremlin relationship evidence", 120, dependency_ready)
+    assert wait_for("server observation endpoint", 60, lambda: _vertex_count(e2e_environment, "app_endpoint") == 1)
+    assert wait_for("server observation exposes edge", 60, lambda: _edge_count(e2e_environment, "exposes") == 1)
+    assert wait_for("same-service observation", 60, lambda: _service_count(e2e_environment, "self-service") == 1)
+    assert _edge_count(e2e_environment, "calls") == 1
     with e2e_environment.semantic_client() as client:
         targets = client.query(lambda g: g.V().has("service_name", "migration-client").out("calls"))
         assert len(targets) == 1 and isinstance(targets[0], Service)
@@ -165,7 +218,8 @@ def test_collector_servicegraph_metrics_reach_typed_gremlin(e2e_environment: Dem
         "paired-service lifecycle expiry",
         120,
         lambda: _service_count(e2e_environment, "migration-client") == 0
-        and _service_count(e2e_environment, "migration-server") == 0,
+        and _service_count(e2e_environment, "migration-server") == 0
+        and _service_count(e2e_environment, "self-service") == 0,
     )
 
 
@@ -220,18 +274,34 @@ def test_spanmetrics_root_discovery_normalizes_etl_nodes_then_expires(
     assert wait_for(
         "ETL roots projected through Flink",
         90,
-        lambda: _etl_counts(e2e_environment) == (1, 1, 2),
+        lambda: _etl_counts(e2e_environment) == (1, 1, 2)
+        and _vertex_count(e2e_environment, "transaction") == 1
+        and _edge_count(e2e_environment, "executes") == 1,
     )
     with e2e_environment.graph() as graph:
         assert (
             graph.V()
             .has_label("etl_pipeline")
             .has("etl_pipeline_id", "customers")
-            .both_e()
+            .out_e("contains")
             .count()
             .next()
-            == 0
+            == 1
         )
+        assert (
+            graph.V()
+            .has_label("etl_run")
+            .has("etl_run_id", "run-42")
+            .out_e("contains")
+            .count()
+            .next()
+            == 2
+        )
+    with e2e_environment.semantic_client() as client:
+        transactions = client.query(lambda g: g.V().has_label("transaction"))
+        executes = client.query(lambda g: g.E().has_label("executes"))
+        assert len(transactions) == 1 and isinstance(transactions[0], Transaction)
+        assert len(executes) == 1 and isinstance(executes[0], ServiceExecutesTransactionEdge)
 
     submitter = e2e_environment.kubectl(
         "get",
@@ -248,7 +318,9 @@ def test_spanmetrics_root_discovery_normalizes_etl_nodes_then_expires(
     assert wait_for(
         "root-span contributor expiry",
         90,
-        lambda: _etl_counts(e2e_environment) == (0, 0, 0),
+        lambda: _etl_counts(e2e_environment) == (0, 0, 0)
+        and _vertex_count(e2e_environment, "transaction") == 0
+        and _edge_count(e2e_environment, "executes") == 0,
     )
 
 
@@ -298,7 +370,10 @@ def test_incremental_checkpoints_restore_granular_lifecycle_state(
     assert wait_for(
         "idle post-recovery contributor expiry",
         120,
-        lambda: _service_count(e2e_environment, service_name) == 0,
+        lambda: e2e_environment.arango_document_count(
+            "service", "service_name", service_name
+        )
+        == 0,
     )
     after_expiry = e2e_environment.completed_checkpoints()
     assert wait_for(

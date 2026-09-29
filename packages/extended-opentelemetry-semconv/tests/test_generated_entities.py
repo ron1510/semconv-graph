@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from extended_otel_semconv import AppEndpoint, EtlPartRun, EtlPipeline, EtlRun, K8sPod, Service
+from extended_otel_semconv import AppEndpoint, EtlPartRun, EtlPipeline, EtlRun, K8sPod, Service, Transaction
 from extended_otel_semconv.generated import __all__ as generated_exports
 
 
@@ -8,6 +8,27 @@ def test_generated_public_api_includes_upstream_and_extension_entities() -> None
     assert Service.entity_type == "service"
     assert K8sPod.entity_type == "k8s.pod"
     assert AppEndpoint.entity_type == "app.endpoint"
+    assert Transaction.entity_type == "transaction"
+
+
+def test_transaction_identity_includes_native_span_name_and_kind() -> None:
+    internal = Transaction.model_validate(
+        {
+            "service.name": "worker",
+            "span.name": "consume",
+            "span.kind": "SPAN_KIND_INTERNAL",
+        }
+    )
+    consumer = Transaction.model_validate(
+        {
+            "service.name": "worker",
+            "span.name": "consume",
+            "span.kind": "SPAN_KIND_CONSUMER",
+        }
+    )
+
+    assert internal.entity_id == "transaction:worker:consume:SPAN_KIND_INTERNAL"
+    assert consumer.entity_id != internal.entity_id
 
 
 def test_generated_etl_models_use_hierarchical_identity() -> None:

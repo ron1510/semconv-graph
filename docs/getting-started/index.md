@@ -43,8 +43,8 @@ receives two complementary forms of graph evidence:
 1. By default, applications emit normal OpenTelemetry client/server spans;
    Collector backends derive service-graph metrics and publish them to Kafka.
 2. Optionally, the Collector sends root spans whose kind is neither client nor
-   server through spanmetrics and publishes node-only discovery evidence for
-   non-interacting executions.
+   server through spanmetrics and publishes observation evidence for
+   non-interacting executions, including transactions and observation edges.
 3. Flink reconciles both evidence lanes into lifecycle-managed graph elements.
 4. Consumers apply complete element `upsert` and `delete` commands.
 

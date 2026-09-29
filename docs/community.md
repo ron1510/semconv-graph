@@ -27,7 +27,8 @@ query:
 5. Stop one contributor and show shared elements remain.
 6. Stop the final contributor and show explicit graph-element deletion.
 7. Emit repeated non-interacting execution roots and show spanmetrics collapse
-   them into node-only discovery without exporting raw spans to Kafka.
+   them into transaction and observation-topology discovery without exporting
+   raw spans to Kafka.
 
 Use concrete services, IDs, attributes, and traversals. The repository's
 controlled Java workload measurements are reproducible, but avoid production

@@ -3,7 +3,13 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from extended_otel_semconv import K8sPod, Process, Service, ServiceCallsServiceEdge
+from extended_otel_semconv import (
+    K8sPod,
+    Process,
+    Service,
+    ServiceCallsServiceEdge,
+    ServiceExecutesTransactionEdge,
+)
 from extended_otel_semconv.edges import edge_id, semantic_edge_from_data
 from extended_otel_semconv.entities import entity_from_attributes
 from extended_otel_semconv.errors import (
@@ -12,19 +18,24 @@ from extended_otel_semconv.errors import (
     UnknownSemanticTypeError,
 )
 from extended_otel_semconv.generated import EDGE_MODELS, ENTITY_MODELS
-from extended_otel_semconv.relationships import service_graph_relationships
+from extended_otel_semconv.relationships import graph_relationships
 
 
 def test_relationship_metadata_is_loaded_once_per_process() -> None:
-    first = service_graph_relationships()
+    first = graph_relationships()
 
-    assert service_graph_relationships() is first
+    assert graph_relationships() is first
+    executes = next(item for item in first if item.name == "executes")
+    calls = next(item for item in first if item.name == "calls")
+    assert executes.source_signals == ("span_metrics",)
+    assert calls.source_signals == ("service_graph",)
 
 
 def test_generated_registries_cover_entities_and_relationships() -> None:
     assert "service" in ENTITY_MODELS
-    assert len(EDGE_MODELS) == 35
+    assert len(EDGE_MODELS) == 36
     assert EDGE_MODELS[("service", "calls", "service")] is ServiceCallsServiceEdge
+    assert EDGE_MODELS[("service", "executes", "transaction")] is ServiceExecutesTransactionEdge
 
     with pytest.raises(TypeError):
         ENTITY_MODELS["invalid"] = Service  # type: ignore[index]

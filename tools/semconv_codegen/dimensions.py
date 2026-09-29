@@ -19,12 +19,14 @@ SPAN_METRICS_BUILTIN_DIMENSIONS = frozenset(
         "status.code",
     }
 )
+INTRINSIC_SPAN_FIELDS = frozenset({"span.kind", "span.name"})
+GRAPH_EVIDENCE_SIGNALS = frozenset({"service_graph", "span_metrics"})
 
 
 def service_graph_dimensions(registry: RegistryDocument) -> tuple[str, ...]:
     """Return servicegraph dimensions from modeled servicegraph entity fields."""
 
-    entity_names = service_graph_entity_names(registry)
+    entity_names = entity_names_for_signal(registry, "service_graph")
     dimensions: set[str] = set()
     for entity_name in entity_names:
         entity = registry.entities_by_name.get(entity_name)
@@ -38,14 +40,27 @@ def service_graph_dimensions(registry: RegistryDocument) -> tuple[str, ...]:
     return tuple(sorted(dimensions))
 
 
-def service_graph_entity_names(registry: RegistryDocument) -> set[str]:
+def entity_names_for_signal(registry: RegistryDocument, source_signal: str) -> set[str]:
     entity_names: set[str] = set()
     for relationship in registry.relationships_by_id.values():
-        if "service_graph" not in relationship.source_signals:
+        if source_signal not in relationship.source_signals:
             continue
         entity_names.add(relationship.source_entity)
         entity_names.add(relationship.target_entity)
     return entity_names
+
+
+def graph_entity_names(registry: RegistryDocument) -> set[str]:
+    entity_names: set[str] = set()
+    for signal in GRAPH_EVIDENCE_SIGNALS:
+        entity_names.update(entity_names_for_signal(registry, signal))
+    return entity_names
+
+
+def graph_dimensions(registry: RegistryDocument) -> tuple[str, ...]:
+    """Return scalar fields stored by any graph evidence lane."""
+
+    return tuple(sorted(_scalar_entity_attributes(registry, graph_entity_names(registry))))
 
 
 def include_dimension_ref(attribute_ref: str, attribute: AttributeDefinition | None = None) -> bool:
@@ -63,7 +78,7 @@ def entity_dimensions(entity: EntityDefinition) -> tuple[str, ...]:
 def root_span_discovery_dimensions(registry: RegistryDocument) -> tuple[str, ...]:
     """Return dimensions needed to reconstruct every graph-supported entity."""
 
-    dimensions = _scalar_entity_attributes(registry)
+    dimensions = _scalar_entity_attributes(registry, entity_names_for_signal(registry, "span_metrics"))
     return tuple(sorted(dimensions - SPAN_METRICS_BUILTIN_DIMENSIONS))
 
 
@@ -71,7 +86,7 @@ def root_span_discovery_routing_attributes(registry: RegistryDocument) -> tuple[
     """Return stable attributes that shard complete semantic identities to one writer."""
 
     attributes = registry.attributes_by_id
-    entity_names = service_graph_entity_names(registry)
+    entity_names = entity_names_for_signal(registry, "span_metrics")
     routing = {
         ref.ref
         for entity_name, entity in registry.entities_by_name.items()
@@ -87,12 +102,12 @@ def root_span_discovery_routing_attributes(registry: RegistryDocument) -> tuple[
 def root_span_modeled_attributes(registry: RegistryDocument) -> tuple[str, ...]:
     """Return graph-supported fields whose resource/span conflicts are ambiguous."""
 
-    return tuple(sorted(_scalar_entity_attributes(registry)))
+    entity_names = entity_names_for_signal(registry, "span_metrics")
+    return tuple(sorted(_scalar_entity_attributes(registry, entity_names) - INTRINSIC_SPAN_FIELDS))
 
 
-def _scalar_entity_attributes(registry: RegistryDocument) -> set[str]:
+def _scalar_entity_attributes(registry: RegistryDocument, entity_names: set[str]) -> set[str]:
     attributes = registry.attributes_by_id
-    entity_names = service_graph_entity_names(registry)
     return {
         ref.ref
         for entity_name, entity in registry.entities_by_name.items()

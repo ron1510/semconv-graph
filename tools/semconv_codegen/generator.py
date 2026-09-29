@@ -14,11 +14,13 @@ from typing import NamedTuple
 import yaml
 
 from tools.semconv_codegen.dimensions import (
+    GRAPH_EVIDENCE_SIGNALS,
+    graph_dimensions,
+    graph_entity_names,
     root_span_discovery_dimensions,
     root_span_discovery_routing_attributes,
     root_span_modeled_attributes,
     service_graph_dimensions,
-    service_graph_entity_names,
 )
 from tools.semconv_codegen.java_registry import render_java_registry
 from tools.semconv_codegen.registry.model import (
@@ -37,7 +39,7 @@ from tools.semconv_codegen.semantic_schema import (
 from tools.semconv_codegen.static_models import render_static_models
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-ARANGODB_SCHEMA_VERSION = "2"
+ARANGODB_SCHEMA_VERSION = "3"
 ARANGODB_RESERVED_PROPERTIES = frozenset(
     {
         "_key",
@@ -87,7 +89,7 @@ def default_generation_paths(root: Path = REPOSITORY_ROOT) -> GenerationPaths:
         generated_dir=semantic_package / "generated",
         package_lock=semantic_package / "metadata" / "otel-semconv.lock.json",
         semantic_schema=semantic_package / "metadata" / "semantic-entities.schema.json",
-        relationship_metadata=semantic_package / "metadata" / "service-graph-relationships.json",
+        relationship_metadata=semantic_package / "metadata" / "graph-relationships.json",
         collector_dimensions=root / "deploy" / "helm" / "servicegraph-collector" / "files" / "dimensions.yaml",
         collector_discovery=(
             root / "deploy" / "helm" / "servicegraph-collector" / "files" / "root-span-discovery.yaml"
@@ -355,7 +357,7 @@ def _render_relationship_metadata(relationships: dict[str, RelationshipDefinitio
     rendered = [
         relationship.model_dump(mode="json")
         for relationship in sorted(relationships.values(), key=lambda item: item.id)
-        if "service_graph" in relationship.source_signals
+        if GRAPH_EVIDENCE_SIGNALS.intersection(relationship.source_signals)
     ]
     return json.dumps(rendered, indent=2, sort_keys=True) + "\n"
 
@@ -381,17 +383,17 @@ def _render_root_span_discovery(registry: RegistryDocument) -> str:
 
 
 def _render_arangodb_schema(registry: RegistryDocument, upstream_lock: Path) -> str:
-    entity_names = sorted(service_graph_entity_names(registry))
+    entity_names = sorted(graph_entity_names(registry))
     collections = _unique_sanitized_names(entity_names, "vertex collection")
     relationships = [
         relationship
         for relationship in registry.relationships_by_id.values()
-        if "service_graph" in relationship.source_signals
+        if GRAPH_EVIDENCE_SIGNALS.intersection(relationship.source_signals)
     ]
     relationship_names = sorted({relationship.name for relationship in relationships})
     edge_collections = _unique_sanitized_names(relationship_names, "edge collection")
 
-    canonical_properties = service_graph_dimensions(registry)
+    canonical_properties = graph_dimensions(registry)
     aliases = _property_aliases(canonical_properties)
     vertices: list[dict[str, object]] = []
     for entity_name in entity_names:
@@ -430,7 +432,7 @@ def _render_arangodb_schema(registry: RegistryDocument, upstream_lock: Path) -> 
         "vertex_collections": vertices,
         "edge_collections": edges,
         "property_aliases": {
-            "attributes": {name: aliases[name] for name in service_graph_dimensions(registry)},
+            "attributes": {name: aliases[name] for name in graph_dimensions(registry)},
         },
         "reserved_properties": sorted(ARANGODB_RESERVED_PROPERTIES),
     }

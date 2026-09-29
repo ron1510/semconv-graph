@@ -83,20 +83,35 @@ A relationship names a directed edge between entity types:
   name: exposes
   source_entity: service
   target_entity: app.endpoint
-  source_signals: [service_graph]
+  source_signals: [service_graph, span_metrics]
+  evidence_scope: observation
 ```
 
-When both entity types are observed together, the runtime emits the configured
-edge. Service-to-service dependencies are handled specially because their edge
-type is derived from the Collector's `connection_type`:
+An `observation` relationship is expanded when both endpoint entities are
+complete in one client, server, or root observation. An `interaction`
+relationship connects entities from the client observation to entities from the
+server observation and declares the Collector selector that chooses it:
 
-| Connection type | Edge |
-| --- | --- |
-| unset or other | `calls` |
-| `messaging_system` | `publishes_to` |
-| `database` | `queries` |
+```yaml
+- id: relationship.service_calls_service
+  type: relationship
+  name: calls
+  source_entity: service
+  target_entity: service
+  source_signals: [service_graph]
+  evidence_scope: interaction
+  connection_type: unset
+```
 
-Only a relationship explicitly allowed by the registry is emitted.
+Missing, empty, and Collector-provided `unset` selectors normalize to `unset`.
+Unknown selectors are rejected without discarding valid client or server
+observation topology. Only a relationship explicitly allowed by the registry is
+emitted, and every expansion suppresses edges whose endpoint IDs are equal.
+
+`source_signals` declares actual evidence eligibility. Servicegraph datapoints
+can expand definitions containing `service_graph`; root discovery datapoints can
+expand definitions containing `span_metrics`. For example, `executes` declares
+only `span_metrics`, so servicegraph observations cannot create transactions.
 
 Code generation creates a frozen concrete Pydantic edge class for every
 relationship definition. For example, `relationship.service_calls_service`

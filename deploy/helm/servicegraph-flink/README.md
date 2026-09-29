@@ -18,8 +18,9 @@ entries and maintains at most one event-time and one processing-time timer per
 graph element.
 
 The existing metrics source also recognizes Collector-produced
-`semconv.graph.discovery.calls` datapoints. It extracts semantic nodes only and
-merges them into the same contributor lifecycle state; no separate Flink topic,
+`semconv.graph.discovery.calls` datapoints. It expands each observation into all
+complete registry-defined entities and observation relationships, then merges
+them into the same contributor lifecycle state; no separate Flink topic,
 consumer group, or chart setting is required.
 
 ```powershell

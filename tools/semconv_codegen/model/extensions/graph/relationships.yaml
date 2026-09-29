@@ -4,7 +4,8 @@ groups:
     name: contains
     source_entity: service.namespace
     target_entity: service
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service namespace contains a service observed with that namespace.
 
@@ -13,7 +14,8 @@ groups:
     name: contains
     source_entity: service
     target_entity: service.instance
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service contains an observed service instance.
 
@@ -22,7 +24,8 @@ groups:
     name: contains
     source_entity: k8s.cluster
     target_entity: k8s.namespace
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes cluster contains an observed namespace.
 
@@ -31,7 +34,8 @@ groups:
     name: contains
     source_entity: k8s.cluster
     target_entity: k8s.node
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes cluster contains an observed node.
 
@@ -40,7 +44,8 @@ groups:
     name: contains
     source_entity: k8s.cluster
     target_entity: k8s.persistentvolume
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes cluster contains an observed persistent volume.
 
@@ -49,7 +54,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.cronjob
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed CronJob.
 
@@ -58,7 +64,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.daemonset
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed DaemonSet.
 
@@ -67,7 +74,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.deployment
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed Deployment.
 
@@ -76,7 +84,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.hpa
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed HPA.
 
@@ -85,7 +94,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.job
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed Job.
 
@@ -94,7 +104,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.persistentvolumeclaim
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed PersistentVolumeClaim.
 
@@ -103,7 +114,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.pod
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed pod.
 
@@ -112,7 +124,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.replicaset
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed ReplicaSet.
 
@@ -121,7 +134,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.replicationcontroller
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed ReplicationController.
 
@@ -130,7 +144,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.resourcequota
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed ResourceQuota.
 
@@ -139,7 +154,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.service
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed Kubernetes Service.
 
@@ -148,7 +164,8 @@ groups:
     name: contains
     source_entity: k8s.namespace
     target_entity: k8s.statefulset
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes namespace contains an observed StatefulSet.
 
@@ -157,7 +174,8 @@ groups:
     name: runs
     source_entity: k8s.node
     target_entity: k8s.pod
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes node runs an observed pod.
 
@@ -166,7 +184,8 @@ groups:
     name: contains
     source_entity: k8s.pod
     target_entity: k8s.container
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A pod contains an observed container.
 
@@ -175,7 +194,8 @@ groups:
     name: runs
     source_entity: k8s.pod
     target_entity: service
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A pod runs code for an observed service.
 
@@ -184,7 +204,8 @@ groups:
     name: runs
     source_entity: k8s.pod
     target_entity: service.instance
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A pod runs an observed service instance.
 
@@ -193,7 +214,8 @@ groups:
     name: runs
     source_entity: container.runtime
     target_entity: k8s.container
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A container runtime runs an observed Kubernetes container.
 
@@ -202,7 +224,8 @@ groups:
     name: runs
     source_entity: k8s.container
     target_entity: process
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A Kubernetes container runs an observed process.
 
@@ -211,7 +234,8 @@ groups:
     name: uses
     source_entity: process
     target_entity: process.executable
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A process uses an observed executable.
 
@@ -220,7 +244,8 @@ groups:
     name: uses
     source_entity: process
     target_entity: process.runtime
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A process uses an observed runtime.
 
@@ -229,7 +254,8 @@ groups:
     name: instrumented_by
     source_entity: service
     target_entity: telemetry.sdk
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service is instrumented by an observed telemetry SDK.
 
@@ -238,7 +264,8 @@ groups:
     name: instrumented_by
     source_entity: service
     target_entity: telemetry.distro
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service is instrumented by an observed telemetry distribution.
 
@@ -247,7 +274,8 @@ groups:
     name: built_from
     source_entity: service
     target_entity: vcs.repository
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service was built from an observed VCS repository.
 
@@ -256,7 +284,8 @@ groups:
     name: contains
     source_entity: vcs.repository
     target_entity: vcs.ref
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A VCS repository contains an observed ref.
 
@@ -265,7 +294,8 @@ groups:
     name: exposes
     source_entity: service
     target_entity: app.endpoint
-    source_signals: [trace, service_graph]
+    source_signals: [trace, service_graph, span_metrics]
+    evidence_scope: observation
     stability: development
     brief: A service exposes an observed application endpoint.
 
@@ -275,6 +305,8 @@ groups:
     source_entity: service
     target_entity: service
     source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: unset
     stability: development
     brief: A service calls another observed service.
 
@@ -284,6 +316,8 @@ groups:
     source_entity: service
     target_entity: service
     source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: messaging_system
     stability: development
     brief: A service publishes messages consumed by another observed service.
 
@@ -293,6 +327,8 @@ groups:
     source_entity: service
     target_entity: service
     source_signals: [service_graph]
+    evidence_scope: interaction
+    connection_type: database
     stability: development
     brief: A service queries another observed service or database-service facade.
 
@@ -301,7 +337,8 @@ groups:
     name: contains
     source_entity: etl.pipeline
     target_entity: etl.run
-    source_signals: [service_graph]
+    source_signals: [span_metrics]
+    evidence_scope: observation
     stability: development
     brief: An ETL pipeline contains an observed execution.
 
@@ -310,6 +347,17 @@ groups:
     name: contains
     source_entity: etl.run
     target_entity: etl.part.run
-    source_signals: [service_graph]
+    source_signals: [span_metrics]
+    evidence_scope: observation
     stability: development
     brief: An ETL run contains an observed logical part execution.
+
+  - id: relationship.service_executes_transaction
+    type: relationship
+    name: executes
+    source_entity: service
+    target_entity: transaction
+    source_signals: [span_metrics]
+    evidence_scope: observation
+    stability: development
+    brief: A service executes an observed logical transaction.

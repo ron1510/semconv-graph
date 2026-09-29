@@ -10,8 +10,8 @@ def test_generated_schema_is_valid_and_complete() -> None:
     schema = load_graph_schema()
 
     assert schema.graph_name == "servicegraph"
-    assert len(schema.vertex_collections) == 32
-    assert len(schema.edge_collections) == 9
+    assert len(schema.vertex_collections) == 33
+    assert len(schema.edge_collections) == 10
     assert schema.vertices_by_type["etl.pipeline"].collection == "etl_pipeline"
     assert schema.vertices_by_type["etl.run"].collection == "etl_run"
     assert schema.vertices_by_type["etl.part.run"].collection == "etl_part_run"
@@ -23,8 +23,10 @@ def test_generated_schema_is_valid_and_complete() -> None:
     assert schema.vertices_by_type["service.instance"].collection == "service_instance"
     assert schema.vertices_by_type["k8s.pod"].collection == "k8s_pod"
     assert schema.edges_by_type["calls"].collection == "calls"
+    assert schema.vertices_by_type["transaction"].collection == "transaction"
+    assert schema.edges_by_type["executes"].collection == "executes"
     assert schema.property_aliases.attributes["service.name"] == "service_name"
-    assert schema.metadata.schema_version == "2"
+    assert schema.metadata.schema_version == "3"
 
 
 def test_generated_schema_and_lookup_maps_are_cached_and_read_only() -> None:

@@ -4,7 +4,7 @@ This chart deploys two stateless OTLP routers and a stateful service-graph
 backend. The default `singleWriter` mode sends both routers directly to one
 backend, so each service-graph metric series has one writer. The backend exports
 OTLP Protobuf metrics to the configured Kafka topic. An optional router pipeline
-also sends non-client/non-server root spans through spanmetrics for node-only
+also sends non-client/non-server root spans through spanmetrics for observation
 discovery.
 
 The backend converts connector-local cumulative counters to deltas, removes

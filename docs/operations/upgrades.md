@@ -1,6 +1,14 @@
 # Upgrades and recovery
 
-## Clean cutover to Protobuf evidence and schema 3
+## Registry-driven observations and transactions
+
+Deploy generated schema/indexer and Gremlin artifacts first, followed by Flink,
+then the Collector. Arango graph schema version 3 adds the transaction and
+executes collections. Alpha revisions expose only their current generated
+contract. There are no compatibility aliases or multi-version readers; rebuild
+disposable state when an intermediate alpha contract differs.
+
+## Clean cutover from the legacy evidence pipeline
 
 This release changes the Kafka input encoding, public event schema, Arango schema, and Flink state shape together. It cannot restore older checkpoints or consume mixed-version topic history.
 
@@ -13,7 +21,7 @@ This release changes the Kafka input encoding, public event schema, Arango schem
 7. Reset the `graph-element-engine` source-group offsets.
 8. Reset the indexer consumer group.
 9. Remove only the generated `servicegraph` graph definition and its generated vertex/edge documents from ArangoDB. Preserve the server, databases unrelated to this graph, credentials, and Secrets.
-10. Deploy generated Arango schema version 2, the indexer, and Gremlin.
+10. Deploy generated Arango schema version 3, the indexer, and Gremlin.
 11. Deploy Flink and verify the `java-cbor-v2` marker and new checkpoints.
 12. Deploy the Collector and resume telemetry.
 13. Verify that the graph reconstructs naturally.

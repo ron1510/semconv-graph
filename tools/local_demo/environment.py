@@ -416,6 +416,30 @@ class DemoEnvironment:
             "--timeout=180s",
         )
 
+    def arango_document_count(self, collection: str, property_name: str, value: str) -> int:
+        """Count matching projected documents without depending on the Gremlin event loop."""
+
+        response = cast(
+            dict[str, object],
+            self._arango_request(
+                "POST",
+                "/_db/servicegraph/_api/cursor",
+                {
+                    "query": "RETURN LENGTH(FOR document IN @@collection "
+                    "FILTER document[@property] == @value RETURN 1)",
+                    "bindVars": {
+                        "@collection": collection,
+                        "property": property_name,
+                        "value": value,
+                    },
+                },
+            ),
+        )
+        result = cast(list[object], response["result"])
+        if len(result) != 1 or not isinstance(result[0], int):
+            raise RuntimeError("ArangoDB count query returned an invalid result")
+        return result[0]
+
     def start_query_access(self) -> None:
         if self.gremlin_forward is None:
             self._start_gremlin_forward()

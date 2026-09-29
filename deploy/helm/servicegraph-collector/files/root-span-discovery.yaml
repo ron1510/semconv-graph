@@ -122,6 +122,7 @@ routing_attributes:
 - service.name
 - service.namespace
 - span.kind
+- span.name
 - telemetry.distro.name
 - telemetry.sdk.language
 - telemetry.sdk.name

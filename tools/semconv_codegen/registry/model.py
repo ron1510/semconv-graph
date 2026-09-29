@@ -82,6 +82,8 @@ class RelationshipDefinition(RegistryModel):
     source_entity: str
     target_entity: str
     source_signals: tuple[str, ...]
+    evidence_scope: Literal["observation", "interaction"] | None = None
+    connection_type: str | None = None
     stability: str | None = None
     brief: str | None = None
 

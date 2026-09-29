@@ -1,12 +1,15 @@
 [
   {
     "brief": "A container runtime runs an observed Kubernetes container.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.container_runtime_runs_k8s_container",
     "name": "runs",
     "source_entity": "container.runtime",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.container",
@@ -14,11 +17,13 @@
   },
   {
     "brief": "An ETL pipeline contains an observed execution.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.etl_pipeline_contains_run",
     "name": "contains",
     "source_entity": "etl.pipeline",
     "source_signals": [
-      "service_graph"
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "etl.run",
@@ -26,11 +31,13 @@
   },
   {
     "brief": "An ETL run contains an observed logical part execution.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.etl_run_contains_part_run",
     "name": "contains",
     "source_entity": "etl.run",
     "source_signals": [
-      "service_graph"
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "etl.part.run",
@@ -38,12 +45,15 @@
   },
   {
     "brief": "A Kubernetes cluster contains an observed namespace.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_cluster_contains_namespace",
     "name": "contains",
     "source_entity": "k8s.cluster",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.namespace",
@@ -51,12 +61,15 @@
   },
   {
     "brief": "A Kubernetes cluster contains an observed node.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_cluster_contains_node",
     "name": "contains",
     "source_entity": "k8s.cluster",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.node",
@@ -64,12 +77,15 @@
   },
   {
     "brief": "A Kubernetes cluster contains an observed persistent volume.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_cluster_contains_persistentvolume",
     "name": "contains",
     "source_entity": "k8s.cluster",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.persistentvolume",
@@ -77,12 +93,15 @@
   },
   {
     "brief": "A Kubernetes container runs an observed process.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_container_runs_process",
     "name": "runs",
     "source_entity": "k8s.container",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "process",
@@ -90,12 +109,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed CronJob.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_cronjob",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.cronjob",
@@ -103,12 +125,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed DaemonSet.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_daemonset",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.daemonset",
@@ -116,12 +141,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed Deployment.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_deployment",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.deployment",
@@ -129,12 +157,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed HPA.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_hpa",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.hpa",
@@ -142,12 +173,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed Job.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_job",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.job",
@@ -155,12 +189,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed PersistentVolumeClaim.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_persistentvolumeclaim",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.persistentvolumeclaim",
@@ -168,12 +205,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed pod.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_pod",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.pod",
@@ -181,12 +221,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed ReplicaSet.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_replicaset",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.replicaset",
@@ -194,12 +237,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed ReplicationController.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_replicationcontroller",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.replicationcontroller",
@@ -207,12 +253,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed ResourceQuota.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_resourcequota",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.resourcequota",
@@ -220,12 +269,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed Kubernetes Service.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_service",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.service",
@@ -233,12 +285,15 @@
   },
   {
     "brief": "A Kubernetes namespace contains an observed StatefulSet.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_namespace_contains_statefulset",
     "name": "contains",
     "source_entity": "k8s.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.statefulset",
@@ -246,12 +301,15 @@
   },
   {
     "brief": "A Kubernetes node runs an observed pod.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_node_runs_pod",
     "name": "runs",
     "source_entity": "k8s.node",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.pod",
@@ -259,12 +317,15 @@
   },
   {
     "brief": "A pod contains an observed container.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_pod_contains_container",
     "name": "contains",
     "source_entity": "k8s.pod",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "k8s.container",
@@ -272,12 +333,15 @@
   },
   {
     "brief": "A pod runs code for an observed service.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_pod_runs_service",
     "name": "runs",
     "source_entity": "k8s.pod",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "service",
@@ -285,12 +349,15 @@
   },
   {
     "brief": "A pod runs an observed service instance.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.k8s_pod_runs_service_instance",
     "name": "runs",
     "source_entity": "k8s.pod",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "service.instance",
@@ -298,12 +365,15 @@
   },
   {
     "brief": "A process uses an observed executable.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.process_uses_executable",
     "name": "uses",
     "source_entity": "process",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "process.executable",
@@ -311,12 +381,15 @@
   },
   {
     "brief": "A process uses an observed runtime.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.process_uses_runtime",
     "name": "uses",
     "source_entity": "process",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "process.runtime",
@@ -324,12 +397,15 @@
   },
   {
     "brief": "A service was built from an observed VCS repository.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.service_built_from_vcs_repository",
     "name": "built_from",
     "source_entity": "service",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "vcs.repository",
@@ -337,6 +413,8 @@
   },
   {
     "brief": "A service calls another observed service.",
+    "connection_type": "unset",
+    "evidence_scope": "interaction",
     "id": "relationship.service_calls_service",
     "name": "calls",
     "source_entity": "service",
@@ -349,25 +427,45 @@
   },
   {
     "brief": "A service contains an observed service instance.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.service_contains_service_instance",
     "name": "contains",
     "source_entity": "service",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "service.instance",
     "type": "relationship"
   },
   {
+    "brief": "A service executes an observed logical transaction.",
+    "connection_type": null,
+    "evidence_scope": "observation",
+    "id": "relationship.service_executes_transaction",
+    "name": "executes",
+    "source_entity": "service",
+    "source_signals": [
+      "span_metrics"
+    ],
+    "stability": "development",
+    "target_entity": "transaction",
+    "type": "relationship"
+  },
+  {
     "brief": "A service exposes an observed application endpoint.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.service_exposes_app_endpoint",
     "name": "exposes",
     "source_entity": "service",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "app.endpoint",
@@ -375,12 +473,15 @@
   },
   {
     "brief": "A service is instrumented by an observed telemetry distribution.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.service_instrumented_by_telemetry_distro",
     "name": "instrumented_by",
     "source_entity": "service",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "telemetry.distro",
@@ -388,12 +489,15 @@
   },
   {
     "brief": "A service is instrumented by an observed telemetry SDK.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.service_instrumented_by_telemetry_sdk",
     "name": "instrumented_by",
     "source_entity": "service",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "telemetry.sdk",
@@ -401,12 +505,15 @@
   },
   {
     "brief": "A service namespace contains a service observed with that namespace.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.service_namespace_contains_service",
     "name": "contains",
     "source_entity": "service.namespace",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "service",
@@ -414,6 +521,8 @@
   },
   {
     "brief": "A service publishes messages consumed by another observed service.",
+    "connection_type": "messaging_system",
+    "evidence_scope": "interaction",
     "id": "relationship.service_publishes_to_service",
     "name": "publishes_to",
     "source_entity": "service",
@@ -426,6 +535,8 @@
   },
   {
     "brief": "A service queries another observed service or database-service facade.",
+    "connection_type": "database",
+    "evidence_scope": "interaction",
     "id": "relationship.service_queries_service",
     "name": "queries",
     "source_entity": "service",
@@ -438,12 +549,15 @@
   },
   {
     "brief": "A VCS repository contains an observed ref.",
+    "connection_type": null,
+    "evidence_scope": "observation",
     "id": "relationship.vcs_repository_contains_ref",
     "name": "contains",
     "source_entity": "vcs.repository",
     "source_signals": [
       "trace",
-      "service_graph"
+      "service_graph",
+      "span_metrics"
     ],
     "stability": "development",
     "target_entity": "vcs.ref",

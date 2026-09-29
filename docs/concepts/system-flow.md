@@ -35,7 +35,7 @@ Counts end at `MetricParser`. A positive request total says an interaction was o
 - `_render_root_span_discovery()` writes discovery dimensions and routing attributes.
 - `render_java_registry()` writes `semantic-registry.json` for the Java job.
 - `_render_entity_module()` and `_render_edge_module()` write the Python SDK types.
-- `_render_arangodb_schema()` writes Arango graph schema version 2 for the indexer and Gremlin chart.
+- `_render_arangodb_schema()` writes Arango graph schema version 3 for the indexer and Gremlin chart.
 
 `python -m tools.semconv_codegen --check` proves that checked-in artifacts equal a fresh render. Generated Arango `property_aliases` contains only `attributes`; `metrics` is neither a property nor a reserved alias.
 
@@ -100,29 +100,31 @@ There is one input lane. No union, reconciliation source, retraction stream, or 
 
 Malformed Protobuf, wrong types, wrong temporality, zero, negative, nonfinite, or invalid semantic dimensions become observable rejections. Payload bodies are never logged.
 
-### 5.1 Interaction extraction
+### 5.1 Servicegraph extraction
 
-`servicegraph(attributes, observed)` requires `client` and `server`. It maps `connection_type` to `calls`, `publishes_to`, or `queries` and computes the same contributor hash from client, server, relationship type, and remaining dimensions as before.
+`servicegraph(attributes, observed)` requires `client` and `server`. `observation()` independently strips the `client_` and `server_` prefixes, supplies `service.name`, and asks `SemanticRegistry.extractValid()` for every complete entity eligible for the generated `service_graph` source. `materializeObservation()` adds every matching `observation` relationship whose endpoints exist in that observation.
 
-`side()` strips `client_` or `server_` prefixes, supplies `service.name`, and asks `SemanticRegistry.extract()` for typed elements. Client-side app endpoints are excluded to retain the existing direction semantics.
+Missing, empty, and Collector-provided `unset` connection types normalize to `unset`. The registry selects `interaction` relationships by their generated `connection_type`, then expands them from client entities to server entities. Unknown selectors produce an observable rejection while preserving valid client and server observation elements. Java contains no entity names, relationship names, endpoint combinations, or selector mappings.
 
-For each side, the parser adds extracted nodes and every allowed intra-side generated relationship. It then adds the cross-service relationship. `add()` detects identity conflicts and merges duplicate attributes deterministically. Every resulting node and edge becomes a separate `Contribution` with the same contributor and timestamp.
+`add()` detects identity conflicts and merges duplicate elements deterministically. Registry expansion universally skips an edge when its source and target IDs are equal; same-type entities with different IDs remain eligible. Every resulting node and edge becomes a separate `Contribution` with the same contributor and timestamp.
 
 ### 5.2 Discovery extraction
 
-`discovery(attributes, observed)` calls `SemanticRegistry.extract()`, keeps graph-supported entity types, and applies the existing server-span rule for app endpoints. The contributor ID hashes the discovery metric name, element ID, and modeled attributes. Each node becomes one contribution.
+`discovery(attributes, observed)` treats the datapoint attributes as one observation and selects only entities and relationships generated for the `span_metrics` source. It creates one contribution per node or edge. The contributor ID hashes the discovery metric name, element ID, and modeled attributes.
+
+Eligible roots retain native `span.name` and `span.kind`. Together with `service.name`, these fields identify a generated `transaction`; the observation rule emits `service -[executes]→ transaction`. Unsupported span kinds or incomplete transaction identity skip only the transaction while other complete entities remain valid.
 
 ### 5.3 SemanticRegistry
 
 `SemanticRegistry` loads `semantic-registry.json` once. Its main operations are:
 
 - `extract(attributes)` validates identifying and descriptive fields and creates nodes;
-- `relationships()` returns generated relationship rules;
-- `allows(sourceType, targetType, relationshipType)` validates topology;
+- `supportsEntity(evidenceSource, type)` limits entity extraction to the current lane;
+- `edges(sources, targets, evidenceSource, scope[, connectionType])` expands only generated relationship rules over observed entities;
 - `quotedId()` creates the same percent-encoded IDs as the SDK;
 - `edgeId()` creates deterministic relationship IDs.
 
-Extraction semantics are intentionally unchanged in this phase.
+The only universal topology rule in Java is the prohibition on equal endpoint IDs.
 
 ## 6. Domain model
 
@@ -226,7 +228,7 @@ Nodes contain `kind, id, type, attributes`.
 
 ## 12. Indexer projection
 
-`run_indexer()` initializes ArangoDB, loads generated schema version 2, constructs a manual-commit Kafka consumer, and repeatedly calls `project_poll()`.
+`run_indexer()` initializes ArangoDB, loads generated schema version 3, constructs a manual-commit Kafka consumer, and repeatedly calls `project_poll()`.
 
 `_decode_event()` requires a JSON object, schema 3.0, and event type `graph_element_state_changed`. `event_to_document()` rejects a `metrics` field, validates kind and semantic type, verifies edge endpoint types, computes the stable Arango key, and copies canonical attributes plus generated attribute aliases.
 
@@ -236,23 +238,19 @@ Node deletes route by the semantic prefix in `element_id`. Edge deletes are atte
 
 ## 13. ArangoDB and typed Gremlin
 
-The generated Arango schema defines vertex collections, edge collections, endpoint collection constraints, identifying attribute aliases, graph name, schema hash, and schema version 2. It defines no metric field or alias.
+The generated Arango schema defines vertex collections, edge collections, endpoint collection constraints, identifying attribute aliases, graph name, schema hash, and schema version 3. It defines no metric field or alias.
 
 Gremlin Server exposes the generated graph through a read-only traversal source. `SemanticGremlinClient.query()` validates that a callback returns an unexecuted traversal whose final traversers are vertices or edges, appends `elementMap()`, and reconstructs results.
 
 `_semantic_element_from_map()` uses `entity_from_attributes()` for vertices and `semantic_edge_from_data()` for edges. Edge reconstruction needs relationship type, source, target, attributes, and expected ID. The generated classes validate endpoint types and deterministic IDs.
 
-## 14. Clean cutover order
+## 14. Deployment order
 
-1. Stop Collector ingestion, Flink, and the indexer.
-2. Recreate `otel.servicegraph.metrics` for Protobuf-only input and `graph.elements.events` for schema-3-only compacted output while preserving partition counts and settings.
-3. Clear Flink checkpoints, savepoints, HA metadata, runtime marker, and source-group offsets.
-4. Reset the indexer consumer group.
-5. Remove only the generated service-graph definition and its documents from ArangoDB.
-6. Deploy generated schema/indexer and Gremlin service, then Flink, then Collector.
-7. Resume telemetry and verify natural graph reconstruction.
-
-Old topic records, schema-2 events, and old state are intentionally incompatible.
+Deploy generated schema/indexer and Gremlin artifacts first so the transaction
+and executes collections exist before their events arrive. Deploy Flink next,
+then the Collector. Alpha revisions provide one current generated contract and
+no compatibility aliases or multi-version readers. Rebuild disposable state
+when moving between incompatible alpha revisions.
 
 ## 15. Verification map
 
@@ -263,6 +261,6 @@ Old topic records, schema-2 events, and old state are intentionally incompatible
 - `StateSerializerTest`: direct CBOR-v2 frames and old-format rejection.
 - indexer tests: schema-3 replacement, replay coalescing, deletion, commit-after-success, schema-2 and metrics rejection.
 - SDK tests: metric-free edge construction and typed Gremlin reconstruction.
-- codegen tests: Arango schema version 2 and absence of metric fields or aliases.
+- codegen tests: Arango schema version 3, transaction topology, connection selectors, and absence of metric fields or aliases.
 - Helm renders: Protobuf exporters and absence of the entity-log lane.
 - disposable E2E: Collector evidence, Flink checkpoints/recovery, schema-3 projection, typed traversal, expiry, and controlled throughput measurements.

@@ -11,7 +11,7 @@ from gremlin_python.process.traversal import Bytecode, TraversalStrategies
 from gremlin_python.structure.graph import Graph
 
 import extended_otel_semconv.gremlin.client as gremlin_module
-from extended_otel_semconv import Service, ServiceCallsServiceEdge
+from extended_otel_semconv import Service, ServiceCallsServiceEdge, ServiceExecutesTransactionEdge, Transaction
 from extended_otel_semconv.edges import edge_id
 from extended_otel_semconv.gremlin import (
     InvalidSemanticQueryError,
@@ -123,6 +123,34 @@ def test_element_maps_reconstruct_concrete_entities_and_edges() -> None:
     assert isinstance(service, Service)
     assert service.service_version == "1.4.0"
     assert isinstance(edge, ServiceCallsServiceEdge)
+
+
+def test_element_maps_reconstruct_transaction_and_executes_edge() -> None:
+    transaction_id = "transaction:worker:consume:SPAN_KIND_CONSUMER"
+    transaction = _semantic_element_from_map(
+        {
+            "element_id": transaction_id,
+            "semantic_type": "transaction",
+            "attributes": {
+                "service.name": "worker",
+                "span.name": "consume",
+                "span.kind": "SPAN_KIND_CONSUMER",
+            },
+        }
+    )
+    expected_edge_id = edge_id("service:worker", "executes", transaction_id)
+    edge = _semantic_element_from_map(
+        {
+            "element_id": expected_edge_id,
+            "semantic_type": "executes",
+            "source_id": "service:worker",
+            "target_id": transaction_id,
+            "attributes": {},
+        }
+    )
+
+    assert isinstance(transaction, Transaction)
+    assert isinstance(edge, ServiceExecutesTransactionEdge)
 
 
 @pytest.mark.parametrize(

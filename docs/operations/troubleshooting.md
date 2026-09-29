@@ -31,7 +31,7 @@ inconsistently, or split across backends.
 Verify:
 
 - every identifying attribute is present;
-- the entity participates in a `service_graph` relationship;
+- the entity participates in a relationship for the metric's evidence source;
 - generated entities and dimensions are current;
 - the Collector ConfigMap contains the attribute dimension;
 - the Flink image includes the new generated package;

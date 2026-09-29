@@ -10,8 +10,8 @@ contributions.
 Every accepted datapoint is converted through the generated semantic registry
 into one contribution for each distinct node and edge it describes. The
 contributor ID is a deterministic hash of the client, server, connection type,
-and canonical scalar dimensions. Request and failure datapoints from the same
-telemetry series therefore reinforce the same contributor.
+and canonical scalar dimensions. Repeated positive evidence from the same
+telemetry series therefore refreshes the same contributor.
 
 Several contributors can update the same graph element. Nodes with the same
 semantic ID are one node, and edges with the same source ID, relationship type,
@@ -30,22 +30,21 @@ lexicographically smallest contributor ID. When a contributor expires, Flink
 recomputes from the remaining snapshots, so a value can fall back or disappear.
 A field remains while at least one active contributor still supplies it.
 
-## Metrics
+## Evidence
 
-Collector service-graph counters enter Flink as deltas. A semantic dependency
-edge accumulates `service_graph.request.total` and
-`service_graph.request.failed.total` for its active lifetime. Removing one of
-several contributors does not subtract historical activity. Removing the final
-contributor deletes the edge; later recreation starts totals from zero.
+Collector request totals enter Flink only as positive freshness evidence. Their
+numeric magnitude is discarded. Failed requests already contribute to request
+totals, so failure counters are not ingested. Nodes and registry-defined edges
+therefore carry current semantic topology and attributes without analytics.
 
 ## Expiry and output
 
 Each element stores independent event-time and processing-time expiry for every
 contributor. Event time follows telemetry timestamps; processing time guarantees
 cleanup when input becomes idle. Refreshing a contributor records later expiry
-timestamps, making callbacks from its older timers harmless. Non-expiring
-explicit contributions register no timer. Generic Flink state TTL is not used,
-because silent state cleanup cannot publish lifecycle deletes.
+timestamps, making callbacks from its older timers harmless. Generic Flink
+state TTL is not used, because silent state cleanup cannot publish lifecycle
+deletes.
 
 The single element-keyed lifecycle stage emits a complete `upsert` when merged
 state changes and a `delete` only when the final contributor disappears.

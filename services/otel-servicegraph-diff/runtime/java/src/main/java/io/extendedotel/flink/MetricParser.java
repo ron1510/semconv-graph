@@ -109,8 +109,13 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
                     "datapoint requires positive finite value and positive timestamp");
               reason = discovery ? "invalid_discovery_datapoint" : reason;
               var attributes = scalarAttributes(point.getAttributesList());
-              output.addAll(
-                  discovery ? discovery(attributes, observed) : servicegraph(attributes, observed));
+              if (discovery) {
+                output.addAll(discovery(attributes, observed));
+              } else {
+                Parsed parsed = servicegraph(attributes, observed);
+                output.addAll(parsed.mutations());
+                rejected.addAll(parsed.rejections());
+              }
             } catch (IllegalArgumentException error) {
               rejected.add(new Rejection(reason, error.getMessage()));
             }
@@ -139,12 +144,10 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
   private static List<GraphModel.Contribution> discovery(
       Map<String, Object> attributes, BigInteger observed) {
     var output = new ArrayList<GraphModel.Contribution>();
-    for (var entity :
-        SemanticRegistry.INSTANCE.extract(attributes).stream()
-            .sorted(java.util.Comparator.comparing(GraphModel.Element::id))
-            .toList()) {
-      if (!SemanticRegistry.INSTANCE.graphTypes().contains(entity.type())
-          || entity.type().equals("app.endpoint")) continue;
+    for (var element :
+        materializeObservation(
+            extractEntities(attributes, SemanticRegistry.EvidenceSource.SPAN_METRICS),
+            SemanticRegistry.EvidenceSource.SPAN_METRICS)) {
       String contributor =
           "spanmetrics:"
               + CanonicalJson.sha256(
@@ -152,24 +155,18 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
                       "source",
                       DISCOVERY,
                       "element_id",
-                      entity.id(),
+                      element.id(),
                       "attributes",
-                      entity.attributes()));
-      output.add(new GraphModel.Contribution(contributor, observed, entity));
+                      element.attributes()));
+      output.add(new GraphModel.Contribution(contributor, observed, element));
     }
     return output;
   }
 
-  private static List<GraphModel.Contribution> servicegraph(
-      Map<String, Object> attributes, BigInteger observed) {
+  private static Parsed servicegraph(Map<String, Object> attributes, BigInteger observed) {
     String client = requiredString(attributes, "client"),
         server = requiredString(attributes, "server");
-    String type =
-        switch (String.valueOf(attributes.get("connection_type"))) {
-          case "messaging_system" -> "publishes_to";
-          case "database" -> "queries";
-          default -> "calls";
-        };
+    String connectionType = connectionType(attributes.get("connection_type"));
     var dimensions = new LinkedHashMap<>(attributes);
     Set.of("client", "server", "connection_type").forEach(dimensions::remove);
     String contributor =
@@ -180,35 +177,39 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
                 "server",
                 server,
                 "connection_type",
-                type,
+                connectionType,
                 "dimensions",
                 dimensions));
-    var clients = side(attributes, "client", client);
-    var servers = side(attributes, "server", server);
+    var clients = observation(attributes, "client", client);
+    var servers = observation(attributes, "server", server);
     var elements = new TreeMap<String, GraphModel.Element>();
     for (var entities : List.of(clients, servers)) {
-      for (var entity : entities) add(elements, entity);
-      for (var relation : SemanticRegistry.INSTANCE.relationships()) {
-        if (relation.source().equals(relation.target())) continue;
-        for (var source : entities)
-          for (var target : entities)
-            if (source.type().equals(relation.source())
-                && target.type().equals(relation.target())
-                && !source.id().equals(target.id()))
-              add(elements, edge(source.id(), relation.type(), target.id()));
-      }
+      for (var element :
+          materializeObservation(entities, SemanticRegistry.EvidenceSource.SERVICE_GRAPH))
+        add(elements, element);
     }
-    String source = SemanticRegistry.quotedId("service", client),
-        target = SemanticRegistry.quotedId("service", server);
-    if (!source.equals(target) && SemanticRegistry.INSTANCE.allows("service", "service", type))
-      add(elements, edge(source, type, target));
-    return elements.values().stream()
-        .<GraphModel.Contribution>map(
-            item -> new GraphModel.Contribution(contributor, observed, item))
-        .toList();
+    var rejections = new ArrayList<Rejection>();
+    if (SemanticRegistry.INSTANCE.supportsConnectionType(
+        SemanticRegistry.EvidenceSource.SERVICE_GRAPH, connectionType)) {
+      for (var edge :
+          SemanticRegistry.INSTANCE.edges(
+              clients,
+              servers,
+              SemanticRegistry.EvidenceSource.SERVICE_GRAPH,
+              SemanticRegistry.RelationshipScope.INTERACTION,
+              connectionType)) add(elements, edge);
+    } else {
+      rejections.add(new Rejection("unsupported_servicegraph_connection_type", connectionType));
+    }
+    var mutations =
+        elements.values().stream()
+            .<GraphModel.Contribution>map(
+                item -> new GraphModel.Contribution(contributor, observed, item))
+            .toList();
+    return new Parsed(mutations, List.copyOf(rejections));
   }
 
-  private static List<GraphModel.Element> side(
+  private static List<GraphModel.Element> observation(
       Map<String, Object> attributes, String side, String name) {
     var selected = new LinkedHashMap<String, Object>();
     String prefix = side + "_";
@@ -217,14 +218,32 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
           if (key.startsWith(prefix)) selected.put(key.substring(prefix.length()), value);
         });
     selected.putIfAbsent("service.name", name);
-    return SemanticRegistry.INSTANCE.extract(selected).stream()
-        .filter(item -> side.equals("server") || !item.type().equals("app.endpoint"))
+    return extractEntities(selected, SemanticRegistry.EvidenceSource.SERVICE_GRAPH);
+  }
+
+  private static List<GraphModel.Element> extractEntities(
+      Map<String, Object> attributes, SemanticRegistry.EvidenceSource evidenceSource) {
+    return SemanticRegistry.INSTANCE.extractValid(attributes).stream()
+        .filter(entity -> SemanticRegistry.INSTANCE.supportsEntity(evidenceSource, entity.type()))
+        .sorted(java.util.Comparator.comparing(GraphModel.Element::id))
         .toList();
   }
 
-  public static GraphModel.Element edge(String source, String type, String target) {
-    return GraphModel.Element.edge(
-        SemanticRegistry.edgeId(source, type, target), type, source, target, Map.of());
+  private static List<GraphModel.Element> materializeObservation(
+      List<GraphModel.Element> entities, SemanticRegistry.EvidenceSource evidenceSource) {
+    var elements = new TreeMap<String, GraphModel.Element>();
+    entities.forEach(entity -> add(elements, entity));
+    SemanticRegistry.INSTANCE
+        .edges(entities, entities, evidenceSource, SemanticRegistry.RelationshipScope.OBSERVATION)
+        .forEach(edge -> add(elements, edge));
+    return List.copyOf(elements.values());
+  }
+
+  private static String connectionType(Object value) {
+    if (value == null) return "unset";
+    if (!(value instanceof String text))
+      throw new IllegalArgumentException("connection_type must be a string");
+    return text.isEmpty() || text.equals("unset") ? "unset" : text;
   }
 
   private static void add(Map<String, GraphModel.Element> elements, GraphModel.Element element) {

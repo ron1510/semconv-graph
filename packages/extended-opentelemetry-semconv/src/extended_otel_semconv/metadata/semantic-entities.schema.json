@@ -1331,6 +1331,46 @@
       "x-semantic-type": "telemetry.sdk",
       "x-template-fields": []
     },
+    "TransactionFields": {
+      "additionalProperties": false,
+      "properties": {
+        "service.name": {
+          "description": "Logical name of the service.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "span.kind": {
+          "description": "The intrinsic kind of the root span representing the transaction.",
+          "enum": [
+            "SPAN_KIND_UNSPECIFIED",
+            "SPAN_KIND_INTERNAL",
+            "SPAN_KIND_PRODUCER",
+            "SPAN_KIND_CONSUMER"
+          ],
+          "minLength": 1,
+          "type": "string"
+        },
+        "span.name": {
+          "description": "The intrinsic name of the root span representing the transaction.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "service.name",
+        "span.name",
+        "span.kind"
+      ],
+      "title": "TransactionFields",
+      "type": "object",
+      "x-identity-fields": [
+        "service.name",
+        "span.name",
+        "span.kind"
+      ],
+      "x-semantic-type": "transaction",
+      "x-template-fields": []
+    },
     "VcsRefFields": {
       "additionalProperties": false,
       "properties": {
@@ -1504,6 +1544,9 @@
     },
     {
       "$ref": "#/$defs/TelemetrySdkFields"
+    },
+    {
+      "$ref": "#/$defs/TransactionFields"
     },
     {
       "$ref": "#/$defs/VcsRefFields"

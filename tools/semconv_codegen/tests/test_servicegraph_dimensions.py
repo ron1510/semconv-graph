@@ -4,11 +4,12 @@ from pathlib import Path
 
 from tools.semconv_codegen.dimensions import (
     SPAN_METRICS_BUILTIN_DIMENSIONS,
+    entity_names_for_signal,
+    graph_dimensions,
     root_span_discovery_dimensions,
     root_span_discovery_routing_attributes,
     root_span_modeled_attributes,
     service_graph_dimensions,
-    service_graph_entity_names,
 )
 from tools.semconv_codegen.registry.validation import load_model_registry
 
@@ -26,20 +27,22 @@ def test_servicegraph_dimensions_come_from_participating_entity_refs() -> None:
     assert "service.namespace" in dimensions
     assert "k8s.pod.uid" in dimensions
     assert "http.route" in dimensions
-    assert {
+    assert not {
         "etl.pipeline.id",
         "etl.pipeline.name",
         "etl.run.id",
         "etl.run.name",
         "etl.part.run.id",
         "etl.part.name",
-    } <= set(dimensions)
+    }.intersection(dimensions)
+    assert "span.name" not in dimensions
+    assert "span.kind" not in dimensions
     assert "k8s.pod.label" not in dimensions
     assert "k8s.pod.annotation" not in dimensions
 
     participating_entity_refs = {
         attribute.ref
-        for entity_name in service_graph_entity_names(registry)
+        for entity_name in entity_names_for_signal(registry, "service_graph")
         if (entity := registry.entities_by_name.get(entity_name)) is not None
         for attribute in entity.attributes
     }
@@ -62,7 +65,7 @@ def test_root_span_discovery_metadata_covers_scalar_entity_fields() -> None:
     routing = root_span_discovery_routing_attributes(registry)
     modeled = root_span_modeled_attributes(registry)
 
-    assert set(dimensions) == set(service_graph_dimensions(registry)) - SPAN_METRICS_BUILTIN_DIMENSIONS
+    assert set(dimensions) == set(graph_dimensions(registry)) - SPAN_METRICS_BUILTIN_DIMENSIONS
     assert "service.name" not in dimensions
     assert "service.name" in routing
     assert "service.namespace" in routing

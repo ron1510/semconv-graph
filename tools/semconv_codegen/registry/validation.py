@@ -62,10 +62,32 @@ def validate_extension_model(upstream_model_dir: Path, extension_model_dir: Path
                 f"{relationship.target_entity}"
             )
         for source_signal in relationship.source_signals:
-            if source_signal not in {"trace", "service_graph"}:
+            if source_signal not in {"trace", "service_graph", "span_metrics"}:
                 raise AssertionError(
                     f"{extension_model_dir}: {relationship.id} uses unknown source signal {source_signal}"
                 )
+        graph_signals = {"service_graph", "span_metrics"}.intersection(relationship.source_signals)
+        if bool(graph_signals) != (relationship.evidence_scope is not None):
+            raise AssertionError(
+                f"{extension_model_dir}: {relationship.id} must define evidence_scope "
+                "exactly when a graph evidence source is declared"
+            )
+        is_interaction = relationship.evidence_scope == "interaction"
+        if is_interaction and graph_signals != {"service_graph"}:
+            raise AssertionError(
+                f"{extension_model_dir}: {relationship.id} interaction evidence "
+                "must come only from service_graph"
+            )
+        has_connection_type = relationship.connection_type is not None
+        if is_interaction != has_connection_type:
+            raise AssertionError(
+                f"{extension_model_dir}: {relationship.id} must define connection_type "
+                "exactly when evidence_scope is interaction"
+            )
+        if relationship.connection_type is not None and not relationship.connection_type.strip():
+            raise AssertionError(
+                f"{extension_model_dir}: {relationship.id} connection_type must be nonempty"
+            )
 
 
 def _attributes_by_id(registry: RegistryDocument) -> dict[str, AttributeDefinition]:
@@ -105,8 +127,16 @@ def _assert_no_duplicate_entities(registry: RegistryDocument) -> None:
 
 def _assert_no_duplicate_relationships(registry: RegistryDocument) -> None:
     relationship_ids: set[str] = set()
+    relationship_triples: set[tuple[str, str, str]] = set()
     for group in registry.groups:
         if isinstance(group, RelationshipDefinition):
             if group.id in relationship_ids:
                 raise AssertionError(f"duplicate extension relationship id {group.id}")
+            triple = (group.source_entity, group.name, group.target_entity)
+            if triple in relationship_triples:
+                raise AssertionError(
+                    "duplicate extension relationship triple "
+                    f"{group.source_entity} -[{group.name}]-> {group.target_entity}"
+                )
             relationship_ids.add(group.id)
+            relationship_triples.add(triple)

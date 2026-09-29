@@ -201,6 +201,13 @@ class ServiceContainsServiceInstanceEdge(SemanticEdge):
     target_entity_type: ClassVar[str] = "service.instance"
 
 
+class ServiceExecutesTransactionEdge(SemanticEdge):
+    relationship_id: ClassVar[str] = "relationship.service_executes_transaction"
+    relationship_type: ClassVar[str] = "executes"
+    source_entity_type: ClassVar[str] = "service"
+    target_entity_type: ClassVar[str] = "transaction"
+
+
 class ServiceExposesAppEndpointEdge(SemanticEdge):
     relationship_id: ClassVar[str] = "relationship.service_exposes_app_endpoint"
     relationship_type: ClassVar[str] = "exposes"
@@ -279,6 +286,7 @@ EDGE_MODELS = MappingProxyType({
     ("service", "built_from", "vcs.repository"): ServiceBuiltFromVcsRepositoryEdge,
     ("service", "calls", "service"): ServiceCallsServiceEdge,
     ("service", "contains", "service.instance"): ServiceContainsServiceInstanceEdge,
+    ("service", "executes", "transaction"): ServiceExecutesTransactionEdge,
     ("service", "exposes", "app.endpoint"): ServiceExposesAppEndpointEdge,
     ("service", "instrumented_by", "telemetry.distro"): ServiceInstrumentedByTelemetryDistroEdge,
     ("service", "instrumented_by", "telemetry.sdk"): ServiceInstrumentedByTelemetrySdkEdge,
@@ -318,6 +326,7 @@ __all__ = [
     "ServiceBuiltFromVcsRepositoryEdge",
     "ServiceCallsServiceEdge",
     "ServiceContainsServiceInstanceEdge",
+    "ServiceExecutesTransactionEdge",
     "ServiceExposesAppEndpointEdge",
     "ServiceInstrumentedByTelemetryDistroEdge",
     "ServiceInstrumentedByTelemetrySdkEdge",
