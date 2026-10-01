@@ -9,6 +9,6 @@ RUN --mount=type=cache,target=/root/.m2 \
     -Dmdep.outputFile=target/benchmark-classpath.txt -DincludeScope=test
 RUN --mount=type=cache,target=/root/.m2 java -Xms256m -Xmx1g \
     -cp "target/test-classes:target/classes:$(cat target/benchmark-classpath.txt)" \
-    io.extendedotel.flink.StateCostBenchmark /build/state-cost.json
+    io.extendedotel.flink.lifecycle.StateCostBenchmark /build/state-cost.json
 FROM scratch
 COPY --from=build /build/state-cost.json /state-cost.json

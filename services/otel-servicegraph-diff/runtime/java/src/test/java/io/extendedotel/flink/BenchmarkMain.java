@@ -1,6 +1,11 @@
 package io.extendedotel.flink;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.extendedotel.flink.ingest.MetricParser;
+import io.extendedotel.flink.lifecycle.GraphLifecycle;
+import io.extendedotel.flink.model.Contribution;
+import io.extendedotel.flink.model.State;
+import io.extendedotel.flink.util.Sha256;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -14,7 +19,7 @@ public final class BenchmarkMain {
 
   private BenchmarkMain() {}
 
-  private record Batch(Map<String, GraphModel.State> states, int events) {}
+  private record Batch(Map<String, State> states, int events) {}
 
   public static void main(String[] args) throws Exception {
     byte[] payload = Files.readAllBytes(Path.of(args[0]));
@@ -22,15 +27,15 @@ public final class BenchmarkMain {
     int datapoints = Integer.parseInt(args[3]);
     for (int i = 0; i < warmup; i++) parse(payload);
     var ingestTimes = new ArrayList<Long>();
-    List<GraphModel.Contribution> mutations = List.of();
+    List<Contribution> mutations = List.of();
     for (int i = 0; i < iterations; i++) {
       long started = System.nanoTime();
       mutations = parse(payload);
       ingestTimes.add(System.nanoTime() - started);
     }
-    Map<String, GraphModel.State> warmStates = Map.of();
+    Map<String, State> warmStates = Map.of();
     for (int i = 0; i < warmup; i++) warmStates = apply(warmStates, mutations, i).states();
-    Map<String, GraphModel.State> states = Map.of();
+    Map<String, State> states = Map.of();
     var lifecycleTimes = new ArrayList<Long>();
     int events = 0;
     for (int i = 0; i < iterations; i++) {
@@ -64,7 +69,7 @@ public final class BenchmarkMain {
     Files.writeString(Path.of(args[4]), JSON.writeValueAsString(report) + "\n");
   }
 
-  private static List<GraphModel.Contribution> parse(byte[] payload) {
+  private static List<Contribution> parse(byte[] payload) {
     var parsed = MetricParser.parse(payload);
     if (!parsed.rejections().isEmpty() || parsed.mutations().isEmpty())
       throw new IllegalStateException("benchmark dataset rejected");
@@ -72,9 +77,7 @@ public final class BenchmarkMain {
   }
 
   private static Batch apply(
-      Map<String, GraphModel.State> previous,
-      List<GraphModel.Contribution> mutations,
-      int iteration) {
+      Map<String, State> previous, List<Contribution> mutations, int iteration) {
     var states = new LinkedHashMap<>(previous);
     int events = 0;
     long processing = 1_800_000_000_000L + iteration;

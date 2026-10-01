@@ -16,18 +16,18 @@ The default Dockerfile builds Java 17 and submits
 Python implementation is available in Git history at `15124a6`. The semantic
 registry remains the common source for Java metadata and the Python SDK.
 
-`GraphModel` defines closed node/edge, immutable contribution, and upsert/delete
-types. `LifecyclePolicy` owns the per-type contributor lifetime, defaulting
-to one day. `AttributeWinners` tracks aggregate attribute ownership;
+Top-level records in `io.extendedotel.flink.model` define the sealed node/edge,
+immutable contribution, and upsert/delete types. `LifecyclePolicy` owns the
+per-type contributor lifetime, defaulting to one day. `AttributeWinners` tracks aggregate attribute ownership;
 `ElementLifecycleFunction` owns keyed state and timers. Normal refreshes use
 point reads, while winner removal and expiry can scan remaining contributors.
-Directly framed CBOR v2 carries internal state and transport; the public Kafka contract and
-canonical IDs/hashes remain JSON.
+Directly framed CBOR v4 carries internal state and transport; the public Kafka
+contract and canonical IDs/hashes remain JSON.
 
 Maven checks Google Java formatting during validation. Run `mvn spotless:apply`
 from the Java module to format changes. The retained-state developer benchmark
 is built with `benchmarks/docker/flink-state-cost.Dockerfile`.
 
-Older Python, JSON, and CBOR-v1 checkpoints are incompatible. This rollout
+Older Python, JSON, and CBOR checkpoints are incompatible. This rollout
 requires the clean reset in `docs/operations/upgrades.md`. Later compatible
-CBOR-v3 upgrades can keep the fixed job ID and compatible savepoints.
+CBOR-v4 upgrades can keep the fixed job ID and compatible savepoints.

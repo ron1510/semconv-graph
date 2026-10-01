@@ -27,7 +27,8 @@ the Flink application has no Python dependency.
 Open `services/otel-servicegraph-diff/runtime/java` as a Maven project in a Java
 IDE and use JDK 17. `ServiceGraphJob` wires Kafka, parsing, semantic extraction,
 keyed state/timers and output. `SemanticRegistry` reads generated entity
-metadata; `GraphModel.Element` represents nodes and edges. Run the operator
+metadata; the top-level `model.Element` interface represents nodes and edges.
+Run the operator
 tests on Linux, including through the Docker image build, for RocksDB JNI.
 
 For general pipeline assertions, run:

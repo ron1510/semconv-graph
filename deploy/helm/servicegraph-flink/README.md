@@ -56,6 +56,8 @@ The post-install submitter waits for the REST endpoint and submits
 `io.extendedotel.flink.ServiceGraphJob` from
 `/opt/flink/usrlib/otel-servicegraph-diff.jar` with `job.fixedJobId`. A repeated install skips an
 already active job with that ID.
+The hook entry point for inspection, savepoint, and marker commands is
+`io.extendedotel.flink.operations.DeploymentCommands`.
 
 Every Helm upgrade performs a stateful application replacement:
 
@@ -73,8 +75,8 @@ Keep `application.clusterId`, `job.fixedJobId`, and the state claim unchanged
 across automatic upgrades. Set `job.allowNonRestoredState=true` only for an
 intentional topology change that removes state which may be discarded.
 
-The chart uses Java 17 and CBOR-v3 lifecycle state. Hooks accept only the
-`java-cbor-v3` runtime marker and reject older Python, JSON, and CBOR state.
+The chart uses Java 17 and CBOR-v4 lifecycle state. Hooks accept only the
+`java-cbor-v4` runtime marker and reject older Python, JSON, and CBOR state.
 This contract change requires the clean reset documented in
 `docs/operations/upgrades.md`; `allowNonRestoredState` cannot convert serializers.
 

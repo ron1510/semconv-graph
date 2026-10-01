@@ -60,7 +60,7 @@ spec:
             - |
               decision=0
               java -cp /opt/flink/usrlib/otel-servicegraph-diff.jar \
-                io.extendedotel.flink.DeploymentCommands inspect || decision=$?
+                io.extendedotel.flink.operations.DeploymentCommands inspect || decision=$?
 
               if [ "${decision}" -eq 42 ]; then
                 exit 0
@@ -106,7 +106,7 @@ spec:
                 --class io.extendedotel.flink.ServiceGraphJob \
                 /opt/flink/usrlib/otel-servicegraph-diff.jar
               java -cp /opt/flink/usrlib/otel-servicegraph-diff.jar \
-                io.extendedotel.flink.DeploymentCommands record-runtime
+                io.extendedotel.flink.operations.DeploymentCommands record-runtime
           env:
             - name: FLINK_REST_URL
               value: http://{{ include "servicegraph-flink.restServiceName" . }}:8081

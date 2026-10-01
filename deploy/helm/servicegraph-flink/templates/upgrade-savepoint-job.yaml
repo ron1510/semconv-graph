@@ -57,7 +57,7 @@ spec:
           args:
             - |
               exec java -cp /opt/flink/usrlib/otel-servicegraph-diff.jar \
-                io.extendedotel.flink.DeploymentCommands savepoint
+                io.extendedotel.flink.operations.DeploymentCommands savepoint
           env:
             - name: FLINK_REST_URL
               value: http://{{ include "servicegraph-flink.restServiceName" . }}:8081

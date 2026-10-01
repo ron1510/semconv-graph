@@ -24,7 +24,7 @@ The generated registry defines entities, identifying attributes, evidence-source
 
 Each graph element is keyed independently. Contributor snapshots merge by newest observation time and canonical contributor-ID tie breaking. `AttributeWinners` maintains the winning attribute owners for the common refresh path. Every element has at most one event-time and one processing-time timer, regardless of contributor cardinality; callbacks remove all contributors whose deadlines have passed and schedule the next minimum.
 
-An unchanged refresh updates state and deadlines without another public event. A changed aggregate emits a complete upsert. Final expiry emits a delete. State uses directly framed CBOR v3 and has no legacy reader.
+An unchanged refresh updates state and deadlines without another public event. A changed aggregate emits a complete upsert. Final expiry emits a delete. State uses directly framed CBOR v4 and has no legacy reader.
 
 ## Projection and access
 

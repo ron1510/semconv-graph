@@ -2,6 +2,10 @@ package io.extendedotel.flink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.extendedotel.flink.config.EngineConfig;
+import io.extendedotel.flink.lifecycle.ElementLifecycleFunction;
+import io.extendedotel.flink.serialization.ContributionTypeInformation;
+import io.extendedotel.flink.serialization.EventTypeInformation;
 import java.util.Map;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -59,8 +63,18 @@ class ServiceGraphJobTest {
             .filter(java.util.Objects::nonNull)
             .toList();
     assertTrue(uids.contains(ElementLifecycleFunction.UID));
-    assertTrue(uids.contains("graph-java-v1-kafka-source"));
-    assertTrue(uids.contains("graph-java-v1-events-sink"));
+    assertTrue(uids.contains("graph-kafka-source"));
+    assertTrue(uids.contains("graph-events-sink"));
+    assertTrue(
+        graph.getStreamNodes().stream()
+            .map(node -> node.getTypeSerializerOut())
+            .filter(java.util.Objects::nonNull)
+            .anyMatch(ContributionTypeInformation.Serializer.class::isInstance));
+    assertTrue(
+        graph.getStreamNodes().stream()
+            .map(node -> node.getTypeSerializerOut())
+            .filter(java.util.Objects::nonNull)
+            .anyMatch(EventTypeInformation.Serializer.class::isInstance));
     assertTrue(graph.getCheckpointConfig().isCheckpointingEnabled());
     assertThrows(
         IllegalArgumentException.class,

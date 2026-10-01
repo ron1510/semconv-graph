@@ -16,15 +16,25 @@ not import Gremlin runtime dependencies.
 
 ## Flink application
 
-`services/otel-servicegraph-diff/runtime/java` is a Java 17 Maven application.
-`ServiceGraphJob` wires native Kafka sources and sink. `MetricParser` and
-`MetricParser` parses OTLP and produces contributions. `SemanticRegistry`
-loads generated fields, identity rules, and relationship metadata.
+`services/otel-servicegraph-diff/runtime/java` is one Java 17 Maven application,
+one fat JAR, and one deployment unit. `io.extendedotel.flink.ServiceGraphJob`
+is the composition root and the only class in the root package.
 
-`GraphLifecycle` owns pure contributor aggregation, attribute merging, and expiry.
-`ElementLifecycleFunction` owns Flink keyed state and coalesced timers.
-`GraphModel.Element` represents semantic nodes and edges; there is no Python
-Flink package and no individual generated Java entity class hierarchy.
+- `config` validates runtime configuration.
+- `operations` owns Helm submission and savepoint commands.
+- `ingest` parses OTLP Protobuf and reports rejected evidence.
+- `semantic` loads generated identity and relationship metadata.
+- `model` contains Flink-independent top-level graph and lifecycle records.
+- `lifecycle` owns contributor aggregation, keyed state, expiry, and timers.
+- `serialization` owns explicit CBOR serializers and Flink type information.
+- `transport` owns schema-3 Kafka event encoding.
+- `util` contains the byte-only SHA-256 helper.
+
+These are packages rather than Maven modules because they share one runtime,
+release cadence, and dependency graph. The package boundaries make ownership
+visible without adding artifact or build boundaries. `Element` is the sealed
+node/edge interface; there is no Python Flink package and no individual
+generated Java entity class hierarchy.
 
 ## Projection and tooling
 

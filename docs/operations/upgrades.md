@@ -22,15 +22,15 @@ This release changes the Kafka input encoding, public event schema, Arango schem
 8. Reset the indexer consumer group.
 9. Remove only the generated `servicegraph` graph definition and its generated vertex/edge documents from ArangoDB. Preserve the server, databases unrelated to this graph, credentials, and Secrets.
 10. Deploy generated Arango schema version 3, the indexer, and Gremlin.
-11. Deploy Flink and verify the `java-cbor-v3` marker and new checkpoints.
+11. Deploy Flink and verify the `java-cbor-v4` marker and new checkpoints.
 12. Deploy the Collector and resume telemetry.
 13. Verify that the graph reconstructs naturally.
 
-Old markers including `java`, `java-cbor-v1`, `java-cbor-v2`, Python markers, and unmarked state are rejected. `allowNonRestoredState` does not migrate serializers and is not a substitute for this reset.
+Old markers including `java`, `java-cbor-v1`, `java-cbor-v2`, `java-cbor-v3`, Python markers, and unmarked state are rejected. `allowNonRestoredState` does not migrate serializers and is not a substitute for this reset.
 
 ## Routine recovery after cutover
 
-Once every checkpoint was created by `java-cbor-v3`, normal TaskManager and JobManager recovery restores contributor snapshots, attribute winners, aggregates, and two timers per element. A recovered processing-time timer can expire idle state without new Kafka input.
+Once every checkpoint was created by `java-cbor-v4`, normal TaskManager and JobManager recovery restores contributor snapshots, attribute winners, aggregates, and two timers per element. A recovered processing-time timer can expire idle state without new Kafka input.
 
 Before an ordinary deployment, check checkpoint age, failed-checkpoint count, Kafka lag, RocksDB disk capacity, and JobManager HA metadata. Do not prune state while a healthy deployment may still reference it.
 
@@ -40,4 +40,4 @@ A registry change must regenerate Java, Python, Collector, indexer, and Gremlin 
 
 ## Rollback
 
-Rollback within the CBOR-v3/schema-3 generation can use its checkpoints and topic history if the code remains serializer-compatible. Rolling back to an earlier CBOR generation, schema 2, JSON input, or the removed entity-event/counter model requires the same clean reset and topic recreation as a forward cutover.
+Rollback within the CBOR-v4/schema-3 generation can use its checkpoints and topic history if the code remains serializer-compatible. Rolling back to an earlier CBOR generation, schema 2, JSON input, or the removed entity-event/counter model requires the same clean reset and topic recreation as a forward cutover.

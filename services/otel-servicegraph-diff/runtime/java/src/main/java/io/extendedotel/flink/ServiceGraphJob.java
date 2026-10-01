@@ -1,5 +1,14 @@
 package io.extendedotel.flink;
 
+import io.extendedotel.flink.config.EngineConfig;
+import io.extendedotel.flink.ingest.MetricParser;
+import io.extendedotel.flink.lifecycle.ElementLifecycleFunction;
+import io.extendedotel.flink.model.Contribution;
+import io.extendedotel.flink.model.Event;
+import io.extendedotel.flink.semantic.SemanticRegistry;
+import io.extendedotel.flink.serialization.ContributionTypeInformation;
+import io.extendedotel.flink.serialization.EventTypeInformation;
+import io.extendedotel.flink.transport.GraphEventKafkaSerializer;
 import java.time.Duration;
 import java.util.Properties;
 import org.apache.flink.api.common.RuntimeExecutionMode;
@@ -38,20 +47,20 @@ public final class ServiceGraphJob {
       if (!SemanticRegistry.INSTANCE.knownElementTypes().contains(type))
         throw new IllegalArgumentException("unknown graph element TTL type: " + type);
     }
-    DataStream<GraphModel.Contribution> contributions =
+    DataStream<Contribution> contributions =
         env.fromSource(
                 source(config, config.inputTopic, config.groupId),
                 WatermarkStrategy.noWatermarks(),
-                "servicegraph-otlp-json")
+                "servicegraph-otlp-protobuf")
             .name("servicegraph-kafka-source")
-            .uid("graph-java-v1-kafka-source")
+            .uid("graph-kafka-source")
             .flatMap(new MetricParser())
             .returns(ContributionTypeInformation.INSTANCE)
             .name("extract-graph-contributions")
-            .uid("graph-java-v1-extract-contributions");
+            .uid("graph-extract-contributions");
     contributions
         .assignTimestampsAndWatermarks(
-            WatermarkStrategy.<GraphModel.Contribution>forBoundedOutOfOrderness(
+            WatermarkStrategy.<Contribution>forBoundedOutOfOrderness(
                     Duration.ofSeconds(config.allowedLatenessSeconds))
                 .withIdleness(Duration.ofSeconds(Math.max(2L * config.allowedLatenessSeconds, 1)))
                 .withTimestampAssigner(
@@ -61,15 +70,15 @@ public final class ServiceGraphJob {
                             .divide(java.math.BigInteger.valueOf(1_000_000L))
                             .longValueExact()))
         .name("graph-contribution-watermarks")
-        .uid("graph-java-v1-watermarks")
-        .keyBy(GraphModel.Contribution::elementKey)
+        .uid("graph-contribution-watermarks")
+        .keyBy(Contribution::elementKey)
         .process(new ElementLifecycleFunction(config.ttlSeconds, config.elementTtls))
         .returns(EventTypeInformation.INSTANCE)
         .name("graph-element-lifecycle")
         .uid(ElementLifecycleFunction.UID)
         .sinkTo(sink(config))
         .name("graph-element-events")
-        .uid("graph-java-v1-events-sink");
+        .uid("graph-events-sink");
   }
 
   static KafkaSource<byte[]> source(EngineConfig config, String topic, String groupId) {
@@ -94,11 +103,11 @@ public final class ServiceGraphJob {
         .build();
   }
 
-  static KafkaSink<GraphModel.Event> sink(EngineConfig config) {
+  static KafkaSink<Event> sink(EngineConfig config) {
     Properties properties = new Properties();
     properties.putAll(config.kafkaProperties());
     properties.setProperty("allow.auto.create.topics", "false");
-    return KafkaSink.<GraphModel.Event>builder()
+    return KafkaSink.<Event>builder()
         .setBootstrapServers(config.bootstrapServers)
         .setKafkaProducerConfig(properties)
         .setRecordSerializer(new GraphEventKafkaSerializer(config.outputTopic))

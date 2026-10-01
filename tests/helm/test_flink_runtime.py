@@ -32,6 +32,8 @@ def test_native_submission_preserves_recovery_and_security() -> None:
     assert "DeploymentCommands savepoint" in manifests
     assert "DeploymentCommands inspect" in manifests
     assert "DeploymentCommands record-runtime" in manifests
+    assert "io.extendedotel.flink.operations.DeploymentCommands" in manifests
+    assert "io.extendedotel.flink.DeploymentCommands" not in manifests
     assert "restore_args+=(--fromSavepoint" in manifests
     assert "--allowNonRestoredState" not in manifests
     assert "00000000000000000000000000000001" in manifests

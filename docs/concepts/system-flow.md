@@ -17,7 +17,7 @@ application spans
   → Contribution(contributorId, observedAtUnixNano, element)
   → keyBy(elementKey)
   → ElementLifecycleFunction
-  → GraphModel.Event schema 3.0
+  → Event schema 3.0
   → Kafka graph.elements.events (deterministic JSON, key=element_id)
   → servicegraph-indexer
   → generated Arango collections
@@ -78,7 +78,7 @@ Both backends batch and publish gzip-compressed `otlp_proto` records to `otel.se
 - checkpoint and restart settings;
 - supported semantic types in `GRAPH_ELEMENT_TTL_SECONDS`.
 
-`ServiceGraphJob.configure()` creates a `KafkaSource<byte[]>`. Its deserializer returns the record bytes unchanged. The source has stable UID `graph-java-v1-kafka-source`.
+`ServiceGraphJob.configure()` creates a `KafkaSource<byte[]>`. Its deserializer returns the record bytes unchanged. The source has stable UID `graph-kafka-source`.
 
 The source stream calls `flatMap(new MetricParser())`, declares `ContributionTypeInformation`, assigns timestamps/watermarks, then keys by `Contribution.elementKey()`. `ElementLifecycleFunction` owns all state and timers after that key. `GraphEventKafkaSerializer` writes deterministic JSON with `element_id` as the Kafka key.
 
@@ -128,9 +128,9 @@ The only universal topology rule in Java is the prohibition on equal endpoint ID
 
 ## 6. Domain model
 
-`GraphModel.Element` is the sealed node/edge interface. `Node` contains ID, type, and immutable attributes. `Edge` adds source and target IDs. Neither type contains metrics.
+`Element` is the top-level sealed node/edge interface in the `model` package. `Node` contains ID, type, and immutable attributes. `Edge` adds source and target IDs. Neither type contains metrics.
 
-`GraphModel.Contribution` is one immutable observation record:
+`Contribution` is one immutable observation record:
 
 ```text
 contributorId
@@ -140,9 +140,9 @@ element
 
 It has no operation flag, retraction, metric delta, or TTL override.
 
-`GraphModel.Snapshot` stores the observation timestamp, event-time deadline, processing-time deadline, and element. `State` is the pure reference form used by lifecycle functions. `Aggregate` is the compact persisted element ID and last payload hash.
+`Snapshot` stores the observation timestamp, event-time deadline, processing-time deadline, and element. `State` is the pure reference form used by lifecycle functions. `Aggregate` is the compact persisted element ID and last payload hash.
 
-`GraphModel.Event` has `Upsert` and `Delete` implementations. `toMap()` always writes schema 3.0. `fromMap()` rejects other schemas and rejects elements containing a removed `metrics` field.
+`Event` has `Upsert` and `Delete` implementations. `toMap()` always writes schema 3.0. `fromMap()` rejects other schemas and rejects elements containing a removed `metrics` field.
 
 ## 7. Lifecycle policy and state
 
@@ -154,13 +154,13 @@ It has no operation flag, retraction, metric delta, or TTL override.
 
 | Descriptor | Value |
 | --- | --- |
-| `graph-java-element-contributors-v1` | contributor ID → CBOR-v3 `Snapshot` |
-| `graph-java-element-aggregate-v1` | CBOR-v3 `Aggregate` |
-| `graph-java-element-attribute-winners-v1` | CBOR-v3 `AttributeWinners` |
+| `graph-element-contributors` | contributor ID → CBOR-v4 `Snapshot` |
+| `graph-element-aggregate` | CBOR-v4 `Aggregate` |
+| `graph-element-attribute-winners` | CBOR-v4 `AttributeWinners` |
 | event timer state | next registered event-time millisecond |
 | processing timer state | next registered processing-time millisecond |
 
-The descriptor names stay stable, but serializer snapshot version 3 deliberately rejects older state and hash semantics.
+These descriptive state and operator names replace the old version-suffixed names at the clean CBOR-v4 boundary. Serializer snapshot version 4 deliberately rejects all older state.
 
 ## 8. Common observation path
 
@@ -196,26 +196,26 @@ An identical request every minute therefore refreshes that contributor's 24-hour
 
 `scheduleTimers()` scans contributors only after a callback or fallback mutation to discover the next minimum. `replaceTimer()` maintains at most one event-time and one processing-time timer per element. A conservative old callback is safe: refreshed snapshots survive and the next minimum is registered.
 
-## 10. CBOR-v3 state and checkpoints
+## 10. CBOR-v4 state and checkpoints
 
 `StateSerializer` writes exactly:
 
 ```text
-format byte = 3
+format byte = 4
 frame length
 CBOR map
 ```
 
-There is no legacy string sentinel or multi-version reader. `StateSerializer.Snapshot` accepts only snapshot version 3 with the same `Kind`. Contribution and event stream serializers use the same typed format through `ContributionTypeInformation` and `EventTypeInformation`.
+There is no legacy string sentinel or multi-version reader. `StateSerializer.Snapshot` accepts only snapshot version 4 with the same `Kind`. Contribution and event stream serializers use the same typed format through `ContributionTypeInformation` and `EventTypeInformation`.
 
-`DeploymentCommands.CURRENT_RUNTIME` is `java-cbor-v3`. `validateRuntime()` accepts only that marker for restore/savepoint operations. An unmarked state directory or any older marker requires the documented clean reset.
+`DeploymentCommands.CURRENT_RUNTIME` is `java-cbor-v4`. `validateRuntime()` accepts only that marker for restore/savepoint operations. An unmarked state directory or any older marker requires the documented clean reset.
 
 Incremental RocksDB checkpoints capture contributors, winner indexes, aggregates, and registered timers. Recovery tests prove an idle restored timer can publish final deletion without new input.
 
 ## 11. Public event serialization
 
-`GraphLifecycle.payloadHash()` hashes only the complete element. `GraphModel`
-recursively orders semantic maps, so default Jackson serialization is stable
+`GraphLifecycle.payloadHash()` hashes only the complete element. The top-level
+model records recursively order semantic maps, so default Jackson serialization is stable
 without a separate deterministic JSON implementation. Evidence magnitude cannot
 affect hashes or event IDs.
 
@@ -264,7 +264,7 @@ when moving between incompatible alpha revisions.
 - `LifecycleGoldenTest`: refresh suppression, deterministic winners, partial expiry, final delete, identity validation.
 - `ElementLifecycleFunctionTest`: conservative callbacks, checkpoint/recovery, idle deletion, policy timers.
 - `GranularLifecycleStateTest`: point refresh behavior with thousands of contributors.
-- `StateSerializerTest`: direct CBOR-v3 frames and old-format rejection.
+- `StateSerializerTest`: direct CBOR-v4 frames and old-format rejection.
 - indexer tests: schema-3 replacement, replay coalescing, deletion, commit-after-success, schema-2 and metrics rejection.
 - SDK tests: metric-free edge construction and typed Gremlin reconstruction.
 - codegen tests: Arango schema version 3, transaction topology, connection selectors, and absence of metric fields or aliases.
