@@ -41,6 +41,9 @@ class DeploymentCommandsTest {
     DeploymentCommands.writeAtomic(marker, "python");
     assertThrows(
         IllegalStateException.class, () -> DeploymentCommands.validateRuntime(marker, false));
+    DeploymentCommands.writeAtomic(marker, "java-cbor-v2");
+    assertThrows(
+        IllegalStateException.class, () -> DeploymentCommands.validateRuntime(marker, true));
     DeploymentCommands.writeAtomic(marker, "unknown");
     assertThrows(
         IllegalStateException.class, () -> DeploymentCommands.validateRuntime(marker, true));

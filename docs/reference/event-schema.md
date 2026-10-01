@@ -1,6 +1,6 @@
 # Graph element event schema
 
-Flink publishes canonical JSON records to `graph.elements.events`. Schema 3.0 is a clean contract break: edge counters and the `metrics` field do not exist. Kafka keys are always `element_id`, so compaction retains the latest complete state or deletion for each graph element.
+Flink publishes deterministic JSON records to `graph.elements.events`. Schema 3.0 is a clean contract break: edge counters and the `metrics` field do not exist. Kafka keys are always `element_id`, so compaction retains the latest complete state or deletion for each graph element.
 
 ## Envelope
 

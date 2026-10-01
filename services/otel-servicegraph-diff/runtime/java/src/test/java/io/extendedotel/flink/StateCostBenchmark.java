@@ -1,5 +1,7 @@
 package io.extendedotel.flink;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +14,9 @@ import org.apache.flink.core.memory.DataOutputSerializer;
 
 /** Developer measurement of state codec and retained-key work, not cluster capacity. */
 public final class StateCostBenchmark {
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final TypeReference<Map<String, Object>> JSON_OBJECT = new TypeReference<>() {};
+
   private StateCostBenchmark() {}
 
   public static void main(String[] args) throws Exception {
@@ -30,17 +35,20 @@ public final class StateCostBenchmark {
             observed.add(BigInteger.valueOf(86_400_000_000_000L)),
             1_789_743_944_000L,
             node);
-    String json = CanonicalJson.stringify(sample.toMap());
+    String json = JSON.writeValueAsString(sample.toMap());
     long checksum = 0;
     for (int index = 0; index < 1000; index++) {
       checksum +=
-          GraphModel.Snapshot.fromMap(CanonicalJson.readObject(json)).element().attributes().size();
+          GraphModel.Snapshot.fromMap(JSON.readValue(json, JSON_OBJECT))
+              .element()
+              .attributes()
+              .size();
     }
     long started = System.nanoTime();
     for (int index = 0; index < 5000; index++) {
-      String encoded = CanonicalJson.stringify(sample.toMap());
+      String encoded = JSON.writeValueAsString(sample.toMap());
       checksum +=
-          GraphModel.Snapshot.fromMap(CanonicalJson.readObject(encoded))
+          GraphModel.Snapshot.fromMap(JSON.readValue(encoded, JSON_OBJECT))
               .element()
               .attributes()
               .size();
@@ -167,6 +175,6 @@ public final class StateCostBenchmark {
             "Pure/indexed merges exclude RocksDB reads, state writes, timer scans and checkpoints.",
             "Twenty-four-hour deadlines are logical clocks; this is not a day-long physical"
                 + " soak."));
-    Files.writeString(Path.of(args[0]), CanonicalJson.stringify(report) + "\n");
+    Files.writeString(Path.of(args[0]), JSON.writeValueAsString(report) + "\n");
   }
 }

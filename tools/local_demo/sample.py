@@ -5,8 +5,6 @@ from __future__ import annotations
 import time
 from collections.abc import Sequence
 
-from extended_otel_semconv.edges import edge_id
-
 
 def demo_events(*, observed_at_unix_nano: int | None = None) -> Sequence[dict[str, object]]:
     observed_at = time.time_ns() if observed_at_unix_nano is None else observed_at_unix_nano
@@ -38,9 +36,7 @@ def demo_events(*, observed_at_unix_nano: int | None = None) -> Sequence[dict[st
         )
         for name, version in services
     ]
-    events.extend(
-        _dependency_event(source, target, observed_at) for source, target in dependencies
-    )
+    events.extend(_dependency_event(source, target, observed_at) for source, target in dependencies)
     return events
 
 
@@ -51,7 +47,7 @@ def _dependency_event(
 ) -> dict[str, object]:
     source_id = f"service:{source}"
     target_id = f"service:{target}"
-    element_id = edge_id(source_id, "calls", target_id)
+    element_id = f"edge:local-demo:{source}:{target}"
     return _upsert(
         element_id,
         {

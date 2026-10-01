@@ -40,18 +40,22 @@ An entity definition has:
       role: identifying
 ```
 
-The generated class is immutable, validates exact registry types with Pydantic, and
-constructs a deterministic ID from identifying values:
+Java `SemanticRegistry` constructs a deterministic ID from identifying values:
 
 ```text
 app.endpoint:checkout-api:shop:POST:%2Fcheckout%2F%7Bcart_id%7D
 ```
 
-Missing any identifying key means that entity is not observed. Present but
+The generated Python class is immutable, receives that stored ID as
+`element_id`, and validates exact registry field types without rebuilding the
+identity. Missing any identifying key means that Java does not observe the entity. Present but
 empty, incorrectly typed, or invalid enum values are rejected. Optional
 attributes enrich an entity but do not change its identity. Array and template
 attributes retain their registry types; template fields such as
 `k8s.pod.label.<key>` are exposed as canonical dotted attributes.
+Identity fields are limited to strings, integers, booleans, and enums without
+floating-point members. Floating-point values remain valid descriptive
+attributes but cannot participate in an entity ID.
 
 ### ETL hierarchy
 

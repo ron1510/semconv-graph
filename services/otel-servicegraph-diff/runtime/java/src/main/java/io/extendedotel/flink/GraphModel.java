@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 /** Typed graph elements, evidence contributions, lifecycle state, and schema-3 events. */
 public final class GraphModel {
@@ -226,10 +227,6 @@ public final class GraphModel {
       return value;
     }
 
-    default String toJson() {
-      return CanonicalJson.stringify(toMap());
-    }
-
     static Event fromMap(Map<String, Object> value) {
       if (!"3.0".equals(value.get("schema_version"))
           || !"graph_element_state_changed".equals(value.get("event_type")))
@@ -363,15 +360,15 @@ public final class GraphModel {
 
   private static Map<String, Object> immutableObject(Map<String, Object> value) {
     Map<String, Object> result = new LinkedHashMap<>();
-    value.forEach((name, item) -> result.put(name, immutable(item)));
+    new TreeMap<>(value).forEach((name, item) -> result.put(name, immutable(item)));
     return Collections.unmodifiableMap(result);
   }
 
   private static Object immutable(Object value) {
     if (value instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, item) -> result.put((String) key, immutable(item)));
-      return Collections.unmodifiableMap(result);
+      Map<String, Object> typed = new LinkedHashMap<>();
+      map.forEach((key, item) -> typed.put((String) key, item));
+      return immutableObject(typed);
     }
     if (value instanceof List<?> list) return list.stream().map(GraphModel::immutable).toList();
     return value;

@@ -14,8 +14,6 @@ from typing import Literal, TypedDict, cast
 from pydantic import BaseModel, ConfigDict, Field
 
 from benchmarks.servicegraph import BenchmarkContractError, DatasetConfig, generate_otlp_proto
-from extended_otel_semconv import Service
-from extended_otel_semconv.edges import edge_id
 from tools.local_demo.environment import DemoEnvironment
 
 INPUT_TOPIC = "otel.servicegraph.metrics"
@@ -120,26 +118,55 @@ def expected_elements(payload: bytes, batches: int) -> dict[str, dict[str, objec
                     pairs.add((client, server))
     elements: dict[str, dict[str, object]] = {}
     for name, (_, version) in versions.items():
-        service = Service(service_name=name, service_version=version)
-        elements[service.entity_id] = {
+        elements[f"node:service:{name}"] = {
             "kind": "node",
-            "id": service.entity_id,
             "type": "service",
             "attributes": {"service.name": name, "service.version": version},
         }
     for client, server in pairs:
-        source = Service(service_name=client).entity_id
-        target = Service(service_name=server).entity_id
-        identifier = edge_id(source, "calls", target)
-        elements[identifier] = {
+        elements[f"edge:calls:{client}:{server}"] = {
             "kind": "edge",
-            "id": identifier,
             "type": "calls",
-            "source_id": source,
-            "target_id": target,
+            "source": client,
+            "target": server,
             "attributes": {},
         }
     return elements if batches else {}
+
+
+def project_elements(
+    elements: Mapping[str, dict[str, object]], service_names: set[str]
+) -> dict[str, dict[str, object]]:
+    """Project Java-owned IDs into the benchmark's semantic topology."""
+    services: dict[str, tuple[str, dict[str, object]]] = {}
+    for identifier, element in elements.items():
+        attributes = _object(element.get("attributes"))
+        name = attributes.get("service.name")
+        if element.get("kind") == "node" and element.get("type") == "service" and name in service_names:
+            services[identifier] = (cast(str, name), attributes)
+
+    projected: dict[str, dict[str, object]] = {}
+    for name, attributes in services.values():
+        projected[f"node:service:{name}"] = {
+            "kind": "node",
+            "type": "service",
+            "attributes": attributes,
+        }
+    for element in elements.values():
+        if element.get("kind") != "edge" or element.get("type") != "calls":
+            continue
+        source = services.get(cast(str, element.get("source_id")))
+        target = services.get(cast(str, element.get("target_id")))
+        if source is None or target is None:
+            continue
+        projected[f"edge:calls:{source[0]}:{target[0]}"] = {
+            "kind": "edge",
+            "type": "calls",
+            "source": source[0],
+            "target": target[0],
+            "attributes": _object(element.get("attributes")),
+        }
+    return projected
 
 
 def elements_hash(elements: Mapping[str, dict[str, object]]) -> str:
@@ -297,7 +324,11 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
     wire = payload
     targets = [expected_elements(payload, batch + 1) for batch in range(config.warmup + config.iterations)]
     expected = targets[-1]
-    identifiers = set(expected)
+    service_names = {
+        cast(str, _object(element["attributes"])["service.name"])
+        for element in expected.values()
+        if element["kind"] == "node"
+    }
     observed: dict[str, dict[str, object]] = {}
     address = environment.kafka_host_address
     consumer = KafkaConsumer(
@@ -311,9 +342,6 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
         for records in consumer.poll(timeout_ms=timeout_ms, max_records=10000).values():
             for record in records:
                 raw = cast(bytes, record.value)
-                document = _object(json.loads(raw))
-                if document.get("element_id") not in identifiers:
-                    continue
                 event = GraphEvent.model_validate_json(raw)
                 if cast(bytes | None, record.key) != event.element_id.encode():
                     raise BenchmarkContractError("Flink output did not use element_id as Kafka key")
@@ -359,7 +387,7 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
         deadline = time.monotonic() + config.timeout_seconds
         while True:
             initial = drain()
-            if initial:
+            if initial and project_elements(observed, service_names):
                 raise BenchmarkContractError("dataset already appears in this output topic; use fresh benchmark state")
             end = consumer.end_offsets(list(consumer.assignment()))
             if all((consumer.position(partition) or 0) >= offset for partition, offset in end.items()):
@@ -391,16 +419,17 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
             producer.flush(timeout=30)
             emitted = 0
             deadline = time.monotonic() + config.timeout_seconds
-            while observed != target:
+            while project_elements(observed, service_names) != target:
                 emitted += drain()
                 if time.monotonic() >= deadline:
                     raise BenchmarkContractError(
                         f"Java output failed workload expectation at batch {batch + 1}; "
-                        f"expected hash={elements_hash(target)} actual={elements_hash(observed)}"
+                        f"expected hash={elements_hash(target)} "
+                        f"actual={elements_hash(project_elements(observed, service_names))}"
                     )
             emitted += drain()
             finished = time.perf_counter()
-            if observed != target:
+            if project_elements(observed, service_names) != target:
                 raise BenchmarkContractError("extra output changed final graph after batch completion")
             if batch < config.warmup:
                 warmup_events += emitted
@@ -426,7 +455,8 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
         offset_samples.append(offsets())
         elapsed = finished - started
         datapoints = config.entities * config.contributors * config.iterations
-        final_hash = elements_hash(observed)
+        final = project_elements(observed, service_names)
+        final_hash = elements_hash(final)
         expected_hash = elements_hash(expected)
         return {
             "scope": "controlled_distributed_flink_workload",
@@ -444,7 +474,7 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
             "output_events_warmup": warmup_events,
             "output_events_measured": measured_events,
             "expected_events_measured": 0 if config.warmup else len(expected),
-            "final_element_count": len(observed),
+            "final_element_count": len(final),
             "final_elements_sha256": final_hash,
             "expected_elements_sha256": expected_hash,
             "expected_matches": final_hash == expected_hash,

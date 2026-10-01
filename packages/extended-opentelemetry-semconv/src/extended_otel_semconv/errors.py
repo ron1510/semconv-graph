@@ -11,7 +11,3 @@ class UnknownSemanticTypeError(SemanticModelError):
 
 class SemanticModelValidationError(SemanticModelError):
     """Raised when stored semantic data cannot construct its generated model."""
-
-
-class SemanticIdentityMismatchError(SemanticModelError):
-    """Raised when reconstructed and stored deterministic identities differ."""

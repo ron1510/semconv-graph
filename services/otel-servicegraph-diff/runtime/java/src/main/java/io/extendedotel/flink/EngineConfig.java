@@ -1,5 +1,8 @@
 package io.extendedotel.flink;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -7,6 +10,8 @@ import java.util.Set;
 
 /** Validated application environment. Credentials never appear in diagnostic output. */
 public final class EngineConfig implements Serializable {
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final TypeReference<Map<String, Object>> JSON_OBJECT = new TypeReference<>() {};
   public final String bootstrapServers, inputTopic, outputTopic, groupId;
   public final int ttlSeconds, allowedLatenessSeconds, checkpointIntervalMs, parallelism;
   public final int restartAttempts, restartDelaySeconds;
@@ -29,7 +34,7 @@ public final class EngineConfig implements Serializable {
     restartAttempts = integer(env, "FLINK_RESTART_ATTEMPTS", 3, 0);
     restartDelaySeconds = integer(env, "FLINK_RESTART_DELAY_SECONDS", 10, 0);
     Map<String, Integer> ttls = new LinkedHashMap<>();
-    CanonicalJson.readObject(env.getOrDefault("GRAPH_ELEMENT_TTL_SECONDS", "{}"))
+    parseObject(env.getOrDefault("GRAPH_ELEMENT_TTL_SECONDS", "{}"))
         .forEach(
             (type, value) -> {
               long ttl = GraphModel.exactLong(value);
@@ -93,5 +98,13 @@ public final class EngineConfig implements Serializable {
     int value = Integer.parseInt(env.getOrDefault(key, Integer.toString(fallback)));
     if (value < minimum) throw new IllegalArgumentException("invalid setting " + key);
     return value;
+  }
+
+  private static Map<String, Object> parseObject(String value) {
+    try {
+      return JSON.readValue(value, JSON_OBJECT);
+    } catch (JsonProcessingException exception) {
+      throw new IllegalArgumentException("invalid JSON object", exception);
+    }
   }
 }

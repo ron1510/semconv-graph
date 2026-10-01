@@ -73,8 +73,8 @@ Keep `application.clusterId`, `job.fixedJobId`, and the state claim unchanged
 across automatic upgrades. Set `job.allowNonRestoredState=true` only for an
 intentional topology change that removes state which may be discarded.
 
-The chart uses Java 17 and CBOR-v2 lifecycle state. Hooks accept only the
-`java-cbor-v2` runtime marker and reject older Python, JSON, and CBOR-v1 state.
+The chart uses Java 17 and CBOR-v3 lifecycle state. Hooks accept only the
+`java-cbor-v3` runtime marker and reject older Python, JSON, and CBOR state.
 This contract change requires the clean reset documented in
 `docs/operations/upgrades.md`; `allowNonRestoredState` cannot convert serializers.
 

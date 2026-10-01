@@ -282,3 +282,40 @@ groups:
 
     with pytest.raises(AssertionError, match="duplicate extension relationship triple"):
         validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+
+def test_floating_point_attributes_are_allowed_but_not_as_entity_identity(tmp_path: Path) -> None:
+    extension_model = tmp_path / "extensions"
+    extension_model.mkdir()
+    model_file = extension_model / "entities.yaml"
+    model_file.write_text(
+        """
+groups:
+  - id: registry.fixture
+    type: attribute_group
+    attributes:
+      - id: fixture.name
+        type: string
+      - id: fixture.ratio
+        type: double
+  - id: entity.fixture
+    type: entity
+    name: fixture
+    attributes:
+      - ref: fixture.name
+        role: identifying
+      - ref: fixture.ratio
+        role: descriptive
+""".lstrip(),
+        encoding="utf-8",
+    )
+    validate_extension_model(UPSTREAM_MODEL, extension_model)
+
+    model_file.write_text(
+        model_file.read_text(encoding="utf-8")
+        .replace("fixture.name\n        role: identifying", "fixture.name\n        role: descriptive")
+        .replace("fixture.ratio\n        role: descriptive", "fixture.ratio\n        role: identifying"),
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError, match="identity attribute fixture.ratio"):
+        validate_extension_model(UPSTREAM_MODEL, extension_model)

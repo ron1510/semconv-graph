@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import ClassVar, cast
@@ -13,27 +11,16 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
-    computed_field,
     field_serializer,
     field_validator,
     model_validator,
 )
 
 from extended_otel_semconv.entities import EntityId
-from extended_otel_semconv.errors import (
-    SemanticIdentityMismatchError,
-    SemanticModelValidationError,
-    UnknownSemanticTypeError,
-)
+from extended_otel_semconv.errors import SemanticModelValidationError, UnknownSemanticTypeError
 
 type EdgeId = str
 type StructuralValue = str | int | float | bool
-
-
-def edge_id(source_id: str, relationship_type: str, target_id: str) -> EdgeId:
-    value = {"source_id": source_id, "type": relationship_type, "target_id": target_id}
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return f"edge:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
 
 
 class SemanticEdge(BaseModel):
@@ -44,6 +31,7 @@ class SemanticEdge(BaseModel):
     source_entity_type: ClassVar[str]
     target_entity_type: ClassVar[str]
 
+    element_id: EdgeId = Field(min_length=1)
     source_id: EntityId = Field(min_length=1)
     target_id: EntityId = Field(min_length=1)
     attributes: Mapping[str, StructuralValue] = Field(default_factory=dict)
@@ -65,19 +53,18 @@ class SemanticEdge(BaseModel):
             raise ValueError(f"target_id must identify {self.target_entity_type!r}, got {self.target_id!r}")
         return self
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def edge_id(self) -> EdgeId:
-        return edge_id(self.source_id, self.relationship_type, self.target_id)
+        return self.element_id
 
 
 def semantic_edge_from_data(
     relationship_type: str,
+    element_id: str,
     source_id: str,
     target_id: str,
     *,
     attributes: Mapping[str, object] | None = None,
-    expected_id: str | None = None,
 ) -> SemanticEdge:
     from extended_otel_semconv.generated.edges import EDGE_MODELS
 
@@ -91,16 +78,13 @@ def semantic_edge_from_data(
         )
     try:
         edge = model(
+            element_id=element_id,
             source_id=source_id,
             target_id=target_id,
             attributes=cast(Mapping[str, StructuralValue], attributes or {}),
         )
     except ValidationError as error:
         raise SemanticModelValidationError(f"invalid {model.__name__} data: {error}") from error
-    if expected_id is not None and edge.edge_id != expected_id:
-        raise SemanticIdentityMismatchError(
-            f"stored edge ID {expected_id!r} does not match reconstructed ID {edge.edge_id!r}"
-        )
     return edge
 
 

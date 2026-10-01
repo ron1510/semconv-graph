@@ -66,6 +66,9 @@ Rules:
 - every attribute reference must exist upstream or in extensions;
 - at least one `role: identifying` reference is required for code generation;
 - all identifying attributes are required to instantiate that entity;
+- identity attributes may be strings, integers, booleans, or enums without
+  floating-point members; floating-point, array, template, and `any` identities
+  are rejected so IDs have one cross-language text representation;
 - non-identifying attributes become optional generated fields.
 
 Generated class names derive from entity names. For example,

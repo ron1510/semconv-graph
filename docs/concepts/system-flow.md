@@ -18,7 +18,7 @@ application spans
   → keyBy(elementKey)
   → ElementLifecycleFunction
   → GraphModel.Event schema 3.0
-  → Kafka graph.elements.events (canonical JSON, key=element_id)
+  → Kafka graph.elements.events (deterministic JSON, key=element_id)
   → servicegraph-indexer
   → generated Arango collections
   → read-only Gremlin Server
@@ -39,7 +39,7 @@ Counts end at `MetricParser`. A positive request total says an interaction was o
 
 `python -m tools.semconv_codegen --check` proves that checked-in artifacts equal a fresh render. Generated Arango `property_aliases` contains only `attributes`; `metrics` is neither a property nor a reserved alias.
 
-Entity IDs are deterministic semantic identities such as `service:checkout`. `SemanticRegistry.edgeId(source, type, target)` hashes the ordered endpoints and relationship type into an `edge:` ID. Python `edge_id()` uses the same canonical input.
+Entity IDs are deterministic semantic identities such as `service:checkout`. `SemanticRegistry.edgeId(source, type, target)` hashes the ordered endpoints and relationship type into an `edge:` ID. Java exclusively owns both identity algorithms; downstream components preserve `element_id` as data.
 
 ## 3. Collector processing
 
@@ -80,7 +80,7 @@ Both backends batch and publish gzip-compressed `otlp_proto` records to `otel.se
 
 `ServiceGraphJob.configure()` creates a `KafkaSource<byte[]>`. Its deserializer returns the record bytes unchanged. The source has stable UID `graph-java-v1-kafka-source`.
 
-The source stream calls `flatMap(new MetricParser())`, declares `ContributionTypeInformation`, assigns timestamps/watermarks, then keys by `Contribution.elementKey()`. `ElementLifecycleFunction` owns all state and timers after that key. `GraphEventKafkaSerializer` writes canonical JSON with `element_id` as the Kafka key.
+The source stream calls `flatMap(new MetricParser())`, declares `ContributionTypeInformation`, assigns timestamps/watermarks, then keys by `Contribution.elementKey()`. `ElementLifecycleFunction` owns all state and timers after that key. `GraphEventKafkaSerializer` writes deterministic JSON with `element_id` as the Kafka key.
 
 There is one input lane. No union, reconciliation source, retraction stream, or entity-source state exists.
 
@@ -154,13 +154,13 @@ It has no operation flag, retraction, metric delta, or TTL override.
 
 | Descriptor | Value |
 | --- | --- |
-| `graph-java-element-contributors-v1` | contributor ID → CBOR-v2 `Snapshot` |
-| `graph-java-element-aggregate-v1` | CBOR-v2 `Aggregate` |
-| `graph-java-element-attribute-winners-v1` | CBOR-v2 `AttributeWinners` |
+| `graph-java-element-contributors-v1` | contributor ID → CBOR-v3 `Snapshot` |
+| `graph-java-element-aggregate-v1` | CBOR-v3 `Aggregate` |
+| `graph-java-element-attribute-winners-v1` | CBOR-v3 `AttributeWinners` |
 | event timer state | next registered event-time millisecond |
 | processing timer state | next registered processing-time millisecond |
 
-The descriptor names stay stable, but serializer snapshot version 2 deliberately rejects the old state shape.
+The descriptor names stay stable, but serializer snapshot version 3 deliberately rejects older state and hash semantics.
 
 ## 8. Common observation path
 
@@ -196,27 +196,30 @@ An identical request every minute therefore refreshes that contributor's 24-hour
 
 `scheduleTimers()` scans contributors only after a callback or fallback mutation to discover the next minimum. `replaceTimer()` maintains at most one event-time and one processing-time timer per element. A conservative old callback is safe: refreshed snapshots survive and the next minimum is registered.
 
-## 10. CBOR-v2 state and checkpoints
+## 10. CBOR-v3 state and checkpoints
 
 `StateSerializer` writes exactly:
 
 ```text
-format byte = 2
+format byte = 3
 frame length
 CBOR map
 ```
 
-There is no legacy string sentinel and no JSON/CBOR-v1 compatibility reader. `StateSerializer.Snapshot` accepts only snapshot version 2 with the same `Kind`. Contribution and event stream serializers use the same typed format through `ContributionTypeInformation` and `EventTypeInformation`.
+There is no legacy string sentinel or multi-version reader. `StateSerializer.Snapshot` accepts only snapshot version 3 with the same `Kind`. Contribution and event stream serializers use the same typed format through `ContributionTypeInformation` and `EventTypeInformation`.
 
-`DeploymentCommands.CURRENT_RUNTIME` is `java-cbor-v2`. `validateRuntime()` accepts only that marker for restore/savepoint operations. An unmarked state directory or any older marker requires the documented clean reset.
+`DeploymentCommands.CURRENT_RUNTIME` is `java-cbor-v3`. `validateRuntime()` accepts only that marker for restore/savepoint operations. An unmarked state directory or any older marker requires the documented clean reset.
 
 Incremental RocksDB checkpoints capture contributors, winner indexes, aggregates, and registered timers. Recovery tests prove an idle restored timer can publish final deletion without new input.
 
 ## 11. Public event serialization
 
-`GraphLifecycle.payloadHash()` hashes only the canonical complete element. Evidence magnitude cannot affect hashes or event IDs.
+`GraphLifecycle.payloadHash()` hashes only the complete element. `GraphModel`
+recursively orders semantic maps, so default Jackson serialization is stable
+without a separate deterministic JSON implementation. Evidence magnitude cannot
+affect hashes or event IDs.
 
-`GraphEventKafkaSerializer.serialize()` produces canonical UTF-8 JSON and sets the Kafka key to `element_id`. The compacted topic can reconstruct the latest graph from complete replacements and deletions.
+`GraphEventKafkaSerializer.serialize()` uses deterministic Jackson JSON and sets the Kafka key to `element_id`. Flink checkpoint state uses a separate CBOR mapper. The compacted topic can reconstruct the latest graph from complete replacements and deletions.
 
 Schema-3 edges contain:
 
@@ -242,7 +245,10 @@ The generated Arango schema defines vertex collections, edge collections, endpoi
 
 Gremlin Server exposes the generated graph through a read-only traversal source. `SemanticGremlinClient.query()` validates that a callback returns an unexecuted traversal whose final traversers are vertices or edges, appends `elementMap()`, and reconstructs results.
 
-`_semantic_element_from_map()` uses `entity_from_attributes()` for vertices and `semantic_edge_from_data()` for edges. Edge reconstruction needs relationship type, source, target, attributes, and expected ID. The generated classes validate endpoint types and deterministic IDs.
+`_semantic_element_from_map()` passes the stored `element_id` into
+`semantic_entity_from_data()` or `semantic_edge_from_data()`. Semantic type and
+endpoint types select the generated model. The classes validate schema fields
+and preserve Java's identity without recalculating it.
 
 ## 14. Deployment order
 
@@ -258,7 +264,7 @@ when moving between incompatible alpha revisions.
 - `LifecycleGoldenTest`: refresh suppression, deterministic winners, partial expiry, final delete, identity validation.
 - `ElementLifecycleFunctionTest`: conservative callbacks, checkpoint/recovery, idle deletion, policy timers.
 - `GranularLifecycleStateTest`: point refresh behavior with thousands of contributors.
-- `StateSerializerTest`: direct CBOR-v2 frames and old-format rejection.
+- `StateSerializerTest`: direct CBOR-v3 frames and old-format rejection.
 - indexer tests: schema-3 replacement, replay coalescing, deletion, commit-after-success, schema-2 and metrics rejection.
 - SDK tests: metric-free edge construction and typed Gremlin reconstruction.
 - codegen tests: Arango schema version 3, transaction topology, connection selectors, and absence of metric fields or aliases.

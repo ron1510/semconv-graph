@@ -1,5 +1,6 @@
 package io.extendedotel.flink;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -9,6 +10,8 @@ import java.util.Map;
 
 /** Development-only matched-workload measurements; does not measure a Flink cluster. */
 public final class BenchmarkMain {
+  private static final ObjectMapper JSON = new ObjectMapper();
+
   private BenchmarkMain() {}
 
   private record Batch(Map<String, GraphModel.State> states, int events) {}
@@ -51,14 +54,14 @@ public final class BenchmarkMain {
     report.put("warmup_iterations", warmup);
     report.put("contributions_per_iteration", mutations.size());
     report.put("events_emitted", events);
-    report.put("state_sha256", CanonicalJson.digest(statePayloads));
+    report.put("state_sha256", Sha256.digest(JSON.writeValueAsBytes(statePayloads)));
     report.put("active_elements", states.size());
     report.put(
         "contributor_snapshots",
         states.values().stream().mapToInt(state -> state.contributors().size()).sum());
     report.put("ingest", timing(ingestTimes, datapoints));
     report.put("lifecycle", timing(lifecycleTimes, mutations.size()));
-    Files.writeString(Path.of(args[4]), CanonicalJson.stringify(report) + "\n");
+    Files.writeString(Path.of(args[4]), JSON.writeValueAsString(report) + "\n");
   }
 
   private static List<GraphModel.Contribution> parse(byte[] payload) {

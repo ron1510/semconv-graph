@@ -3,7 +3,7 @@
 Install the semantic SDK with typed GraphBinary support:
 
 ```console
-pip install "extended-opentelemetry-semconv[gremlin]==0.5.0"
+pip install "extended-opentelemetry-semconv[gremlin]==0.6.0"
 ```
 
 `SemanticGremlinClient` executes traversals whose final traversers are vertices
@@ -27,10 +27,10 @@ assert all(isinstance(entity, Service) for entity in dependencies)
 assert all(isinstance(edge, ServiceCallsServiceEdge) for edge in calls)
 ```
 
-Entity models contain canonical semantic fields. Concrete edge models contain
-deterministic endpoint IDs, structural attributes, and a computed
-edge ID. The client does not perform follow-up endpoint queries and does not
-return Kafka or ArangoDB projection metadata.
+Entity and edge models contain the stored `element_id` plus canonical semantic
+fields. Their read-only `entity_id` and `edge_id` aliases return that same
+value. The client does not calculate graph identities, perform follow-up
+endpoint queries, or return Kafka or ArangoDB projection metadata.
 
 ## Typed traversal boundary
 
@@ -57,6 +57,7 @@ Use `gremlin-python` directly when scalar, aggregate, map, path, or custom
 provider results are intentional. The typed client has no raw fallback because
 every successful call guarantees semantic Pydantic models.
 
-Reconstruction also verifies the stored deterministic entity or edge ID.
+Java is the identity authority. Reconstruction uses the stored semantic type
+and endpoint types to select a generated model, then validates its fields.
 Unknown semantic types, invalid relationship endpoints, incomplete identifying
-attributes, malformed element maps, and identity mismatches fail explicitly.
+attributes, and malformed element maps fail explicitly.

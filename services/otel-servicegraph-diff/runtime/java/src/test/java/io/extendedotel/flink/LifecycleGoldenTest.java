@@ -1,16 +1,59 @@
 package io.extendedotel.flink;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.extendedotel.flink.GraphModel.Contribution;
 import io.extendedotel.flink.GraphModel.Element;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 final class LifecycleGoldenTest {
+  private static final ObjectMapper JSON = new ObjectMapper();
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void recursivelyOrdersAttributesBeforeDefaultJacksonHashing() throws Exception {
+    var nestedFirst = new LinkedHashMap<String, Object>();
+    nestedFirst.put("z", 1);
+    nestedFirst.put("a", 2);
+    var first = new LinkedHashMap<String, Object>();
+    first.put("z", 1);
+    first.put("nested", nestedFirst);
+    first.put("a", 2);
+
+    var nestedSecond = new LinkedHashMap<String, Object>();
+    nestedSecond.put("a", 2);
+    nestedSecond.put("z", 1);
+    var second = new LinkedHashMap<String, Object>();
+    second.put("a", 2);
+    second.put("nested", nestedSecond);
+    second.put("z", 1);
+
+    Element left = Element.node("service:one", "service", first);
+    Element right = Element.node("service:one", "service", second);
+
+    assertEquals(left, right);
+    assertEquals(List.of("a", "nested", "z"), new ArrayList<>(left.attributes().keySet()));
+    assertEquals(
+        List.of("a", "z"),
+        new ArrayList<>(((Map<String, Object>) left.attributes().get("nested")).keySet()));
+    assertArrayEquals(JSON.writeValueAsBytes(left.toMap()), JSON.writeValueAsBytes(right.toMap()));
+    String payloadHash = GraphLifecycle.payloadHash(left);
+    assertEquals(payloadHash, GraphLifecycle.payloadHash(right));
+    assertEquals("8cda6b52db893c36b9f1666e8598ece8e904b8201485f7d8c9732a54b3199659", payloadHash);
+    assertEquals(
+        "bdf8240de5f8f6ed1e714375257d720d44b842305181ec9faa8d2a87edbc8457",
+        GraphLifecycle.eventId("upsert", left.id(), BigInteger.ONE, payloadHash));
+  }
+
   @Test
   void repeatedEvidenceRefreshesDeadlineWithoutAnotherUpsert() {
     Element node = Element.node("service:one", "service", Map.of("version", "1"));

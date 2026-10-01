@@ -12,7 +12,6 @@ from gremlin_python.structure.graph import Graph
 
 import extended_otel_semconv.gremlin.client as gremlin_module
 from extended_otel_semconv import Service, ServiceCallsServiceEdge, ServiceExecutesTransactionEdge, Transaction
-from extended_otel_semconv.edges import edge_id
 from extended_otel_semconv.gremlin import (
     InvalidSemanticQueryError,
     SemanticGremlinClient,
@@ -109,7 +108,7 @@ def test_element_maps_reconstruct_concrete_entities_and_edges() -> None:
             "attributes": {"service.name": "checkout", "service.version": "1.4.0"},
         }
     )
-    expected_edge_id = edge_id("service:storefront", "calls", "service:checkout")
+    expected_edge_id = "edge:stored-calls-edge"
     edge = _semantic_element_from_map(
         {
             "element_id": expected_edge_id,
@@ -121,8 +120,12 @@ def test_element_maps_reconstruct_concrete_entities_and_edges() -> None:
     )
 
     assert isinstance(service, Service)
+    assert service.element_id == "service:checkout"
+    assert service.entity_id == service.element_id
     assert service.service_version == "1.4.0"
     assert isinstance(edge, ServiceCallsServiceEdge)
+    assert edge.element_id == expected_edge_id
+    assert edge.edge_id == edge.element_id
 
 
 def test_element_maps_reconstruct_transaction_and_executes_edge() -> None:
@@ -138,7 +141,7 @@ def test_element_maps_reconstruct_transaction_and_executes_edge() -> None:
             },
         }
     )
-    expected_edge_id = edge_id("service:worker", "executes", transaction_id)
+    expected_edge_id = "edge:stored-executes-edge"
     edge = _semantic_element_from_map(
         {
             "element_id": expected_edge_id,
@@ -150,7 +153,9 @@ def test_element_maps_reconstruct_transaction_and_executes_edge() -> None:
     )
 
     assert isinstance(transaction, Transaction)
+    assert transaction.element_id == transaction_id
     assert isinstance(edge, ServiceExecutesTransactionEdge)
+    assert edge.element_id == expected_edge_id
 
 
 @pytest.mark.parametrize(
@@ -211,7 +216,9 @@ def test_client_rejects_executed_callbacks_before_submission(monkeypatch: pytest
     client.close()
 
 
-def test_client_preserves_execution_and_model_errors_as_causes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_client_preserves_execution_errors_and_accepts_stored_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(gremlin_module, "DriverRemoteConnection", Mock(return_value=Mock()))
     client = SemanticGremlinClient("ws://gremlin:8182/gremlin")
     server_error = RuntimeError("server unavailable")
@@ -235,7 +242,7 @@ def test_client_preserves_execution_and_model_errors_as_causes(monkeypatch: pyte
             }
         ],
     )
-    with pytest.raises(SemanticGremlinResultError) as result:
-        client.query(lambda g: g.V())
-    assert result.value.__cause__ is not None
+    result = client.query(lambda g: g.V())
+    assert result[0].element_id == "service:wrong"
+    assert isinstance(result[0], Service)
     client.close()

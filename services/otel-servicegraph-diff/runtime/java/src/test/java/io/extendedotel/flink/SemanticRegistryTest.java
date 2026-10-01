@@ -1,6 +1,7 @@
 package io.extendedotel.flink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -122,6 +123,20 @@ final class SemanticRegistryTest {
     assertTrue(
         SemanticRegistry.INSTANCE.supportsEntity(
             SemanticRegistry.EvidenceSource.SPAN_METRICS, "transaction"));
+  }
+
+  @Test
+  void edgeIdsRemainStableWithinTheJavaIdentityContract() {
+    assertEquals(
+        "edge:ffad65d16a03c93036fce27e54ff16edd5068a88e12c24f7b8c5166857fce3e2",
+        SemanticRegistry.edgeId("service:ascii", "calls", "service:target"));
+    assertEquals(
+        "edge:4a4c7058ccc93ce61e941f1ad0dc6bf396ab7c46424b66305eb7ab7072634477",
+        SemanticRegistry.edgeId("service:%E9%9B%AA", "calls", "service:%F0%9F%98%80"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SemanticRegistry.edgeId("service:\ud800", "calls", "service:target"));
+    assertThrows(IllegalArgumentException.class, () -> SemanticRegistry.quotedId("fixture", 0.25));
   }
 
   private static GraphModel.Element node(String id, String type) {

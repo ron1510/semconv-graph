@@ -1,5 +1,7 @@
 package io.extendedotel.flink;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.extendedotel.flink.GraphModel.Element;
 import io.extendedotel.flink.GraphModel.Event;
 import io.extendedotel.flink.GraphModel.Result;
@@ -12,6 +14,8 @@ import java.util.Objects;
 
 /** Contributor merge and lifecycle decisions, independent of Flink state and clocks. */
 public final class GraphLifecycle {
+  private static final ObjectMapper JSON = new ObjectMapper();
+
   public enum ExpiryClock {
     EVENT_TIME,
     PROCESSING_TIME
@@ -107,7 +111,7 @@ public final class GraphLifecycle {
   }
 
   public static String payloadHash(Element element) {
-    return CanonicalJson.digest(element.toMap());
+    return hash(element.toMap());
   }
 
   private static Result updated(
@@ -155,8 +159,7 @@ public final class GraphLifecycle {
 
   static boolean wins(String candidateId, Snapshot candidate, String currentId, Snapshot current) {
     int timestamp = candidate.observedAtUnixNano().compareTo(current.observedAtUnixNano());
-    return timestamp > 0
-        || timestamp == 0 && CanonicalJson.compareStrings(candidateId, currentId) < 0;
+    return timestamp > 0 || timestamp == 0 && candidateId.compareTo(currentId) < 0;
   }
 
   private static void validateIdentity(State previous, Element current) {
@@ -182,6 +185,14 @@ public final class GraphLifecycle {
     value.put("element_id", elementId);
     value.put("observed_at_unix_nano", observedAt);
     value.put("payload_hash", hash);
-    return CanonicalJson.digest(value);
+    return hash(value);
+  }
+
+  private static String hash(Object value) {
+    try {
+      return Sha256.digest(JSON.writeValueAsBytes(value));
+    } catch (JsonProcessingException exception) {
+      throw new IllegalArgumentException("lifecycle value cannot be encoded as JSON", exception);
+    }
   }
 }

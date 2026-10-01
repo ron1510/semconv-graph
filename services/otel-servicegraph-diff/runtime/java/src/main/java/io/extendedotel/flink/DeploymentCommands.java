@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 
 /** Small submission/savepoint commands shared by the Helm hooks; no Python runtime required. */
 public final class DeploymentCommands {
-  static final String CURRENT_RUNTIME = "java-cbor-v2";
+  static final String CURRENT_RUNTIME = "java-cbor-v3";
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final Set<String> TERMINAL = Set.of("CANCELED", "FAILED", "FINISHED", "MISSING");
   private static final Pattern SAVEPOINT =
@@ -85,7 +85,7 @@ public final class DeploymentCommands {
     throw new IllegalStateException(
         "Cannot restore "
             + previous
-            + " lifecycle state into the java-cbor-v2 runtime"
+            + " lifecycle state into the java-cbor-v3 runtime"
             + ". The evidence-only state model requires a clean reset. Follow the rollout in "
             + "docs/operations/upgrades.md; allowNonRestoredState does not migrate serializers.");
   }

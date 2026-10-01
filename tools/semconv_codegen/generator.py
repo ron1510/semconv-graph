@@ -240,8 +240,6 @@ def _render_entity_module(models: tuple[SemanticModel, ...]) -> str:
         "",
         "from types import MappingProxyType",
         "from typing import ClassVar",
-        "",
-        "from extended_otel_semconv.entities import RawAttributes, SemanticEntity",
     ]
     for model in models:
         lines.append(
@@ -263,20 +261,7 @@ def _render_entity_module(models: tuple[SemanticModel, ...]) -> str:
     lines.append("ENTITY_MODELS = MappingProxyType({")
     for model in models:
         lines.append(f'    "{model.semantic_type}": {model.class_name},')
-    lines.extend(
-        [
-            "})",
-            "",
-            "",
-            "def entities_from_attributes(attributes: RawAttributes) -> list[SemanticEntity]:",
-            "    entities: list[SemanticEntity] = []",
-            "    for entity_class in ENTITY_MODELS.values():",
-            "        entity = entity_class.from_attributes(attributes)",
-            "        if entity is not None:",
-            "            entities.append(entity)",
-            "    return entities",
-        ]
-    )
+    lines.extend(["})"])
     return _finalize(lines)
 
 
@@ -325,11 +310,11 @@ def _render_package_init(
         '"""Generated semantic entity and edge interfaces."""',
         "",
         "from extended_otel_semconv.edges import SemanticEdge, semantic_edge_from_data",
-        "from extended_otel_semconv.entities import SemanticEntity, entity_from_attributes",
+        "from extended_otel_semconv.entities import SemanticEntity, semantic_entity_from_data",
     ]
     names = ", ".join(entity.class_name for entity in entities)
     lines.append(f"from extended_otel_semconv.generated.entities import {names}")
-    lines.append("from extended_otel_semconv.generated.entities import ENTITY_MODELS, entities_from_attributes")
+    lines.append("from extended_otel_semconv.generated.entities import ENTITY_MODELS")
     edge_names = ", ".join(relationship.class_name for relationship in relationships)
     lines.append(f"from extended_otel_semconv.generated.edges import {edge_names}")
     lines.append("from extended_otel_semconv.generated.edges import EDGE_MODELS")
@@ -344,8 +329,7 @@ def _render_package_init(
             '    "ENTITY_MODELS",',
             '    "SemanticEdge",',
             '    "SemanticEntity",',
-            '    "entities_from_attributes",',
-            '    "entity_from_attributes",',
+            '    "semantic_entity_from_data",',
             '    "semantic_edge_from_data",',
             "]",
         ]

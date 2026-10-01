@@ -39,8 +39,12 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Edges retain topology and attributes without request counters.
 - Repeated identical evidence refreshes contributor deadlines without emitting
   another public upsert; topology or attribute changes still emit complete state.
-- Flink state now uses the clean-cutover `java-cbor-v2` format. Existing Python,
-  JSON, CBOR-v1, and schema-2 state or topic data require the documented reset.
+- Flink state now uses the clean-cutover `java-cbor-v3` format and deterministic
+  default Jackson JSON over recursively ordered domain maps. Older state requires
+  the documented reset.
+- The Python SDK now treats Java-produced `element_id` values as stored data,
+  validates returned graph elements against generated Pydantic schemas, and no
+  longer derives telemetry entities or recomputes graph identity.
 - Release automation publishes only the reusable semantic SDK to PyPI while
   retaining service wheels as GitHub release artifacts.
 
@@ -57,5 +61,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Helm values, schemas, tests, and documentation.
 - Edge request/failure counters and metric fields from graph events, storage,
   generated aliases, the Python SDK, and typed Gremlin reconstruction.
+- Python entity extraction, URL-encoded identity construction, edge hashing,
+  and stored-ID parity checks.
 
 [Unreleased]: https://github.com/ron1510/semconv-graph/compare/main...HEAD

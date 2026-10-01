@@ -167,14 +167,14 @@ def _serialize_element(element: SemanticEntity | SemanticEdge) -> dict[str, obje
         return {
             "model": type(element).__name__,
             "kind": "node",
-            "id": element.entity_id,
+            "id": element.element_id,
             "type": element.entity_type,
             "attributes": element.semantic_attributes(),
         }
     return {
         "model": type(element).__name__,
         "kind": "edge",
-        "id": element.edge_id,
+        "id": element.element_id,
         "type": element.relationship_type,
         "source_id": element.source_id,
         "target_id": element.target_id,

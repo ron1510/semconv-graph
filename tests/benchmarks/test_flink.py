@@ -17,7 +17,7 @@ def test_workload_expectation_is_stable_when_evidence_magnitude_is_discarded() -
     first = expected_elements(payload, 1)
     repeated = expected_elements(payload, 3)
     assert len(first) == len(repeated) == 6
-    assert first["service:service-000000"]["attributes"] == {
+    assert first["node:service:service-000000"]["attributes"] == {
         "service.name": "service-000000",
         "service.version": "version-0001",
     }

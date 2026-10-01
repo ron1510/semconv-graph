@@ -8,6 +8,7 @@ from tools.semconv_codegen.registry.model import (
     AttributeDefinition,
     AttributeGroup,
     EntityDefinition,
+    EnumAttributeType,
     RegistryDocument,
     RelationshipDefinition,
     load_registry_documents,
@@ -41,13 +42,20 @@ def validate_extension_model(upstream_model_dir: Path, extension_model_dir: Path
         if entity_name in upstream_entities:
             raise AssertionError(f"{extension_model_dir}: extension redefines upstream entity {entity_name}")
 
-    available_attributes = set(upstream_attributes) | set(extension_attributes)
+    available_attributes = {**upstream_attributes, **extension_attributes}
     for entity in extension_entities.values():
         for attribute_ref in entity.attributes:
             if attribute_ref.ref not in available_attributes:
                 raise AssertionError(
                     f"{extension_model_dir}: {entity.name} references unknown attribute {attribute_ref.ref}"
                 )
+            if attribute_ref.role == "identifying":
+                attribute = available_attributes[attribute_ref.ref]
+                if not _supports_identity(attribute):
+                    raise AssertionError(
+                        f"{extension_model_dir}: {entity.name} identity attribute "
+                        f"{attribute_ref.ref} must be string, integer, boolean, or a non-floating enum"
+                    )
 
     available_entities = set(upstream_entities) | set(extension_entities)
     for relationship in extension_relationships.values():
@@ -100,6 +108,12 @@ def _entities_by_name(registry: RegistryDocument) -> dict[str, EntityDefinition]
 
 def _relationships_by_id(registry: RegistryDocument) -> dict[str, RelationshipDefinition]:
     return registry.relationships_by_id
+
+
+def _supports_identity(attribute: AttributeDefinition) -> bool:
+    if isinstance(attribute.type, EnumAttributeType):
+        return all(not isinstance(member.value, float) for member in attribute.type.members)
+    return attribute.type in {"string", "int", "boolean"}
 
 
 def _assert_no_duplicate_attributes(registry: RegistryDocument) -> None:

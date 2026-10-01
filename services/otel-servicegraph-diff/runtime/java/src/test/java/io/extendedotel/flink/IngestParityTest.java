@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -23,14 +24,11 @@ class IngestParityTest {
   }
 
   private static Map<String, Object> map(JsonNode node) {
-    return CanonicalJson.parseObject(node.toString());
+    return JSON.convertValue(node, new TypeReference<>() {});
   }
 
-  private static void same(JsonNode expected, Object actual, String name) throws Exception {
-    assertEquals(
-        CanonicalJson.stringify(JSON.readValue(expected.toString(), Object.class)),
-        CanonicalJson.stringify(actual),
-        name);
+  private static void same(JsonNode expected, Object actual, String name) {
+    assertEquals(expected, JSON.valueToTree(actual), name);
   }
 
   @Test

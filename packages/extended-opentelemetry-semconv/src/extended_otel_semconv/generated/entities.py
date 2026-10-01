@@ -2,8 +2,6 @@
 
 from types import MappingProxyType
 from typing import ClassVar
-
-from extended_otel_semconv.entities import RawAttributes, SemanticEntity
 from extended_otel_semconv.generated._models import AppFields as _AppFields
 from extended_otel_semconv.generated._models import AppEndpointFields as _AppEndpointFields
 from extended_otel_semconv.generated._models import BrowserDocumentFields as _BrowserDocumentFields
@@ -335,12 +333,3 @@ ENTITY_MODELS = MappingProxyType({
     "vcs.ref": VcsRef,
     "vcs.repository": VcsRepository,
 })
-
-
-def entities_from_attributes(attributes: RawAttributes) -> list[SemanticEntity]:
-    entities: list[SemanticEntity] = []
-    for entity_class in ENTITY_MODELS.values():
-        entity = entity_class.from_attributes(attributes)
-        if entity is not None:
-            entities.append(entity)
-    return entities

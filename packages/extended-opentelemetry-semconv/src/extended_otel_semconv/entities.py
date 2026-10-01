@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Self, cast
-from urllib.parse import quote
 
 from pydantic import (
     AfterValidator,
     BaseModel,
     BeforeValidator,
     ConfigDict,
+    Field,
     FiniteFloat,
     PlainSerializer,
     StrictBool,
@@ -19,12 +19,10 @@ from pydantic import (
     StrictInt,
     StrictStr,
     ValidationError,
-    computed_field,
     model_validator,
 )
 
 from extended_otel_semconv.errors import (
-    SemanticIdentityMismatchError,
     SemanticModelValidationError,
     UnknownSemanticTypeError,
 )
@@ -94,13 +92,6 @@ type FrozenBooleanSequenceMap = Annotated[
 ]
 
 
-def quoted_entity_id(entity_type: str, *parts: object) -> EntityId:
-    if not entity_type or not parts or any(part == "" for part in parts):
-        raise ValueError("semantic entity IDs require a type and non-empty identity values")
-    encoded_parts = (quote(str(part), safe="") for part in parts)
-    return ":".join((entity_type, *encoded_parts))
-
-
 class SemanticEntity(BaseModel):
     model_config = ConfigDict(
         allow_inf_nan=False,
@@ -113,6 +104,7 @@ class SemanticEntity(BaseModel):
     entity_type: ClassVar[str]
     identity_fields: ClassVar[tuple[str, ...]]
     template_fields: ClassVar[tuple[str, ...]] = ()
+    element_id: EntityId = Field(min_length=1)
 
     @model_validator(mode="after")
     def freeze_containers(self) -> Self:
@@ -120,33 +112,15 @@ class SemanticEntity(BaseModel):
             object.__setattr__(self, field_name, _freeze_value(getattr(self, field_name)))
         return self
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def entity_id(self) -> EntityId:
-        values = tuple(getattr(self, self._python_field_name(alias)) for alias in self.identity_fields)
-        return quoted_entity_id(self.entity_type, *values)
-
-    @classmethod
-    def from_attributes(cls, attributes: RawAttributes) -> Self | None:
-        if any(field not in attributes for field in cls.identity_fields):
-            return None
-        values: dict[str, object] = {}
-        for field_name, field in cls.model_fields.items():
-            alias = field.alias or field_name
-            if alias in cls.template_fields:
-                template_values = _template_values(attributes, alias)
-                if template_values:
-                    values[alias] = template_values
-            elif alias in attributes:
-                values[alias] = attributes[alias]
-        try:
-            return cls.model_validate(values)
-        except ValidationError as error:
-            raise SemanticModelValidationError(f"invalid {cls.__name__} attributes: {error}") from error
+        return self.element_id
 
     def semantic_attributes(self) -> dict[str, object]:
         attributes: dict[str, object] = {}
         for field_name, field in type(self).model_fields.items():
+            if field_name == "element_id":
+                continue
             value = getattr(self, field_name)
             if value is None:
                 continue
@@ -158,41 +132,31 @@ class SemanticEntity(BaseModel):
                 attributes[alias] = value
         return attributes
 
-    @classmethod
-    def _python_field_name(cls, alias: str) -> str:
-        for field_name, field in cls.model_fields.items():
-            if field.alias == alias:
-                return field_name
-        raise SemanticModelValidationError(f"{cls.__name__} has no generated field for {alias!r}")
-
-
-def entity_from_attributes(
+def semantic_entity_from_data(
     entity_type: str,
+    element_id: str,
     attributes: RawAttributes,
-    *,
-    expected_id: str | None = None,
 ) -> SemanticEntity:
     from extended_otel_semconv.generated import ENTITY_MODELS
 
     model = ENTITY_MODELS.get(entity_type)
     if model is None:
         raise UnknownSemanticTypeError(f"no generated semantic entity model for {entity_type!r}")
-    entity = model.from_attributes(attributes)
-    if entity is None:
-        raise SemanticModelValidationError(
-            f"attributes do not contain the identifying fields required by {model.__name__}"
-        )
-    if expected_id is not None and entity.entity_id != expected_id:
-        raise SemanticIdentityMismatchError(
-            f"stored entity ID {expected_id!r} does not match reconstructed ID {entity.entity_id!r}"
-        )
-    return entity
-
-
-def entities_from_attributes(attributes: RawAttributes) -> list[SemanticEntity]:
-    from extended_otel_semconv.generated import entities_from_attributes as generated_entities_from_attributes
-
-    return generated_entities_from_attributes(attributes)
+    values: dict[str, object] = {"element_id": element_id}
+    for field_name, field in model.model_fields.items():
+        if field_name == "element_id":
+            continue
+        alias = field.alias or field_name
+        if alias in model.template_fields:
+            template_values = _template_values(attributes, alias)
+            if template_values:
+                values[alias] = template_values
+        elif alias in attributes:
+            values[alias] = attributes[alias]
+    try:
+        return model.model_validate(values)
+    except ValidationError as error:
+        raise SemanticModelValidationError(f"invalid {model.__name__} attributes: {error}") from error
 
 
 def _template_values(attributes: RawAttributes, prefix: str) -> dict[str, object]:

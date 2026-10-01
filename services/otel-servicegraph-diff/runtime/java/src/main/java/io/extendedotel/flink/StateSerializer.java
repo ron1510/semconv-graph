@@ -22,7 +22,7 @@ class StateSerializer<T> extends TypeSerializer<T> {
     EVENT
   }
 
-  private static final int FORMAT_VERSION = 2;
+  private static final int FORMAT_VERSION = 3;
   private static final int MAX_FRAME_BYTES = 64 * 1024 * 1024;
   private static final ObjectMapper MAPPER =
       new ObjectMapper(new CBORFactory()).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);

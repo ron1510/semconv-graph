@@ -208,7 +208,7 @@ def test_schema_and_wrapper_renderers_keep_static_models_and_public_names() -> N
     assert '"service.name"' in schema
     assert '"minLength": 1' in schema
     assert "class AppEndpoint(_AppEndpointFields):" in module
-    assert "for entity_class in ENTITY_MODELS.values():" in module
+    assert "entities_from_attributes" not in module
     assert "class ServiceExposesAppEndpointEdge(SemanticEdge):" in edge_module
     assert '("service", "exposes", "app.endpoint"): ServiceExposesAppEndpointEdge' in edge_module
     assert "from extended_otel_semconv.generated.entities import AppEndpoint" in package
@@ -552,26 +552,24 @@ def test_yaml_to_importable_models_and_all_generated_artifacts(tmp_path: Path) -
             sys.executable,
             "-c",
             (
-                "from extended_otel_semconv.generated import AppEndpoint; "
-                "entity = AppEndpoint.from_attributes({"
+                "from extended_otel_semconv.generated import semantic_entity_from_data; "
+                "entity = semantic_entity_from_data('app.endpoint', 'app.endpoint:stored', {"
                 "'service.name': 'checkout api', "
                 "'http.request.method': 'POST', "
                 "'http.route': '/checkout/{id}', "
                 "'endpoint.enabled': True, "
                 "'endpoint.retry_count': 3}); "
-                "assert entity is not None; "
                 "assert entity.endpoint_enabled is True; "
                 "assert entity.endpoint_retry_count == 3; "
                 "dump = entity.model_dump(by_alias=True); "
+                "assert dump['element_id'] == 'app.endpoint:stored'; "
                 "assert dump['endpoint.enabled'] is True; "
-                "minimal = AppEndpoint.from_attributes({"
+                "minimal = semantic_entity_from_data('app.endpoint', 'app.endpoint:minimal', {"
                 "'service.name': 'checkout api', "
                 "'http.request.method': 'POST', "
                 "'http.route': '/checkout/{id}'}); "
-                "assert minimal is not None; "
                 "assert minimal.endpoint_enabled is None; "
-                "assert entity.entity_id == "
-                "'app.endpoint:checkout%20api:POST:%2Fcheckout%2F%7Bid%7D'"
+                "assert entity.entity_id == 'app.endpoint:stored'"
             ),
         ],
         check=False,

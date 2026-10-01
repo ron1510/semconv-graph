@@ -45,9 +45,9 @@ The output topic contains schema-3 JSON and uses `element_id` as its Kafka key. 
 
 ## State and recovery
 
-The operator stores one CBOR-v2 snapshot per `(element, contributor)`, a compact aggregate, an attribute-winner index, and two coalesced timer deadlines per element. RocksDB incremental checkpoints are the production default. Point refreshes read and write the affected contributor and winner entries without scanning all contributors.
+The operator stores one CBOR-v3 snapshot per `(element, contributor)`, a compact aggregate, an attribute-winner index, and two coalesced timer deadlines per element. RocksDB incremental checkpoints are the production default. Point refreshes read and write the affected contributor and winner entries without scanning all contributors.
 
-`java-cbor-v2` is a clean state boundary. Runtime checks reject missing markers, `java`, `java-cbor-v1`, Python state, and unknown markers when an upgrade could restore old state. Clear checkpoints, savepoints, HA metadata, the runtime marker, and source-group offsets before deploying this version.
+`java-cbor-v3` is a clean state boundary. Runtime checks reject missing markers, earlier `java-cbor` markers, Python state, and unknown markers when an upgrade could restore old state. Clear checkpoints, savepoints, HA metadata, the runtime marker, and source-group offsets before deploying this version.
 
 ## Environment mapping
 

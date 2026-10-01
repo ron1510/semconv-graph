@@ -137,8 +137,12 @@ def test_query_requires_ready_environment() -> None:
 def test_query_returns_typed_nodes_and_edges(capsys: pytest.CaptureFixture[str]) -> None:
     environment = _environment()
     environment.status.return_value = EnvironmentStatus(True, True, True, True, True)
-    service = Service.model_validate({"service.name": "checkout"})
-    edge = ServiceCallsServiceEdge(source_id="service:storefront", target_id="service:checkout")
+    service = Service.model_validate({"element_id": "service:checkout", "service.name": "checkout"})
+    edge = ServiceCallsServiceEdge(
+        element_id="edge:stored",
+        source_id="service:storefront",
+        target_id="service:checkout",
+    )
     client = MagicMock()
     client.query.side_effect = ([service], [edge])
     environment.semantic_client.return_value = nullcontext(client)

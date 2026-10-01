@@ -30,4 +30,4 @@ is built with `benchmarks/docker/flink-state-cost.Dockerfile`.
 
 Older Python, JSON, and CBOR-v1 checkpoints are incompatible. This rollout
 requires the clean reset in `docs/operations/upgrades.md`. Later compatible
-CBOR-v2 upgrades can keep the fixed job ID and canonical savepoints.
+CBOR-v3 upgrades can keep the fixed job ID and compatible savepoints.

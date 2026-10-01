@@ -1,6 +1,6 @@
 # Behavioral fixtures
 
-`lifecycle-golden.json`, `ingest-golden.json`, and `canonical-golden.json` are
+`lifecycle-golden.json` and `ingest-golden.json` are
 frozen behavioral expectations captured from the Python implementation during
 the native Java migration. The Python source baseline is Git revision
 `15124a6`; the completed validation and comparison are recorded under

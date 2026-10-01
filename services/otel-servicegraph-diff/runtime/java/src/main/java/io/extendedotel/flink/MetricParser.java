@@ -1,5 +1,7 @@
 package io.extendedotel.flink;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
@@ -27,6 +29,7 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
   public static final String DISCOVERY = "semconv.graph.discovery.calls";
   private static final Set<String> SUPPORTED = Set.of(REQUEST_TOTAL, DISCOVERY);
   private static final Logger LOG = LoggerFactory.getLogger(MetricParser.class);
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   public record Rejection(String reason, String detail) {}
 
@@ -138,7 +141,7 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
           };
       if (decoded != null) result.put(entry.getKey(), decoded);
     }
-    return result;
+    return new LinkedHashMap<>(new TreeMap<>(result));
   }
 
   private static List<GraphModel.Contribution> discovery(
@@ -150,14 +153,11 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
             SemanticRegistry.EvidenceSource.SPAN_METRICS)) {
       String contributor =
           "spanmetrics:"
-              + CanonicalJson.sha256(
-                  Map.of(
-                      "source",
-                      DISCOVERY,
-                      "element_id",
-                      element.id(),
-                      "attributes",
-                      element.attributes()));
+              + hash(
+                  ordered(
+                      "source", DISCOVERY,
+                      "element_id", element.id(),
+                      "attributes", element.attributes()));
       output.add(new GraphModel.Contribution(contributor, observed, element));
     }
     return output;
@@ -170,16 +170,12 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
     var dimensions = new LinkedHashMap<>(attributes);
     Set.of("client", "server", "connection_type").forEach(dimensions::remove);
     String contributor =
-        CanonicalJson.sha256(
-            Map.of(
-                "client",
-                client,
-                "server",
-                server,
-                "connection_type",
-                connectionType,
-                "dimensions",
-                dimensions));
+        hash(
+            ordered(
+                "client", client,
+                "server", server,
+                "connection_type", connectionType,
+                "dimensions", dimensions));
     var clients = observation(attributes, "client", client);
     var servers = observation(attributes, "server", server);
     var elements = new TreeMap<String, GraphModel.Element>();
@@ -265,12 +261,7 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
                 merged.merge(
                     key,
                     value,
-                    (left, right) ->
-                        CanonicalJson.compareStrings(
-                                    CanonicalJson.stringify(left), CanonicalJson.stringify(right))
-                                <= 0
-                            ? left
-                            : right));
+                    (left, right) -> json(left).compareTo(json(right)) <= 0 ? left : right));
     var updated = element.withAttributes(merged);
     elements.put(element.id(), updated);
   }
@@ -283,5 +274,28 @@ public final class MetricParser extends RichFlatMapFunction<byte[], GraphModel.C
 
   public static String boundedDetail(String detail) {
     return detail == null ? "" : detail.substring(0, Math.min(detail.length(), 512));
+  }
+
+  private static Map<String, Object> ordered(Object... fields) {
+    var value = new LinkedHashMap<String, Object>();
+    for (int index = 0; index < fields.length; index += 2)
+      value.put((String) fields[index], fields[index + 1]);
+    return value;
+  }
+
+  private static String hash(Object value) {
+    try {
+      return Sha256.digest(JSON.writeValueAsBytes(value));
+    } catch (JsonProcessingException exception) {
+      throw new IllegalArgumentException("metric identity cannot be encoded as JSON", exception);
+    }
+  }
+
+  private static String json(Object value) {
+    try {
+      return JSON.writeValueAsString(value);
+    } catch (JsonProcessingException exception) {
+      throw new IllegalArgumentException("metric attribute cannot be encoded as JSON", exception);
+    }
   }
 }

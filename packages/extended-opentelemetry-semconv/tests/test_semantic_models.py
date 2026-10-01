@@ -10,13 +10,9 @@ from extended_otel_semconv import (
     ServiceCallsServiceEdge,
     ServiceExecutesTransactionEdge,
 )
-from extended_otel_semconv.edges import edge_id, semantic_edge_from_data
-from extended_otel_semconv.entities import entity_from_attributes
-from extended_otel_semconv.errors import (
-    SemanticIdentityMismatchError,
-    SemanticModelValidationError,
-    UnknownSemanticTypeError,
-)
+from extended_otel_semconv.edges import semantic_edge_from_data
+from extended_otel_semconv.entities import semantic_entity_from_data
+from extended_otel_semconv.errors import SemanticModelValidationError, UnknownSemanticTypeError
 from extended_otel_semconv.generated import EDGE_MODELS, ENTITY_MODELS
 from extended_otel_semconv.relationships import graph_relationships
 
@@ -43,52 +39,64 @@ def test_generated_registries_cover_entities_and_relationships() -> None:
         EDGE_MODELS[("service", "invalid", "service")] = ServiceCallsServiceEdge  # type: ignore[index]
 
 
-def test_strict_entity_reconstruction_preserves_optional_fields_and_identity() -> None:
-    entity = entity_from_attributes(
+def test_entity_reconstruction_preserves_the_stored_identity() -> None:
+    entity = semantic_entity_from_data(
         "service",
+        "service:identity-owned-by-java",
         {"service.name": "checkout", "service.version": "1.4.0"},
-        expected_id="service:checkout",
     )
 
     assert isinstance(entity, Service)
+    assert entity.element_id == "service:identity-owned-by-java"
+    assert entity.entity_id == entity.element_id
     assert entity.service_name == "checkout"
     assert entity.service_version == "1.4.0"
+    assert entity.model_dump(by_alias=True) == {
+        "element_id": "service:identity-owned-by-java",
+        "service.criticality": None,
+        "service.name": "checkout",
+        "service.version": "1.4.0",
+    }
 
 
-def test_strict_entity_reconstruction_rejects_unknown_missing_and_mismatched_data() -> None:
+def test_entity_reconstruction_rejects_unknown_missing_and_invalid_schema_data() -> None:
     with pytest.raises(UnknownSemanticTypeError, match="unknown"):
-        entity_from_attributes("unknown", {})
-    with pytest.raises(SemanticModelValidationError, match="identifying fields"):
-        entity_from_attributes("service", {})
-    with pytest.raises(SemanticIdentityMismatchError, match="does not match"):
-        entity_from_attributes("service", {"service.name": "checkout"}, expected_id="service:other")
+        semantic_entity_from_data("unknown", "opaque", {})
+    with pytest.raises(SemanticModelValidationError, match="invalid Service attributes"):
+        semantic_entity_from_data("service", "service:stored", {})
+    with pytest.raises(SemanticModelValidationError, match="element_id"):
+        semantic_entity_from_data("service", "", {"service.name": "checkout"})
 
 
 @pytest.mark.parametrize("invalid_name", ["", True, 42, b"checkout"])
-def test_entity_identity_is_nonempty_and_strict(invalid_name: object) -> None:
+def test_entity_attributes_remain_nonempty_and_strict(invalid_name: object) -> None:
     with pytest.raises(SemanticModelValidationError, match="invalid Service attributes"):
-        Service.from_attributes({"service.name": invalid_name})
+        semantic_entity_from_data("service", "service:stored", {"service.name": invalid_name})
 
 
 def test_arrays_templates_and_enums_are_typed_and_immutable() -> None:
-    process = Process.from_attributes(
+    process = semantic_entity_from_data(
+        "process",
+        "process:stored",
         {
             "process.pid": 42,
             "process.creation.time": "2026-08-12T10:00:00Z",
             "process.command_args": ["python", "-m", "worker"],
-        }
+        },
     )
-    pod = K8sPod.from_attributes(
+    pod = semantic_entity_from_data(
+        "k8s.pod",
+        "k8s.pod:stored",
         {
             "k8s.pod.uid": "pod-1",
             "k8s.pod.label.app": "checkout",
             "k8s.pod.annotation.owners": "sre",
-        }
+        },
     )
 
-    assert process is not None
+    assert isinstance(process, Process)
     assert process.process_command_args == ("python", "-m", "worker")
-    assert pod is not None
+    assert isinstance(pod, K8sPod)
     assert pod.semantic_attributes() == {
         "k8s.pod.annotation.owners": "sre",
         "k8s.pod.label.app": "checkout",
@@ -97,30 +105,42 @@ def test_arrays_templates_and_enums_are_typed_and_immutable() -> None:
     with pytest.raises(TypeError):
         pod.k8s_pod_label["team"] = "platform"  # type: ignore[index]
     with pytest.raises(SemanticModelValidationError, match="process.command_args"):
-        Process.from_attributes(
+        semantic_entity_from_data(
+            "process",
+            "process:stored",
             {
                 "process.pid": 42,
                 "process.creation.time": "2026-08-12T10:00:00Z",
                 "process.command_args": "python",
-            }
+            },
         )
     with pytest.raises(SemanticModelValidationError, match="service.criticality"):
-        Service.from_attributes({"service.name": "checkout", "service.criticality": "urgent"})
+        semantic_entity_from_data(
+            "service",
+            "service:stored",
+            {"service.name": "checkout", "service.criticality": "urgent"},
+        )
 
 
-def test_concrete_edge_reconstruction_preserves_attributes_and_identity() -> None:
-    expected_id = edge_id("service:storefront", "calls", "service:checkout")
+def test_edge_reconstruction_preserves_the_stored_identity() -> None:
     edge = semantic_edge_from_data(
         "calls",
+        "edge:opaque-java-value",
         "service:storefront",
         "service:checkout",
         attributes={"transport": "http"},
-        expected_id=expected_id,
     )
 
     assert isinstance(edge, ServiceCallsServiceEdge)
+    assert edge.element_id == "edge:opaque-java-value"
+    assert edge.edge_id == edge.element_id
     assert edge.attributes == {"transport": "http"}
-    assert edge.edge_id == expected_id
+    assert edge.model_dump() == {
+        "element_id": "edge:opaque-java-value",
+        "source_id": "service:storefront",
+        "target_id": "service:checkout",
+        "attributes": {"transport": "http"},
+    }
     with pytest.raises(TypeError):
         edge.attributes["transport"] = "grpc"  # type: ignore[index]
 
@@ -128,23 +148,21 @@ def test_concrete_edge_reconstruction_preserves_attributes_and_identity() -> Non
 def test_edge_metrics_are_rejected_as_removed_contract() -> None:
     with pytest.raises(ValidationError):
         ServiceCallsServiceEdge(
+            element_id="edge:stored",
             source_id="service:storefront",
             target_id="service:checkout",
             metrics={"service_graph.request.total": 1},  # type: ignore[call-arg]
         )
 
 
-def test_edge_reconstruction_rejects_endpoints_relationships_and_identity_mismatches() -> None:
+def test_edge_reconstruction_rejects_invalid_schema_but_not_arbitrary_identity() -> None:
     with pytest.raises(UnknownSemanticTypeError, match="no generated semantic edge"):
-        semantic_edge_from_data("calls", "k8s.pod:one", "service:checkout")
+        semantic_edge_from_data("calls", "edge:any", "k8s.pod:one", "service:checkout")
     with pytest.raises(SemanticModelValidationError, match="invalid semantic entity ID"):
-        semantic_edge_from_data("calls", "invalid", "service:checkout")
-    with pytest.raises(SemanticIdentityMismatchError, match="does not match"):
-        semantic_edge_from_data(
-            "calls",
-            "service:storefront",
-            "service:checkout",
-            expected_id="edge:not-the-real-id",
-        )
+        semantic_edge_from_data("calls", "edge:any", "invalid", "service:checkout")
     with pytest.raises(ValueError, match="source_id must identify"):
-        ServiceCallsServiceEdge(source_id="k8s.pod:one", target_id="service:checkout")
+        ServiceCallsServiceEdge(
+            element_id="edge:any",
+            source_id="k8s.pod:one",
+            target_id="service:checkout",
+        )

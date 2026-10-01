@@ -20,7 +20,6 @@ from extended_otel_semconv import (
     ServiceExecutesTransactionEdge,
     Transaction,
 )
-from extended_otel_semconv.edges import edge_id as semantic_edge_id
 from extended_otel_semconv.gremlin import UnsupportedSemanticTraversalError
 from tools.local_demo.environment import DemoEnvironment, wait_for
 
@@ -30,7 +29,7 @@ def test_schema3_events_are_projected_and_traversable(e2e_environment: DemoEnvir
     observed_at = time.time_ns()
     storefront_id = "service:storefront"
     checkout_id = "service:checkout-api"
-    edge_id = semantic_edge_id(storefront_id, "calls", checkout_id)
+    edge_id = "edge:e2e-schema3-stored-id"
     events = (
         _upsert(storefront_id, _service(storefront_id, "storefront", "1.0"), observed_at, "storefront-v1"),
         _upsert(checkout_id, _service(checkout_id, "checkout-api", "2.4"), observed_at, "checkout-v1"),

@@ -4,28 +4,22 @@ The project has two related use cases.
 
 ## Use the semantic package
 
-Use the Python package when you need typed OpenTelemetry entities or want to
-normalize attributes into stable entity identifiers.
+Use the Python package to receive typed entities and relationships from the
+read-only Gremlin endpoint. Java Flink creates every graph element and ID; the
+client selects a generated Pydantic model and preserves the stored `element_id`.
 
 ```python
-from extended_otel_semconv import entities_from_attributes
+from extended_otel_semconv.gremlin import SemanticGremlinClient
 
-entities = entities_from_attributes(
-    {
-        "service.name": "checkout-api",
-        "service.namespace": "shop",
-        "service.instance.id": "checkout-api/pod-7f8b",
-        "http.request.method": "POST",
-        "http.route": "/checkout/{cart_id}",
-    }
-)
+with SemanticGremlinClient("ws://servicegraph-gremlin:8182/gremlin") as client:
+    services = client.query(lambda g: g.V().has_label("service"))
 
-for entity in entities:
-    print(entity.entity_type, entity.entity_id)
+for service in services:
+    print(service.element_id, service.semantic_attributes())
 ```
 
-An entity is created only when all of its identifying attributes are present.
-Entity IDs are deterministic and URL-encode each identifying part.
+The client validates returned semantic fields but does not derive entities or
+recalculate their identities.
 
 Install the package from the repository:
 

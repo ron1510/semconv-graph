@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 
 /** Immutable generated registry metadata and the SDK's custom extraction rules. */
 public final class SemanticRegistry {
+  private static final ObjectMapper JSON = new ObjectMapper();
+
   private record Field(String name, String kind, boolean required, List<Object> enumValues) {}
 
   private record Model(String type, List<String> identity, List<Field> fields) {}
@@ -41,12 +43,11 @@ public final class SemanticRegistry {
   public static final SemanticRegistry INSTANCE = new SemanticRegistry();
 
   private SemanticRegistry() {
-    var mapper = new ObjectMapper();
     var loaded = new LinkedHashMap<String, Model>();
     var relations = new ArrayList<Relationship>();
     try (var input = SemanticRegistry.class.getResourceAsStream("/semantic-registry.json")) {
       if (input == null) throw new IllegalStateException("generated semantic registry missing");
-      JsonNode document = mapper.readTree(input);
+      JsonNode document = JSON.readTree(input);
       for (JsonNode entity : document.get("entities")) {
         var identity = new ArrayList<String>();
         entity.get("identity_fields").forEach(item -> identity.add(item.asText()));
@@ -55,7 +56,7 @@ public final class SemanticRegistry {
           var values = new ArrayList<Object>();
           field
               .get("enum_values")
-              .forEach(item -> values.add(mapper.convertValue(item, Object.class)));
+              .forEach(item -> values.add(JSON.convertValue(item, Object.class)));
           fields.add(
               new Field(
                   field.get("name").asText(),
@@ -279,10 +280,7 @@ public final class SemanticRegistry {
           throw new IllegalArgumentException("noncanonical integer identity");
         normalized = parsed;
       } else if (field.kind().equals("number")) {
-        double parsed = Double.parseDouble(value);
-        if (!Double.isFinite(parsed) || !CanonicalJson.stringify(parsed).equals(value))
-          throw new IllegalArgumentException("noncanonical number identity");
-        normalized = parsed;
+        throw new IllegalArgumentException("floating-point identity fields are not supported");
       } else if (field.kind().equals("boolean")) {
         if (!value.equals("true") && !value.equals("false"))
           throw new IllegalArgumentException("invalid boolean identity");
@@ -298,14 +296,12 @@ public final class SemanticRegistry {
       throw new IllegalArgumentException("empty semantic identity");
     var id = new StringBuilder(type);
     for (Object part : parts) {
-      String text =
-          part instanceof Boolean flag
-              ? (flag ? "True" : "False")
-              : part instanceof Double number
-                  ? CanonicalJson.stringify(number)
-                  : String.valueOf(part);
+      if (part instanceof Float || part instanceof Double || part instanceof java.math.BigDecimal)
+        throw new IllegalArgumentException("floating-point identity fields are not supported");
+      String text = part instanceof Boolean flag ? (flag ? "True" : "False") : String.valueOf(part);
       if (text.isEmpty() || part == null)
         throw new IllegalArgumentException("empty semantic identity");
+      requireWellFormedUnicode(text);
       id.append(':');
       for (byte encoded : text.getBytes(StandardCharsets.UTF_8)) {
         int c = encoded & 255;
@@ -323,7 +319,22 @@ public final class SemanticRegistry {
   }
 
   public static String edgeId(String source, String type, String target) {
-    return "edge:"
-        + CanonicalJson.sha256(Map.of("source_id", source, "type", type, "target_id", target));
+    requireWellFormedUnicode(source);
+    requireWellFormedUnicode(type);
+    requireWellFormedUnicode(target);
+    var identity = new LinkedHashMap<String, Object>();
+    identity.put("source_id", source);
+    identity.put("target_id", target);
+    identity.put("type", type);
+    try {
+      return "edge:" + Sha256.digest(JSON.writeValueAsBytes(identity));
+    } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
+      throw new IllegalArgumentException("edge identity cannot be encoded as JSON", exception);
+    }
+  }
+
+  private static void requireWellFormedUnicode(String value) {
+    if (!StandardCharsets.UTF_8.newEncoder().canEncode(value))
+      throw new IllegalArgumentException("semantic identity contains unpaired Unicode surrogate");
   }
 }

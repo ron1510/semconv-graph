@@ -7,8 +7,9 @@ and is not installed in runtime images.
 ## Semantic SDK
 
 `extended-opentelemetry-semconv` exposes `extended_otel_semconv`. It contains
-generated entities and edges, deterministic identities, strict reconstruction,
-and runtime relationship metadata. Its base installation depends on Pydantic.
+generated entities and edges, strict stored-element reconstruction, and runtime
+relationship metadata. Java Flink creates graph identities; the SDK preserves
+their `element_id` without recalculating it. Its base installation depends on Pydantic.
 The optional `gremlin` extra validates element-preserving traversals and
 reconstructs GraphBinary results as semantic models. The semantic core does
 not import Gremlin runtime dependencies.
@@ -17,8 +18,8 @@ not import Gremlin runtime dependencies.
 
 `services/otel-servicegraph-diff/runtime/java` is a Java 17 Maven application.
 `ServiceGraphJob` wires native Kafka sources and sink. `MetricParser` and
-`EntityEventIngest` parse OTLP and produce contributions. `SemanticRegistry`
-loads generated fields, identity rules and relationship metadata.
+`MetricParser` parses OTLP and produces contributions. `SemanticRegistry`
+loads generated fields, identity rules, and relationship metadata.
 
 `GraphLifecycle` owns pure contributor aggregation, attribute merging, and expiry.
 `ElementLifecycleFunction` owns Flink keyed state and coalesced timers.

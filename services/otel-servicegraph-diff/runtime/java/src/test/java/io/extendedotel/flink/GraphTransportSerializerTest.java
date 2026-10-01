@@ -1,12 +1,15 @@
 package io.extendedotel.flink;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.extendedotel.flink.GraphModel.Contribution;
 import io.extendedotel.flink.GraphModel.Element;
 import io.extendedotel.flink.GraphModel.Event;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -16,6 +19,25 @@ import org.apache.flink.core.memory.DataOutputSerializer;
 import org.junit.jupiter.api.Test;
 
 final class GraphTransportSerializerTest {
+  private static final ObjectMapper JSON = new ObjectMapper();
+
+  @Test
+  void kafkaSchemaUsesElementIdAsKeyAndCompactSchema3JsonAsValue() throws Exception {
+    Element element = Element.node("service:שלום😀", "service", Map.of("service.name", "שלום😀"));
+    Event event =
+        GraphLifecycle.apply(
+                null, new Contribution("contributor", BigInteger.ONE, element), 5, 0, 100, 200)
+            .event();
+
+    var record =
+        new GraphEventKafkaSerializer("graph.elements.events").serialize(event, null, 123L);
+
+    assertEquals("graph.elements.events", record.topic());
+    assertEquals("service:שלום😀", new String(record.key(), StandardCharsets.UTF_8));
+    assertEquals(123L, record.timestamp());
+    assertArrayEquals(JSON.writeValueAsBytes(event.toMap()), record.value());
+  }
+
   @Test
   void mutationAndEventRoundTripWithoutRecordReflectionAndRestoreSnapshots() throws Exception {
     Element element =

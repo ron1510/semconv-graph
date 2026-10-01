@@ -13,7 +13,7 @@ from gremlin_python.process.anonymous_traversal import traversal
 from gremlin_python.process.graph_traversal import GraphTraversal, GraphTraversalSource
 
 from extended_otel_semconv.edges import SemanticEdge, semantic_edge_from_data
-from extended_otel_semconv.entities import SemanticEntity, entity_from_attributes
+from extended_otel_semconv.entities import SemanticEntity, semantic_entity_from_data
 from extended_otel_semconv.errors import SemanticModelError
 
 type SemanticGraphElement = SemanticEntity | SemanticEdge
@@ -217,15 +217,15 @@ def _semantic_element_from_map(value: object) -> SemanticGraphElement:
     if has_source != has_target:
         raise SemanticGremlinResultError("edge result must contain both source_id and target_id")
     if not has_source:
-        return entity_from_attributes(semantic_type, attributes, expected_id=element_id)
+        return semantic_entity_from_data(semantic_type, element_id, attributes)
     source_id = _required_string(item, "source_id")
     target_id = _required_string(item, "target_id")
     return semantic_edge_from_data(
         semantic_type,
+        element_id,
         source_id,
         target_id,
         attributes=attributes,
-        expected_id=element_id,
     )
 
 

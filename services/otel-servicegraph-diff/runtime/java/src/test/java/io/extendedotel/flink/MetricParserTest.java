@@ -35,6 +35,14 @@ class MetricParserTest {
 
     assertTrue(parsed.rejections().isEmpty());
     assertEquals(3, parsed.mutations().size());
+    assertTrue(
+        parsed.mutations().stream()
+            .allMatch(
+                contribution ->
+                    contribution
+                        .contributorId()
+                        .equals(
+                            "304cd3684aee2ba32409d769dfb4f8081d92a35134e94e9fa1bd5a56345cda27")));
     var elements = parsed.mutations().stream().map(GraphModel.Contribution::element).toList();
     assertTrue(elements.stream().anyMatch(e -> e.id().equals("service:checkout")));
     assertTrue(elements.stream().anyMatch(e -> e.id().equals("service:payments")));

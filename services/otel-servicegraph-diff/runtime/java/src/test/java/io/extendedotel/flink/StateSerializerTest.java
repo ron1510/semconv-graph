@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 final class StateSerializerTest {
   @Test
-  void cborV2PreservesUnsignedTimeAndNestedAttributesAndCopiesFrames() throws Exception {
+  void cborV3PreservesUnsignedTimeAndNestedAttributesAndCopiesFrames() throws Exception {
     var element =
         GraphModel.Element.edge(
             "edge:a",
@@ -34,7 +34,7 @@ final class StateSerializerTest {
     var serializer = StateSerializer.contributor();
     var binary = new DataOutputSerializer(256);
     serializer.serialize(value, binary);
-    assertEquals(2, binary.getCopyOfBuffer()[0]);
+    assertEquals(3, binary.getCopyOfBuffer()[0]);
     assertEquals(
         value, serializer.deserialize(new DataInputDeserializer(binary.getCopyOfBuffer())));
     var copied = new DataOutputSerializer(256);
@@ -66,11 +66,11 @@ final class StateSerializerTest {
         IOException.class,
         () ->
             restored.readSnapshot(
-                1, new DataInputDeserializer(new byte[0]), getClass().getClassLoader()));
+                2, new DataInputDeserializer(new byte[0]), getClass().getClassLoader()));
     assertThrows(
         IOException.class,
         () ->
             StateSerializer.contributor()
-                .deserialize(new DataInputDeserializer(new byte[] {1, 0, 0, 0, 0})));
+                .deserialize(new DataInputDeserializer(new byte[] {2, 0, 0, 0, 0})));
   }
 }
