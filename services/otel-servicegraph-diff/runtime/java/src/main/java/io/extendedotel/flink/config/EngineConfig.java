@@ -15,7 +15,8 @@ public final class EngineConfig implements Serializable {
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final TypeReference<Map<String, Object>> JSON_OBJECT = new TypeReference<>() {};
   public final String bootstrapServers, inputTopic, outputTopic, groupId;
-  public final int ttlSeconds, allowedLatenessSeconds, checkpointIntervalMs, parallelism;
+  public final int ttlSeconds, coalescingIntervalSeconds, allowedLatenessSeconds;
+  public final int checkpointIntervalMs, parallelism;
   public final int restartAttempts, restartDelaySeconds;
   public final Map<String, Integer> elementTtls;
   private final Map<String, String> kafkaProperties;
@@ -30,6 +31,7 @@ public final class EngineConfig implements Serializable {
     outputTopic = topic(env, "INTERACTION_DIFF_OUTPUT_TOPIC", "graph.elements.events");
     groupId = topic(env, "INTERACTION_DIFF_GROUP_ID", "graph-element-engine");
     ttlSeconds = integer(env, "INTERACTION_DIFF_TTL_SECONDS", LifecyclePolicy.ONE_DAY_SECONDS, 1);
+    coalescingIntervalSeconds = integer(env, "CONTRIBUTION_COALESCING_INTERVAL_SECONDS", 300, 0);
     allowedLatenessSeconds = integer(env, "INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS", 60, 0);
     checkpointIntervalMs = integer(env, "FLINK_CHECKPOINT_INTERVAL_MS", 30000, 1000);
     parallelism = integer(env, "FLINK_PARALLELISM", 3, 1);
@@ -45,6 +47,12 @@ public final class EngineConfig implements Serializable {
               ttls.put(type, (int) ttl);
             });
     elementTtls = Map.copyOf(ttls);
+    if (coalescingIntervalSeconds > 0
+        && (coalescingIntervalSeconds >= ttlSeconds
+            || elementTtls.values().stream().anyMatch(ttl -> coalescingIntervalSeconds >= ttl))) {
+      throw new IllegalArgumentException(
+          "contribution coalescing interval must be shorter than every lifecycle TTL");
+    }
     String protocol = text(env, "KAFKA_SECURITY_PROTOCOL", "PLAINTEXT");
     if (!Set.of("PLAINTEXT", "SASL_PLAINTEXT", "SASL_SSL").contains(protocol))
       throw new IllegalArgumentException("unsupported Kafka security protocol");

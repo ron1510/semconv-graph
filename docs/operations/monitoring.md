@@ -60,6 +60,8 @@ Track:
 - JobManager leadership changes;
 - restart count;
 - `rejected_inputs` and its reason-specific ingest counters;
+- `contribution_coalescer` received, forwarded, suppressed, and out-of-order counters;
+- record and busy-time skew between coalescer and lifecycle subtasks;
 - shared checkpoint volume capacity;
 - TaskManager `/flink-rocksdb` ephemeral-storage utilization.
 
@@ -95,6 +97,12 @@ many independent elements. Track lifecycle busy time, checkpoint alignment
 and end-to-end duration, failed checkpoint reasons, and input lag throughout
 the run. Keep the existing checkpoint timeout and failure tolerance for the
 comparison; increasing them would conceal the failure being investigated.
+
+For stable repeated evidence, lifecycle input should approach one refresh per
+active element/contributor pair per coalescing interval. A high received count
+with an increasing suppressed count and bounded lifecycle input demonstrates
+that the first keyed stage is absorbing recurrence. Changed-contribution
+counters should remain low unless semantic attributes actually change.
 
 ## ArangoDB and Gremlin access
 

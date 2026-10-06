@@ -3,10 +3,12 @@ from __future__ import annotations
 import pytest
 
 from benchmarks.flink import (
+    OperatorLoad,
     PodSample,
     cpu_cores,
     elements_hash,
     expected_elements,
+    operator_deltas,
     parse_counter_file,
 )
 from benchmarks.servicegraph import BenchmarkContractError, DatasetConfig, generate_otlp_proto
@@ -54,6 +56,39 @@ def test_cgroup_cpu_units_and_multiple_workers() -> None:
         "usage_usec": 123,
         "user_usec": 100,
         "system_usec": 23,
+    }
+
+
+def test_operator_counter_deltas_preserve_subtask_skew() -> None:
+    before: OperatorLoad = {
+        "coalescer": [
+            {"subtask": 0, "records_in": 10, "suppressed_unchanged": 5},
+            {"subtask": 1, "records_in": 10, "suppressed_unchanged": 4},
+        ],
+        "lifecycle": [
+            {"subtask": 0, "records_in": 3, "busy_time_ms_per_second": 10.0},
+            {"subtask": 1, "records_in": 2, "busy_time_ms_per_second": 20.0},
+        ],
+    }
+    after: OperatorLoad = {
+        "coalescer": [
+            {"subtask": 0, "records_in": 30, "suppressed_unchanged": 20},
+            {"subtask": 1, "records_in": 40, "suppressed_unchanged": 24},
+        ],
+        "lifecycle": [
+            {"subtask": 0, "records_in": 5, "busy_time_ms_per_second": 100.0},
+            {"subtask": 1, "records_in": 8, "busy_time_ms_per_second": 200.0},
+        ],
+    }
+    assert operator_deltas(before, after) == {
+        "coalescer": [
+            {"subtask": 0, "records_in": 20, "suppressed_unchanged": 15},
+            {"subtask": 1, "records_in": 30, "suppressed_unchanged": 20},
+        ],
+        "lifecycle": [
+            {"subtask": 0, "records_in": 2},
+            {"subtask": 1, "records_in": 6},
+        ],
     }
 
 

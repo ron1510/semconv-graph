@@ -9,7 +9,10 @@ python -m benchmarks.flink --warmup 3 --iterations 20 --entities 2 --contributor
 
 The report checks complete service/calls payloads and request totals, then
 records observed rate, batch latency, CPU, memory, checkpoint duration/size and
-committed-offset lag. The harness uses Python for provisioning and measurement;
+committed-offset lag. For a repeated hot-element workload, also record the
+coalescer input/output counters and per-subtask lifecycle record and busy-time
+spread; the graph hash must remain unchanged while refresh volume follows the
+configured interval. The harness uses Python for provisioning and measurement;
 the Flink job itself is Java only.
 
 These controlled Kafka-to-Kafka measurements do not establish saturating

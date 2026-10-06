@@ -2,6 +2,7 @@ package io.extendedotel.flink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.extendedotel.flink.coalesce.ContributionCoalescer;
 import io.extendedotel.flink.config.EngineConfig;
 import io.extendedotel.flink.lifecycle.ElementLifecycleFunction;
 import io.extendedotel.flink.serialization.ContributionTypeInformation;
@@ -19,6 +20,7 @@ class ServiceGraphJobTest {
     assertEquals("graph.elements.events", config.outputTopic);
     assertEquals("graph-element-engine", config.groupId);
     assertEquals(86400, config.ttlSeconds);
+    assertEquals(300, config.coalescingIntervalSeconds);
     assertEquals(Map.of("security.protocol", "PLAINTEXT"), config.kafkaProperties());
     assertThrows(
         IllegalArgumentException.class,
@@ -32,6 +34,28 @@ class ServiceGraphJobTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new EngineConfig(Map.of("GRAPH_ELEMENT_TTL_SECONDS", "{\"service\":true}")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new EngineConfig(
+                Map.of(
+                    "INTERACTION_DIFF_TTL_SECONDS",
+                    "300",
+                    "CONTRIBUTION_COALESCING_INTERVAL_SECONDS",
+                    "300")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new EngineConfig(
+                Map.of(
+                    "GRAPH_ELEMENT_TTL_SECONDS",
+                    "{\"service\":200}",
+                    "CONTRIBUTION_COALESCING_INTERVAL_SECONDS",
+                    "200")));
+    assertEquals(
+        0,
+        new EngineConfig(Map.of("CONTRIBUTION_COALESCING_INTERVAL_SECONDS", "0"))
+            .coalescingIntervalSeconds);
     var sasl =
         new EngineConfig(
             Map.of(
@@ -51,7 +75,13 @@ class ServiceGraphJobTest {
 
   @Test
   void nativeGraphHasExplicitUidsAndOneTypedEvidenceLane() {
-    var config = new EngineConfig(Map.of("GRAPH_ELEMENT_TTL_SECONDS", "{\"service\":25}"));
+    var config =
+        new EngineConfig(
+            Map.of(
+                "GRAPH_ELEMENT_TTL_SECONDS",
+                "{\"service\":25}",
+                "CONTRIBUTION_COALESCING_INTERVAL_SECONDS",
+                "5"));
     var env = StreamExecutionEnvironment.getExecutionEnvironment(new Configuration());
     env.setParallelism(1);
     env.enableCheckpointing(config.checkpointIntervalMs);
@@ -63,13 +93,15 @@ class ServiceGraphJobTest {
             .filter(java.util.Objects::nonNull)
             .toList();
     assertTrue(uids.contains(ElementLifecycleFunction.UID));
+    assertTrue(uids.contains(ContributionCoalescer.UID));
     assertTrue(uids.contains("graph-kafka-source"));
     assertTrue(uids.contains("graph-events-sink"));
     assertTrue(
         graph.getStreamNodes().stream()
-            .map(node -> node.getTypeSerializerOut())
-            .filter(java.util.Objects::nonNull)
-            .anyMatch(ContributionTypeInformation.Serializer.class::isInstance));
+                .map(node -> node.getTypeSerializerOut())
+                .filter(ContributionTypeInformation.Serializer.class::isInstance)
+                .count()
+            >= 2);
     assertTrue(
         graph.getStreamNodes().stream()
             .map(node -> node.getTypeSerializerOut())

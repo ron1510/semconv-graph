@@ -72,6 +72,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: {{ .Values.job.interactionTtlSeconds | quote }}
 - name: GRAPH_ELEMENT_TTL_SECONDS
   value: {{ .Values.job.elementTtlSeconds | toJson | quote }}
+- name: CONTRIBUTION_COALESCING_INTERVAL_SECONDS
+  value: {{ .Values.job.contributionCoalescingIntervalSeconds | quote }}
 - name: INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS
   value: {{ .Values.job.allowedLatenessSeconds | quote }}
 - name: FLINK_CHECKPOINT_INTERVAL_MS

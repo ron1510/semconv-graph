@@ -1,5 +1,6 @@
 package io.extendedotel.flink;
 
+import io.extendedotel.flink.coalesce.ContributionCoalescer;
 import io.extendedotel.flink.config.EngineConfig;
 import io.extendedotel.flink.ingest.MetricParser;
 import io.extendedotel.flink.lifecycle.ElementLifecycleFunction;
@@ -59,6 +60,13 @@ public final class ServiceGraphJob {
             .name("extract-graph-contributions")
             .uid("graph-extract-contributions");
     contributions
+        .keyBy(ContributionCoalescer::key)
+        .process(
+            new ContributionCoalescer(
+                config.coalescingIntervalSeconds, config.ttlSeconds, config.elementTtls))
+        .returns(ContributionTypeInformation.INSTANCE)
+        .name("coalesce-contributor-refreshes")
+        .uid(ContributionCoalescer.UID)
         .assignTimestampsAndWatermarks(
             WatermarkStrategy.<Contribution>forBoundedOutOfOrderness(
                     Duration.ofSeconds(config.allowedLatenessSeconds))

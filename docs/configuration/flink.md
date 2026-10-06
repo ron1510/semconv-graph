@@ -9,6 +9,7 @@ job:
   groupId: graph-element-engine
   interactionTtlSeconds: 86400
   elementTtlSeconds: {}
+  contributionCoalescingIntervalSeconds: 300
   allowedLatenessSeconds: 60
   checkpointIntervalMs: 30000
   checkpointTimeoutMs: 600000
@@ -20,7 +21,16 @@ job:
 
 `interactionTtlSeconds` is the default contributor freshness period. `elementTtlSeconds` can shorten or lengthen it by semantic type. For an edge, `LifecyclePolicy.ttlSeconds()` uses the shortest applicable edge or endpoint policy. Every contribution expires; there are no persistent or per-message TTL overrides.
 
-Repeated evidence for the same contributor and unchanged element refreshes its event-time and processing-time deadlines without publishing another upsert. Attribute or topology changes publish a complete replacement. The last contributor expiry publishes a delete.
+`contributionCoalescingIntervalSeconds` limits unchanged evidence for one
+element/contributor pair before it reaches the element-keyed lifecycle stage.
+Its production default is five minutes. It must be `0` or shorter than the
+default TTL and every per-type TTL. `0` makes the coalescer a stateless
+pass-through.
+
+New contributors and attribute or topology changes pass immediately. Repeated
+unchanged evidence retains the newest observation and periodically refreshes
+event-time and processing-time lifecycle deadlines without publishing another
+upsert. The last contributor expiry publishes a delete.
 
 ## Kafka contract
 
@@ -45,7 +55,12 @@ The output topic contains schema-3 JSON and uses `element_id` as its Kafka key. 
 
 ## State and recovery
 
-The operator stores one CBOR-v4 snapshot per `(element, contributor)`, a compact aggregate, an attribute-winner index, and two coalesced timer deadlines per element. RocksDB incremental checkpoints are the production default. Point refreshes read and write the affected contributor and winner entries without scanning all contributors.
+The coalescer stores one latest CBOR-v4 contribution and one processing timer
+per active `(element, contributor)` pair. Lifecycle stores one CBOR-v4 snapshot
+per pair, a compact aggregate, an attribute-winner index, and two coalesced
+timer deadlines per element. RocksDB incremental checkpoints are the production
+default. Point refreshes read and write the affected contributor and winner
+entries without scanning all contributors.
 
 `java-cbor-v4` is a clean state boundary. Runtime checks reject missing markers, earlier `java-cbor` markers, Python state, and unknown markers when an upgrade could restore old state. Clear checkpoints, savepoints, HA metadata, the runtime marker, and source-group offsets before deploying this version.
 
@@ -59,6 +74,7 @@ The operator stores one CBOR-v4 snapshot per `(element, contributor)`, a compact
 | `INTERACTION_DIFF_GROUP_ID` | `job.groupId` |
 | `INTERACTION_DIFF_TTL_SECONDS` | `job.interactionTtlSeconds` |
 | `GRAPH_ELEMENT_TTL_SECONDS` | JSON form of `job.elementTtlSeconds` |
+| `CONTRIBUTION_COALESCING_INTERVAL_SECONDS` | `job.contributionCoalescingIntervalSeconds` |
 | `INTERACTION_DIFF_ALLOWED_LATENESS_SECONDS` | `job.allowedLatenessSeconds` |
 | `FLINK_CHECKPOINT_INTERVAL_MS` | `job.checkpointIntervalMs` |
 | `FLINK_PARALLELISM` | `application.parallelism` |

@@ -18,6 +18,20 @@ semantic ID are one node, and edges with the same source ID, relationship type,
 and target ID are one edge. Flink stores no separate interaction state after
 the contributions have been extracted.
 
+## Distributed refresh coalescing
+
+Extraction first keys contributions by the pair of element ID and contributor
+ID. `ContributionCoalescer` immediately forwards a new pair or a changed
+element. Repeated observations with the same element retain only the newest
+timestamp and forward at most once per configured interval. An older
+observation is ignored.
+
+This first key distributes the contributors of a hot element across Flink
+subtasks. It reduces repeated work before the second shuffle keys the stream by
+element ID. Coalescer timers use processing time because they regulate runtime
+work; they do not decide graph expiry. Silent coalescer cleanup removes only its
+cache after the effective contributor TTL.
+
 ## Attribute merging
 
 Optional attributes from different contributors complete one another. For
@@ -46,7 +60,8 @@ timestamps, making callbacks from its older timers harmless. Generic Flink
 state TTL is not used, because silent state cleanup cannot publish lifecycle
 deletes.
 
-The single element-keyed lifecycle stage emits a complete `upsert` when merged
+The element-keyed lifecycle stage remains the sole graph authority. It emits a
+complete `upsert` when merged
 state changes and a `delete` only when the final contributor disappears.
 Consumers apply these commands idempotently and never calculate their own stale
 timeout.

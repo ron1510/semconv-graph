@@ -6,7 +6,7 @@ The runtime is an evidence-only graph projection:
 OTLP traces
   → Collector interaction/root discovery aggregation
   → Kafka OTLP Protobuf
-  → Java Flink semantic extraction and lifecycle
+  → Java Flink semantic extraction, contributor coalescing, and lifecycle
   → Kafka schema-3 JSON
   → ArangoDB replacement projection
   → typed Gremlin
@@ -22,7 +22,12 @@ The generated registry defines entities, identifying attributes, evidence-source
 
 ## Lifecycle processing
 
-Each graph element is keyed independently. Contributor snapshots merge by newest observation time and canonical contributor-ID tie breaking. `AttributeWinners` maintains the winning attribute owners for the common refresh path. Every element has at most one event-time and one processing-time timer, regardless of contributor cardinality; callbacks remove all contributors whose deadlines have passed and schedule the next minimum.
+Before lifecycle, unchanged evidence is keyed by element and contributor and
+reduced to the latest observation at a configurable interval. New contributors
+and payload changes pass immediately. This spreads recurring contributors
+across subtasks before the stream is keyed by element.
+
+Each graph element is then keyed independently. Contributor snapshots merge by newest observation time and canonical contributor-ID tie breaking. `AttributeWinners` maintains the winning attribute owners for the common refresh path. Every element has at most one event-time and one processing-time timer, regardless of contributor cardinality; callbacks remove all contributors whose deadlines have passed and schedule the next minimum.
 
 An unchanged refresh updates state and deadlines without another public event. A changed aggregate emits a complete upsert. Final expiry emits a delete. State uses directly framed CBOR v4 and has no legacy reader.
 

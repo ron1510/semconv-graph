@@ -48,6 +48,8 @@ def test_native_submission_preserves_recovery_and_security() -> None:
     assert "-Dexecution.checkpointing.storage=filesystem" in manifests
     assert "-Dstate.backend.type=rocksdb" in manifests
     assert "-Dexecution.checkpointing.max-concurrent-checkpoints=1" in manifests
+    assert "CONTRIBUTION_COALESCING_INTERVAL_SECONDS" in manifests
+    assert 'value: "300"' in manifests
 
 
 def test_restricted_platform_values_keep_narrow_ha_permissions() -> None:
@@ -94,6 +96,13 @@ def test_submission_captures_custom_checkpoint_settings_without_ha_credentials()
     assert "-Dexecution.checkpointing.tolerable-failed-checkpoints=2" in submitter
     assert "automountServiceAccountToken: false" in submitter
     assert "-Dhigh-availability.type" not in submitter
+
+
+def test_coalescing_interval_is_rendered_and_zero_is_valid() -> None:
+    result = render("job.contributionCoalescingIntervalSeconds=0")
+    assert result.returncode == 0, result.stderr
+    assert "CONTRIBUTION_COALESCING_INTERVAL_SECONDS" in result.stdout
+    assert 'value: "0"' in result.stdout
 
 
 @pytest.mark.parametrize("setting", ["application.runtime=python", "application.runtime=java", "state.backend=hashmap"])

@@ -39,6 +39,8 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Edges retain topology and attributes without request counters.
 - Repeated identical evidence refreshes contributor deadlines without emitting
   another public upsert; topology or attribute changes still emit complete state.
+- Recurring unchanged contributions are now coalesced by distributed
+  element/contributor keys before the hot element-keyed lifecycle stage.
 - Flink state now uses the clean-cutover `java-cbor-v4` format and deterministic
   default Jackson JSON over recursively ordered domain maps. Older state requires
   the documented reset.

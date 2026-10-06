@@ -39,6 +39,7 @@ job:
   groupId: graph-element-engine
   interactionTtlSeconds: 86400
   elementTtlSeconds: {}
+  contributionCoalescingIntervalSeconds: 300
   allowedLatenessSeconds: 60
   checkpointIntervalMs: 30000
   checkpointTimeoutMs: 600000

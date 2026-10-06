@@ -333,8 +333,11 @@ def test_incremental_checkpoints_restore_granular_lifecycle_state(
 
     assert wait_for(
         "high-cardinality service projection",
-        90,
-        lambda: _service_count(e2e_environment, service_name) == 1,
+        120,
+        lambda: e2e_environment.arango_document_count(
+            "service", "service_name", service_name
+        )
+        == 1,
     )
     assert wait_for(
         "three incremental checkpoints",
@@ -356,7 +359,10 @@ def test_incremental_checkpoints_restore_granular_lifecycle_state(
         90,
         lambda: _flink_job_running(e2e_environment),
     )
-    assert _service_count(e2e_environment, service_name) == 1
+    assert (
+        e2e_environment.arango_document_count("service", "service_name", service_name)
+        == 1
+    )
     after_recovery = e2e_environment.completed_checkpoints()
     assert wait_for(
         "checkpoint after TaskManager recovery",
@@ -417,6 +423,12 @@ def test_native_flink_controlled_workload_matches_expected_graph(e2e_environment
     report = measure(e2e_environment)
     assert report["expected_matches"]
     assert report["output_events_measured"] == report["expected_events_measured"]
+    coalescer = report["operator_record_deltas"]["coalescer"]
+    lifecycle = report["operator_record_deltas"]["lifecycle"]
+    assert sum(int(item.get("suppressed_unchanged", 0)) for item in coalescer) > 0
+    assert sum(int(item.get("records_in", 0)) for item in lifecycle) < sum(
+        int(item.get("records_in", 0)) for item in coalescer
+    )
     path = e2e_environment.work_dir / "java-benchmark.json"
     path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Native Flink measured benchmark: {path}")

@@ -17,6 +17,12 @@ The lifecycle operator stores contributor snapshots as individual `MapState`
 entries and maintains at most one event-time and one processing-time timer per
 graph element.
 
+Before lifecycle, `ContributionCoalescer` keys by element and contributor. New
+or changed payloads pass immediately; unchanged evidence is reduced to the
+latest refresh every `job.contributionCoalescingIntervalSeconds`. Set the value
+to `0` for pass-through behavior. A positive value must be shorter than the
+default and every configured per-type TTL.
+
 The existing metrics source also recognizes Collector-produced
 `semconv.graph.discovery.calls` datapoints. It expands each observation into all
 complete registry-defined entities and observation relationships, then merges
@@ -79,6 +85,10 @@ The chart uses Java 17 and CBOR-v4 lifecycle state. Hooks accept only the
 `java-cbor-v4` runtime marker and reject older Python, JSON, and CBOR state.
 This contract change requires the clean reset documented in
 `docs/operations/upgrades.md`; `allowNonRestoredState` cannot convert serializers.
+
+The coalescer has its own stable UID and starts empty when first added to an
+existing v4 savepoint. Existing lifecycle UIDs and state descriptors are
+unchanged, so this addition does not require another state reset.
 
 Java is the only application runtime; the chart always submits
 `io.extendedotel.flink.ServiceGraphJob` from its executable JAR. The obsolete

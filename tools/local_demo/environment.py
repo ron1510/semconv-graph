@@ -859,6 +859,8 @@ class DemoEnvironment:
                 "--set",
                 "job.interactionTtlSeconds=45",
                 "--set",
+                "job.contributionCoalescingIntervalSeconds=5",
+                "--set",
                 "job.allowedLatenessSeconds=1",
                 "--set",
                 "job.checkpointIntervalMs=5000",

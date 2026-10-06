@@ -10,6 +10,7 @@ import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Literal, TypedDict, cast
+from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -69,6 +70,11 @@ class CheckpointSample(TypedDict):
     full_state_size_bytes: int | None
 
 
+class OperatorLoad(TypedDict):
+    coalescer: list[dict[str, int | float]]
+    lifecycle: list[dict[str, int | float]]
+
+
 class RuntimeReport(TypedDict):
     scope: Literal["controlled_distributed_flink_workload"]
     runtime: str
@@ -94,6 +100,9 @@ class RuntimeReport(TypedDict):
     average_cpu_cores: dict[str, float]
     checkpoints: list[CheckpointSample]
     offsets: list[OffsetSample]
+    operator_load_before: OperatorLoad
+    operator_load_after: OperatorLoad
+    operator_record_deltas: OperatorLoad
     limitations: list[str]
 
 
@@ -209,6 +218,116 @@ def _flink_json(environment: DemoEnvironment, path: str) -> dict[str, object]:
         timeout=30,
     )
     return _object(json.loads(result.stdout))
+
+
+def _operator_load(environment: DemoEnvironment, job_id: str) -> OperatorLoad:
+    job = _flink_json(environment, f"jobs/{job_id}")
+    vertices = cast(list[dict[str, object]], job.get("vertices", []))
+
+    def vertex(part: str) -> tuple[str, int]:
+        matches = [item for item in vertices if part in cast(str, item.get("name", ""))]
+        if len(matches) != 1:
+            raise BenchmarkContractError(f"expected one Flink vertex containing {part!r}")
+        return cast(str, matches[0]["id"]), int(cast(int, matches[0]["parallelism"]))
+
+    def metrics(vertex_id: str, parallelism: int, custom: bool) -> list[dict[str, int | float]]:
+        wanted = {
+            "numRecordsIn": "records_in",
+            "numRecordsOut": "records_out",
+            "busyTimeMsPerSecond": "busy_time_ms_per_second",
+        }
+        custom_names = {
+            "received_contributions": "received",
+            "new_contributions_forwarded": "forwarded_new",
+            "changed_contributions_forwarded": "forwarded_changed",
+            "unchanged_refreshes_forwarded": "forwarded_unchanged",
+            "timer_refreshes_forwarded": "forwarded_timer",
+            "unchanged_contributions_suppressed": "suppressed_unchanged",
+            "out_of_order_contributions_ignored": "ignored_out_of_order",
+        }
+        by_subtask: list[dict[str, int | float]] = []
+        for subtask in range(parallelism):
+            endpoint = (
+                "/api/v1/namespaces/"
+                f"{environment.namespace}/services/http:servicegraph-diff-rest:8081/proxy/"
+                f"jobs/{job_id}/vertices/{vertex_id}/subtasks/{subtask}/metrics"
+            )
+            result = environment.kubectl("get", "--raw", endpoint, timeout=30)
+            listed = cast(list[dict[str, object]], json.loads(result.stdout))
+            metric_ids = [cast(str, value["id"]) for value in listed]
+            selected = [
+                identifier
+                for identifier in metric_ids
+                if any(
+                    identifier == name or identifier.endswith("." + name)
+                    for name in (*wanted, *(custom_names if custom else ()))
+                )
+            ]
+            if not selected:
+                raise BenchmarkContractError("Flink operator metrics were unavailable")
+            values_result = environment.kubectl(
+                "get",
+                "--raw",
+                f"{endpoint}?get={quote(','.join(selected), safe=',')}",
+                timeout=30,
+            )
+            values = cast(list[dict[str, object]], json.loads(values_result.stdout))
+            item: dict[str, int | float] = {"subtask": subtask}
+            for value in values:
+                identifier = cast(str, value["id"])
+                name = next(
+                    (alias for suffix, alias in wanted.items() if identifier.endswith(suffix)),
+                    None,
+                )
+                if name is None and custom:
+                    name = next(
+                        (alias for suffix, alias in custom_names.items() if identifier.endswith(suffix)),
+                        None,
+                    )
+                if name is None:
+                    continue
+                number = float(cast(str, value["value"]))
+                item[name] = int(number) if number.is_integer() else number
+            by_subtask.append(item)
+        return by_subtask
+
+    coalescer_id, coalescer_parallelism = vertex("coalesce-contributor-refreshes")
+    lifecycle_id, lifecycle_parallelism = vertex("graph-element-lifecycle")
+    return {
+        "coalescer": metrics(coalescer_id, coalescer_parallelism, True),
+        "lifecycle": metrics(lifecycle_id, lifecycle_parallelism, False),
+    }
+
+
+def operator_deltas(before: OperatorLoad, after: OperatorLoad) -> OperatorLoad:
+    gauges = {"subtask", "busy_time_ms_per_second"}
+
+    def subtract(
+        earlier: list[dict[str, int | float]], later: list[dict[str, int | float]]
+    ) -> list[dict[str, int | float]]:
+        old = {int(item["subtask"]): item for item in earlier}
+        result: list[dict[str, int | float]] = []
+        for item in later:
+            subtask = int(item["subtask"])
+            previous = old.get(subtask)
+            if previous is None:
+                raise BenchmarkContractError("Flink operator subtask changed during measurement")
+            delta: dict[str, int | float] = {"subtask": subtask}
+            for name, value in item.items():
+                if name in gauges:
+                    continue
+                prior = previous.get(name)
+                if prior is not None:
+                    delta[name] = value - prior
+            result.append(delta)
+        if len(old) != len(later):
+            raise BenchmarkContractError("Flink operator parallelism changed during measurement")
+        return result
+
+    return {
+        "coalescer": subtract(before["coalescer"], after["coalescer"]),
+        "lifecycle": subtract(before["lifecycle"], after["lifecycle"]),
+    }
 
 
 def _checkpoint(environment: DemoEnvironment, job_id: str) -> CheckpointSample:
@@ -400,6 +519,7 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
             raise BenchmarkContractError("expected exactly one RUNNING Flink job")
         job_id = cast(str, jobs[0]["jid"])
         settings = _settings(environment)
+        operator_load_before = _operator_load(environment, job_id)
         checkpoints = [_checkpoint(environment, job_id)]
         offset_samples = [offsets()]
         warmup_events = 0
@@ -453,6 +573,7 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
             if checkpoints[-1]["completed"] < checkpoint_start + config.checkpoint_samples:
                 time.sleep(1)
         offset_samples.append(offsets())
+        operator_load_after = _operator_load(environment, job_id)
         elapsed = finished - started
         datapoints = config.entities * config.contributors * config.iterations
         final = project_elements(observed, service_names)
@@ -483,6 +604,9 @@ def measure(environment: DemoEnvironment, config: WorkloadConfig | None = None) 
             "average_cpu_cores": cpu_cores(before, after),
             "checkpoints": checkpoints,
             "offsets": offset_samples,
+            "operator_load_before": operator_load_before,
+            "operator_load_after": operator_load_after,
+            "operator_record_deltas": operator_deltas(operator_load_before, operator_load_after),
             "limitations": [
                 "Controlled batched workload; observed rate is not a saturating throughput/capacity claim.",
                 "Kafka metrics to Kafka graph payloads; excludes Collector/Gremlin latency.",

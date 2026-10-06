@@ -18,7 +18,10 @@ registry remains the common source for Java metadata and the Python SDK.
 
 Top-level records in `io.extendedotel.flink.model` define the sealed node/edge,
 immutable contribution, and upsert/delete types. `LifecyclePolicy` owns the
-per-type contributor lifetime, defaulting to one day. `AttributeWinners` tracks aggregate attribute ownership;
+per-type contributor lifetime, defaulting to one day. `ContributionCoalescer`
+distributes `(element, contributor)` pairs and rate-limits unchanged refreshes
+before the element-keyed lifecycle stage. `AttributeWinners` tracks aggregate
+attribute ownership;
 `ElementLifecycleFunction` owns keyed state and timers. Normal refreshes use
 point reads, while winner removal and expiry can scan remaining contributors.
 Directly framed CBOR v4 carries internal state and transport; the public Kafka
@@ -31,3 +34,5 @@ is built with `benchmarks/docker/flink-state-cost.Dockerfile`.
 Older Python, JSON, and CBOR checkpoints are incompatible. This rollout
 requires the clean reset in `docs/operations/upgrades.md`. Later compatible
 CBOR-v4 upgrades can keep the fixed job ID and compatible savepoints.
+The coalescer starts empty when first added to a v4 savepoint; existing
+lifecycle state restores under its unchanged UID.

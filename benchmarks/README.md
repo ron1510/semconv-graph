@@ -10,6 +10,15 @@ python -m benchmarks.flink --output .tmp/flink-benchmark
 python -m benchmarks.flink --entities 2 --contributors 256 --warmup 3 --iterations 20 --output .tmp/flink-benchmark-dense
 ```
 
+The distributed report includes per-subtask coalescer and lifecycle record
+counts, coalescer suppression counters, and busy-time samples. Use the dense
+command to model many recurring contributors for a small set of hot elements;
+the final graph hash must stay identical while lifecycle input drops below
+coalescer input.
+
+The first recorded coalescing run is under
+`results/contribution-coalescing-2026-10-06/`.
+
 The Python harness generates OTLP input, provisions the Java job, checks Kafka
 keys and complete final service/calls payloads, and records observed datapoint
 rate, OTLP Protobuf payload size, emitted-event count, batch latency, cgroup

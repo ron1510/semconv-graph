@@ -11,6 +11,10 @@
     "job": {
       "type": "object",
       "properties": {
+        "contributionCoalescingIntervalSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
         "checkpointIntervalMs": {
           "type": "integer",
           "minimum": 1000
@@ -29,6 +33,7 @@
         }
       },
       "required": [
+        "contributionCoalescingIntervalSeconds",
         "checkpointIntervalMs",
         "checkpointTimeoutMs",
         "checkpointMinPauseMs",

@@ -59,10 +59,18 @@ Confirm:
   actually stopped;
 - the demo is not rotating the edge back in;
 - `interactionTtlSeconds` is the expected value;
+- `contributionCoalescingIntervalSeconds` is shorter than every applicable TTL;
 - processing-time timers are running;
 - Flink checkpoints and TaskManagers are healthy.
 
 Only positive finite delta evidence refreshes expiry; invalid values are rejected.
+
+If input lag grows while graph state and checkpoints remain small, compare the
+`contribution_coalescer` counters and per-subtask records between
+`coalesce-contributor-refreshes` and `graph-element-lifecycle`. Low suppression
+means payloads or contributor IDs are changing; balanced coalescer input with a
+single busy lifecycle subtask indicates a hot element whose changes cannot be
+coalesced.
 
 ## Graph elements churn or repeatedly reappear
 

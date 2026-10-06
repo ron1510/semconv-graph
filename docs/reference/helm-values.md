@@ -46,8 +46,9 @@ also available in the chart.
 | `job.fixedJobId` | `000...001` | Stable Flink job ID |
 | `job.allowNonRestoredState` | `false` | Allow reviewed upgrades to discard unmapped savepoint state |
 | `job.groupId` | `graph-element-engine` | Kafka source group |
-| `job.interactionTtlSeconds` | `300` | Delete inactivity threshold |
+| `job.interactionTtlSeconds` | `86400` | Delete inactivity threshold |
 | `job.elementTtlSeconds` | `{}` | Optional inactivity thresholds by semantic element type |
+| `job.contributionCoalescingIntervalSeconds` | `300` | Minimum interval for unchanged contributor refreshes; `0` disables suppression |
 | `job.allowedLatenessSeconds` | `60` | Watermark out-of-order bound |
 | `job.checkpointIntervalMs` | `30000` | Checkpoint interval |
 | `job.checkpointTimeoutMs` | `600000` | Checkpoint timeout in milliseconds |

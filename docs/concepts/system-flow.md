@@ -15,6 +15,8 @@ application spans
   → MetricParser
   → SemanticRegistry
   → Contribution(contributorId, observedAtUnixNano, element)
+  → keyBy(element ID + contributor ID)
+  → ContributionCoalescer
   → keyBy(elementKey)
   → ElementLifecycleFunction
   → Event schema 3.0
@@ -75,12 +77,20 @@ Both backends batch and publish gzip-compressed `otlp_proto` records to `otel.se
 
 - Kafka brokers, topics, group ID, and security properties;
 - positive default and per-type TTLs;
+- a nonnegative contribution-coalescing interval shorter than every configured TTL;
 - checkpoint and restart settings;
 - supported semantic types in `GRAPH_ELEMENT_TTL_SECONDS`.
 
 `ServiceGraphJob.configure()` creates a `KafkaSource<byte[]>`. Its deserializer returns the record bytes unchanged. The source has stable UID `graph-kafka-source`.
 
-The source stream calls `flatMap(new MetricParser())`, declares `ContributionTypeInformation`, assigns timestamps/watermarks, then keys by `Contribution.elementKey()`. `ElementLifecycleFunction` owns all state and timers after that key. `GraphEventKafkaSerializer` writes deterministic JSON with `element_id` as the Kafka key.
+The source stream calls `flatMap(new MetricParser())`, declares
+`ContributionTypeInformation`, keys by the collision-free element/contributor
+pair, and calls `ContributionCoalescer`. The coalesced stream declares the same
+explicit type information, assigns timestamps and watermarks from the retained
+observation timestamp, then keys by `Contribution.elementKey()`.
+`ElementLifecycleFunction` owns graph state and expiry after that key.
+`GraphEventKafkaSerializer` writes deterministic JSON with `element_id` as the
+Kafka key.
 
 There is one input lane. No union, reconciliation source, retraction stream, or entity-source state exists.
 
@@ -146,6 +156,17 @@ It has no operation flag, retraction, metric delta, or TTL override.
 
 ## 7. Lifecycle policy and state
 
+`ContributionCoalescer` stores the latest contribution, last forwarded and
+last seen processing times, a pending flag, and one registered processing-time
+timer for each `(element ID, contributor ID)` key. A new or changed element is
+forwarded immediately. Identical evidence replaces the cached observation and
+is forwarded at most once per coalescing interval. Its one timer alternates
+between pending refresh delivery and silent cache cleanup. Interval `0` keeps
+the operator in the graph as a stateless pass-through.
+
+The coalescer precedes timestamp assignment so a delayed refresh retains its
+real telemetry timestamp. It never emits deletes or merges contributors.
+
 `LifecyclePolicy.ttlSeconds(element)` starts from the default, applies a type override, and for edges also considers source and target type overrides. The minimum protects an endpoint whose policy is shorter than the relationship policy.
 
 `snapshot(contribution, eventFloor, processingNow)` computes both deadlines from the selected TTL. Event time uses the later of the observation and watermark floor. Processing time provides expiry when the source stays idle and watermarks stop.
@@ -178,7 +199,10 @@ These descriptive state and operator names replace the old version-suffixed name
 8. advances either timer only when the new deadline is earlier than the registered wake-up;
 9. emits an upsert only when the complete element hash changed.
 
-An identical request every minute therefore refreshes that contributor's 24-hour deadline without producing one event per request and without scanning thousands of contributors.
+An identical request every minute is first reduced by the coalescer. Each
+periodic retained refresh then updates that contributor's 24-hour lifecycle
+deadline without producing another public event and without scanning thousands
+of contributors.
 
 `AttributeWinners.observe()` updates attribute owners using observation time, then canonical contributor ID as the tie breaker. It point-reads another contributor only when ownership changes. `losesAttribute()` detects cases that require rebuilding from all retained snapshots.
 
@@ -210,7 +234,12 @@ There is no legacy string sentinel or multi-version reader. `StateSerializer.Sna
 
 `DeploymentCommands.CURRENT_RUNTIME` is `java-cbor-v4`. `validateRuntime()` accepts only that marker for restore/savepoint operations. An unmarked state directory or any older marker requires the documented clean reset.
 
-Incremental RocksDB checkpoints capture contributors, winner indexes, aggregates, and registered timers. Recovery tests prove an idle restored timer can publish final deletion without new input.
+Incremental RocksDB checkpoints capture coalescer entries and timers as well as
+lifecycle contributors, winner indexes, aggregates, and timers. Recovery tests
+prove a pending retained refresh survives restart and an idle restored
+lifecycle timer can publish final deletion without new input. Adding the new
+operator does not change CBOR framing: old v4 operators keep their UIDs and the
+new UID starts empty on the first compatible restore.
 
 ## 11. Public event serialization
 
@@ -263,6 +292,7 @@ when moving between incompatible alpha revisions.
 - `MetricParserTest`: Protobuf interaction/discovery evidence, malformed bytes, type, temporality, value validation, ignored failure metric, stable IDs and attributes.
 - `LifecycleGoldenTest`: refresh suppression, deterministic winners, partial expiry, final delete, identity validation.
 - `ElementLifecycleFunctionTest`: conservative callbacks, checkpoint/recovery, idle deletion, policy timers.
+- `ContributionCoalescerTest`: immediate changes, rate-limited refreshes, ordering, cleanup, pass-through, and RocksDB recovery.
 - `GranularLifecycleStateTest`: point refresh behavior with thousands of contributors.
 - `StateSerializerTest`: direct CBOR-v4 frames and old-format rejection.
 - indexer tests: schema-3 replacement, replay coalescing, deletion, commit-after-success, schema-2 and metrics rejection.
