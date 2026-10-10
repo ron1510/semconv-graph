@@ -8,7 +8,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>17</maven.compiler.release>
-    <flink.version>2.2.1</flink.version>
+    <flink.version>2.3.0</flink.version>
     <flink.kafka.connector.version>5.0.0-2.2</flink.kafka.connector.version>
     <jackson.version>2.20.1</jackson.version>
   </properties>
